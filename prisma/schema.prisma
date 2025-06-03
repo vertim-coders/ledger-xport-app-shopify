@@ -1,0 +1,139 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Note that some adapters may set a maximum length for the String type by default, please ensure your strings are long
+// enough when changing adapters.
+// See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Session {
+  id            String    @id
+  shop          String
+  state         String
+  isOnline      Boolean   @default(false)
+  scope         String?
+  expires       DateTime?
+  accessToken   String
+  userId        BigInt?
+  firstName     String?
+  lastName      String?
+  email         String?
+  accountOwner  Boolean   @default(false)
+  locale        String?
+  collaborator  Boolean?  @default(false)
+  emailVerified Boolean?  @default(false)
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  firstName     String?
+  lastName      String?
+  role          UserRole  @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  shops         Shop[]
+  companyParams CompanyParams?
+}
+
+model Shop {
+  id            String    @id
+  shopifyDomain String    @unique
+  name          String
+  domain        String
+  accessToken   String
+  scope         String?
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  fiscalRegimeId String?
+  fiscalRegime  FiscalRegime? @relation(fields: [fiscalRegimeId], references: [id])
+  companyParams CompanyParams?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  reports       Report[]
+}
+
+model FiscalRegime {
+  id            String    @id @default(uuid())
+  code          String    @unique
+  name          String
+  description   String
+  countries     String[]
+  currency      String
+  fileFormat    String
+  encoding      String    @default("UTF-8")
+  separator     String
+  requiredColumns Json    // Array of required column names
+  taxRates      Json      // Object containing tax rates
+  specificRules Json?     // Additional regime-specific rules
+  compatibleSoftware Json // Array of compatible software
+  exportFormats Json      // Array of supported export formats
+  notes         String?   // Additional notes
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  shops         Shop[]
+  reports       Report[]
+}
+
+model CompanyParams {
+  id            String    @id @default(uuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id])
+  shopId        String    @unique
+  shop          Shop      @relation(fields: [shopId], references: [id])
+  companyName   String
+  country       String
+  currency      String
+  vatRate       Float?
+  defaultFormat String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+enum ReportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  ERROR
+}
+
+model Report {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  type        String   // Type of report (e.g., "manual", "scheduled")
+  status      ReportStatus @default(PENDING)
+  format      ExportFormat
+  filePath    String?  // Path to the stored file
+  fileSize    Int      // Size of the file in bytes
+  startDate   DateTime
+  endDate     DateTime
+  errorMessage String?
+  shop        Shop     @relation(fields: [shopId], references: [id])
+  shopId      String
+  fiscalRegime FiscalRegime @relation(fields: [fiscalRegimeId], references: [id])
+  fiscalRegimeId String
+
+  @@index([shopId])
+  @@index([fiscalRegimeId])
+}
+
+enum UserRole {
+  ADMIN
+  USER
+  ACCOUNTANT
+}
+
+enum ExportFormat {
+  CSV
+  JSON
+  PDF
+  XML
+}

@@ -1,0 +1,278 @@
+{
+  "regimes": [
+    {
+      "code": "FRANCE",
+      "name": "France",
+      "description": "Régime FEC (obligatoire toutes entreprises soumises à la compta)",
+      "countries": ["France"],
+      "currency": "EUR",
+      "fileFormat": ".txt",
+      "encoding": "UTF-8",
+      "separator": "\\t",
+      "requiredColumns": [
+        "JournalCode", "JournalLib", "EcritureNum", "EcritureDate",
+        "CompteNum", "CompteLib", "CompAuxNum", "CompAuxLib",
+        "PieceRef", "PieceDate", "Libelle", "Debit",
+        "Credit", "EcritureLet", "DateLet"
+      ],
+      "taxRates": {
+        "standard": 20,
+        "reduced": 10,
+        "superReduced": 5.5
+      },
+      "compatibleSoftware": [
+        "Sage FR",
+        "EBP",
+        "QuickBooks FR",
+        "Odoo",
+        "Indy"
+      ],
+      "exportFormats": [".txt", ".csv", ".xlsx"],
+      "notes": "Format .txt structuré selon la norme DGFiP obligatoire pour les entreprises tenues à la comptabilité"
+    },
+    {
+      "code": "OHADA",
+      "name": "OHADA",
+      "description": "Système comptable harmonisé pour les pays d'Afrique de l'Ouest",
+      "countries": ["Bénin", "Burkina Faso", "Cameroun", "Congo", "Côte d'Ivoire", "Gabon", "Guinée", "Guinée-Bissau", "Guinée équatoriale", "Mali", "Niger", "République centrafricaine", "Sénégal", "Tchad", "Togo"],
+      "currency": "XOF",
+      "fileFormat": ".csv",
+      "encoding": "UTF-8",
+      "separator": ";",
+      "requiredColumns": [
+        "Date", "Libellé", "Compte général", "Compte auxiliaire",
+        "Débit", "Crédit", "Référence de pièce", "Journal",
+        "Numéro d'écriture"
+      ],
+      "taxRates": {
+        "standard": 18,
+        "reduced": 9
+      },
+      "compatibleSoftware": [
+        "Sage Afrique",
+        "Odoo",
+        "GnuCash",
+        "QuickBooks Afrique"
+      ],
+      "exportFormats": [".csv"],
+      "notes": "Fichiers .csv structurés, organisés par journaux comptables (achats, ventes, banque, OD...), intégrant le plan comptable OHADA"
+    },
+    {
+      "code": "BELUX",
+      "name": "Belgique/Luxembourg",
+      "description": "Régime TVA intracommunautaire",
+      "countries": ["Belgique", "Luxembourg"],
+      "currency": "EUR",
+      "fileFormat": ".xml",
+      "encoding": "UTF-8",
+      "separator": ";",
+      "requiredColumns": [
+        "N° TVA du client",
+        "Pays",
+        "Montant HT",
+        "TVA facturée",
+        "Type de transaction",
+        "Intrastat code marchandise",
+        "Valeur",
+        "Poids",
+        "Pays destination"
+      ],
+      "taxRates": {
+        "standard": 21,
+        "reduced": 12,
+        "superReduced": 6
+      },
+      "compatibleSoftware": [
+        "Sage",
+        "QuickBooks",
+        "Odoo",
+        "Zoho"
+      ],
+      "exportFormats": [".csv", ".xml"],
+      "notes": "Format XML avec validation syntaxique stricte pour l'export vers Intervat"
+    },
+    {
+      "code": "CANADA",
+      "name": "Canada",
+      "description": "Régime TPS/TVQ",
+      "countries": ["Canada"],
+      "currency": "CAD",
+      "fileFormat": ".csv",
+      "encoding": "UTF-8",
+      "separator": ",",
+      "requiredColumns": [
+        "Numéro de facture",
+        "Date",
+        "Nom du client",
+        "Province",
+        "Sous-total HT",
+        "TPS",
+        "TVQ",
+        "Total TTC"
+      ],
+      "taxRates": {
+        "gst": 5,
+        "pst": {
+          "QC": 9.975,
+          "ON": 8,
+          "BC": 7
+        }
+      },
+      "compatibleSoftware": [
+        "QuickBooks CA",
+        "Sage 50 CA",
+        "Wave",
+        "Xero"
+      ],
+      "exportFormats": [".csv", ".xlsx"],
+      "notes": "Exports incluant des colonnes séparées pour la TPS (5%) et la TVQ (9,975%)"
+    },
+    {
+      "code": "USA",
+      "name": "États-Unis",
+      "description": "Régime Sales Tax",
+      "countries": ["États-Unis"],
+      "currency": "USD",
+      "fileFormat": ".csv",
+      "encoding": "UTF-8",
+      "separator": ",",
+      "requiredColumns": [
+        "Date de vente",
+        "Numéro de commande",
+        "Montant HT",
+        "Montant de taxe",
+        "État / comté",
+        "Code postal",
+        "Type de produit",
+        "Exonération"
+      ],
+      "taxRates": {
+        "varies": "Variable par État et juridiction locale"
+      },
+      "compatibleSoftware": [
+        "QuickBooks",
+        "Xero",
+        "FreshBooks",
+        "Wave"
+      ],
+      "exportFormats": [".csv"],
+      "notes": "Format .csv multi-colonnes permettant une ventilation par État, comté, code postal et type de produit"
+    },
+    {
+      "code": "GHANA",
+      "name": "Ghana",
+      "description": "Régime E-Levy",
+      "countries": ["Ghana"],
+      "currency": "GHS",
+      "fileFormat": ".csv",
+      "encoding": "UTF-8",
+      "separator": ",",
+      "requiredColumns": [
+        "Date",
+        "Référence",
+        "Description",
+        "Montant HT",
+        "E-Levy",
+        "Total TTC",
+        "Mode de paiement"
+      ],
+      "taxRates": {
+        "eLevy": 1.5
+      },
+      "compatibleSoftware": [
+        "Odoo",
+        "Sage Afrique",
+        "GnuCash"
+      ],
+      "exportFormats": [".csv", ".json"],
+      "notes": "Format adapté à la taxation numérique E-Levy"
+    },
+    {
+      "code": "AFRICA_EN",
+      "name": "Afrique anglophone",
+      "description": "Régime fiscal numérique évolutif",
+      "countries": ["Kenya", "Ouganda", "Tanzanie", "Zambie", "Afrique du Sud"],
+      "currency": "USD",
+      "fileFormat": ".csv",
+      "encoding": "UTF-8",
+      "separator": ",",
+      "requiredColumns": [
+        "Date",
+        "Référence",
+        "Description",
+        "Montant HT",
+        "Taxe",
+        "Total TTC",
+        "Mode de paiement",
+        "Compte comptable"
+      ],
+      "taxRates": {
+        "varies": "Variable par pays"
+      },
+      "compatibleSoftware": [
+        "Odoo",
+        "Sage Afrique",
+        "Zoho Books"
+      ],
+      "exportFormats": [".csv", ".xlsx"],
+      "notes": "Format standardisé pour les pays d'Afrique anglophone"
+    },
+    {
+      "code": "ZES",
+      "name": "Zones économiques spéciales",
+      "description": "Régime simplifié pour startups et ZES",
+      "countries": ["Rwanda", "Tunisie", "Maroc", "Madagascar", "Cap-Vert", "Nigeria"],
+      "currency": "USD",
+      "fileFormat": ".csv",
+      "encoding": "UTF-8",
+      "separator": ",",
+      "requiredColumns": [
+        "Date",
+        "Référence",
+        "Description",
+        "Montant HT",
+        "Taxe",
+        "Total TTC",
+        "Mode de paiement"
+      ],
+      "taxRates": {
+        "varies": "Variable selon la zone et le type d'activité"
+      },
+      "compatibleSoftware": [
+        "Odoo",
+        "GnuCash",
+        "Excel"
+      ],
+      "exportFormats": [".csv", ".xlsx"],
+      "notes": "Format flexible et allégé pour les startups et ZES"
+    },
+    {
+      "code": "ESTONIA",
+      "name": "Estonie",
+      "description": "Système de reporting simplifié",
+      "countries": ["Estonie"],
+      "currency": "EUR",
+      "fileFormat": ".csv",
+      "encoding": "UTF-8",
+      "separator": ",",
+      "requiredColumns": [
+        "Date",
+        "Référence",
+        "Description",
+        "Montant HT",
+        "Taxe",
+        "Total TTC"
+      ],
+      "taxRates": {
+        "standard": 20
+      },
+      "compatibleSoftware": [
+        "Xero",
+        "QuickBooks",
+        "Odoo"
+      ],
+      "exportFormats": [".csv"],
+      "notes": "Format très léger pour le reporting simplifié estonien"
+    }
+  ]
+} 

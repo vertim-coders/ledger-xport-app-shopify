@@ -1,0 +1,36 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "5a5e7ed34f729de84f6d992321961c9d"
+name = "ledger-xport-app"
+handle = "ledger-xport-app-1"
+application_url = "https://non-mens-affiliates-scottish.trycloudflare.com"
+embedded = true
+
+[build]
+include_config_on_deploy = true
+automatically_update_urls_on_dev = true
+
+[webhooks]
+api_version = "2025-04"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "/webhooks/app/uninstalled"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/scopes_update" ]
+  uri = "/webhooks/app/scopes_update"
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "read_orders,write_orders,read_products,read_customers,read_shopify_payments_payouts,read_shopify_payments_disputes"
+
+[auth]
+redirect_urls = [
+  "https://non-mens-affiliates-scottish.trycloudflare.com/auth/callback",
+  "https://non-mens-affiliates-scottish.trycloudflare.com/auth/shopify/callback",
+  "https://non-mens-affiliates-scottish.trycloudflare.com/api/auth/callback"
+]
+
+[pos]
+embedded = false
