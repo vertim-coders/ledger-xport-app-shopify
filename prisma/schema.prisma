@@ -120,6 +120,7 @@ model Report {
   shopId      String
   fiscalRegime FiscalRegime @relation(fields: [fiscalRegimeId], references: [id])
   fiscalRegimeId String
+  fileName    String   // Custom name for the exported file
 
   @@index([shopId])
   @@index([fiscalRegimeId])

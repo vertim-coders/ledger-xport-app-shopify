@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<report>
+  <fiscalRegime>BELUX</fiscalRegime>
+  <period>
+    <start>undefined</start>
+    <end>undefined</end>
+  </period>
+  <data>
+    <orders>[]</orders>
+    <customers>[]</customers>
+    <refunds>[]</refunds>
+    <taxes>[]</taxes>
+  </data>
+</report>

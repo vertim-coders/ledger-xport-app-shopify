@@ -275,12 +275,28 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
     const fileName = formData.get("fileName") as string;
     const fiscalRegimeCode = formData.get("fiscalRegimeCode") as string;
 
-    console.log('Received file format:', fileFormat); // Debug log
-
     // Find the fiscal regime details from the JSON data
     const fiscalRegimeDetails = fiscalRegimesData.regimes.find(r => r.code === fiscalRegimeCode);
     
     if (!fiscalRegimeDetails) {
+      // Create a failed report record
+      const report = await prisma.report.create({
+        data: {
+          type: "manual",
+          status: ReportStatus.ERROR,
+          format: fileFormat as ExportFormat,
+          startDate,
+          endDate,
+          shopId: (await prisma.shop.findUnique({ where: { shopifyDomain: session.shop } }))?.id || '',
+          fiscalRegimeId: (await prisma.shop.findUnique({ 
+            where: { shopifyDomain: session.shop },
+            include: { fiscalRegime: true }
+          }))?.fiscalRegime?.id || '',
+          fileSize: 0,
+          fileName,
+          errorMessage: "Invalid fiscal regime selected"
+        }
+      });
       return json({ error: "Invalid fiscal regime selected" }, { status: 400 });
     }
 
@@ -291,11 +307,41 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
     });
 
     if (!shop || !shop.fiscalRegime) {
+      // Create a failed report record
+      const report = await prisma.report.create({
+        data: {
+          type: "manual",
+          status: ReportStatus.ERROR,
+          format: fileFormat as ExportFormat,
+          startDate,
+          endDate,
+          shopId: shop?.id || '',
+          fiscalRegimeId: shop?.fiscalRegime?.id || '',
+          fileSize: 0,
+          fileName,
+          errorMessage: "Shop or fiscal regime not found"
+        }
+      });
       return json({ error: "Shop or fiscal regime not found" }, { status: 400 });
     }
 
     // Validate the format
     if (!Object.values(ExportFormat).includes(fileFormat as ExportFormat)) {
+      // Create a failed report record
+      const report = await prisma.report.create({
+        data: {
+          type: "manual",
+          status: ReportStatus.ERROR,
+          format: fileFormat as ExportFormat,
+          startDate,
+          endDate,
+          shopId: shop.id,
+          fiscalRegimeId: shop.fiscalRegime.id,
+          fileSize: 0,
+          fileName,
+          errorMessage: `Invalid export format: ${fileFormat}`
+        }
+      });
       return json({ 
         error: "Invalid export format", 
         details: {
@@ -316,64 +362,87 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
         shopId: shop.id,
         fiscalRegimeId: shop.fiscalRegime.id,
         fileSize: 0,
+        fileName,
       }
     });
 
-    let fetchedData: any = {};
+    try {
+      let fetchedData: any = {};
 
-    // Fetch data based on selected types
-    if (selectedTypes.ventes) {
-      fetchedData.orders = await fetchOrders(session, startDate.toISOString(), endDate.toISOString());
-    }
-    if (selectedTypes.clients) {
-      fetchedData.customers = await fetchCustomers(session, startDate.toISOString(), endDate.toISOString());
-    }
-    if (selectedTypes.remboursements) {
-      fetchedData.refunds = await fetchRefunds(session, startDate.toISOString(), endDate.toISOString());
-    }
-    if (selectedTypes.taxes) {
-      fetchedData.taxes = await fetchTaxes(session, startDate.toISOString(), endDate.toISOString());
-    }
-
-    // Generate the report content
-    const reportContent = generateReport(
-      fetchedData,
-      fiscalRegimeDetails as CombinedFiscalRegime,
-      fileFormat,
-      fiscalRegimeDetails.separator
-    );
-
-    // Create reports directory if it doesn't exist
-    const reportsDir = join(process.cwd(), "reports");
-    await mkdir(reportsDir, { recursive: true });
-
-    // Store the file with the custom filename
-    const filePath = join(reportsDir, fileName);
-    await writeFile(filePath, reportContent);
-
-    // Update the report record with the file path and completed status
-    await prisma.report.update({
-      where: { id: report.id },
-      data: {
-        status: ReportStatus.COMPLETED,
-        filePath,
-        fileSize: Buffer.byteLength(reportContent)
+      // Fetch data based on selected types
+      if (selectedTypes.ventes) {
+        fetchedData.orders = await fetchOrders(session, startDate.toISOString(), endDate.toISOString());
       }
-    });
+      if (selectedTypes.clients) {
+        fetchedData.customers = await fetchCustomers(session, startDate.toISOString(), endDate.toISOString());
+      }
+      if (selectedTypes.remboursements) {
+        fetchedData.refunds = await fetchRefunds(session, startDate.toISOString(), endDate.toISOString());
+      }
+      if (selectedTypes.taxes) {
+        fetchedData.taxes = await fetchTaxes(session, startDate.toISOString(), endDate.toISOString());
+      }
 
-    // Set appropriate headers for file download
-    const headers = new Headers();
-    const contentType = {
-      ".csv": "text/csv",
-      ".json": "application/json",
-      ".txt": "text/plain",
-      ".xml": "application/xml",
-    }[fileFormat] || "application/octet-stream";
-    headers.set("Content-Type", contentType);
-    headers.set("Content-Disposition", `attachment; filename="${fileName}"`);
+      // Generate the report content
+      const reportContent = generateReport(
+        fetchedData,
+        fiscalRegimeDetails as CombinedFiscalRegime,
+        fileFormat,
+        fiscalRegimeDetails.separator
+      );
 
-    // Return the report content as a downloadable file
-    return new Response(reportContent, { headers });
+      // Create reports directory if it doesn't exist
+      const reportsDir = join(process.cwd(), "reports");
+      await mkdir(reportsDir, { recursive: true });
+
+      // Store the file with the custom filename
+      const filePath = join(reportsDir, fileName);
+      await writeFile(filePath, reportContent);
+
+      // Update the report record with the file path and completed status
+      await prisma.report.update({
+        where: { id: report.id },
+        data: {
+          status: ReportStatus.COMPLETED,
+          filePath,
+          fileSize: Buffer.byteLength(reportContent)
+        }
+      });
+
+      // Set appropriate headers for file download
+      const headers = new Headers();
+      const contentType = {
+        ".csv": "text/csv",
+        ".json": "application/json",
+        ".txt": "text/plain",
+        ".xml": "application/xml",
+        ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      }[fileFormat] || "application/octet-stream";
+      
+      headers.set("Content-Type", contentType);
+      headers.set("Content-Disposition", `attachment; filename="${fileName}"`);
+      headers.set("Content-Length", Buffer.byteLength(reportContent).toString());
+      headers.set("Cache-Control", "no-cache");
+      headers.set("Pragma", "no-cache");
+
+      // Return the report content as a downloadable file
+      return new Response(reportContent, { 
+        headers,
+        status: 200
+      });
+
+    } catch (error) {
+      // Update the report record with failed status and error message
+      await prisma.report.update({
+        where: { id: report.id },
+        data: {
+          status: ReportStatus.ERROR,
+          errorMessage: error instanceof Error ? error.message : String(error)
+        }
+      });
+
+      throw error; // Re-throw to be caught by outer try-catch
+    }
 
   } catch (error) {
     console.error('Error in manual export action:', error);
@@ -441,7 +510,7 @@ export default function ManualExportPage() {
     return `${year}${month}${day}`;
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData();
     formData.append("startDate", selectedDates.start.toISOString());
@@ -461,7 +530,39 @@ export default function ManualExportPage() {
       formData.append("fiscalRegimeCode", fiscalRegime.code);
     }
 
-    submit(formData, { method: "post" });
+    try {
+      const response = await fetch('/app/reports/manual-export', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to generate report');
+      }
+
+      // Get the blob from the response
+      const blob = await response.blob();
+      
+      // Create a URL for the blob
+      const url = window.URL.createObjectURL(blob);
+      
+      // Create a temporary link element
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      
+      // Append to body, click, and remove
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up the URL
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading report:', error);
+      // TODO: Show error message to user
+    }
   };
 
   // Set initial values for dropdowns and file name using useEffect
