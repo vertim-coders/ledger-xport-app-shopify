@@ -136,4 +136,6 @@ enum ExportFormat {
   JSON
   PDF
   XML
+  TXT
+  XLSX
 }

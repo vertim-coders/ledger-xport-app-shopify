@@ -3,7 +3,7 @@
 client_id = "5a5e7ed34f729de84f6d992321961c9d"
 name = "ledger-xport-app"
 handle = "ledger-xport-app-1"
-application_url = "https://non-mens-affiliates-scottish.trycloudflare.com"
+application_url = "https://travelling-iowa-wise-printed.trycloudflare.com"
 embedded = true
 
 [build]
@@ -27,9 +27,9 @@ scopes = "read_orders,write_orders,read_products,read_customers,read_shopify_pay
 
 [auth]
 redirect_urls = [
-  "https://non-mens-affiliates-scottish.trycloudflare.com/auth/callback",
-  "https://non-mens-affiliates-scottish.trycloudflare.com/auth/shopify/callback",
-  "https://non-mens-affiliates-scottish.trycloudflare.com/api/auth/callback"
+  "https://travelling-iowa-wise-printed.trycloudflare.com/auth/callback",
+  "https://travelling-iowa-wise-printed.trycloudflare.com/auth/shopify/callback",
+  "https://travelling-iowa-wise-printed.trycloudflare.com/api/auth/callback"
 ]
 
 [pos]
