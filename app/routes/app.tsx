@@ -1,10 +1,9 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "@remix-run/node";
 import { Link, Outlet, useLoaderData, useRouteError } from "@remix-run/react";
-import { AppProvider as PolarisAppProvider } from "@shopify/polaris";
 import { AppProvider } from "@shopify/shopify-app-remix/react";
 import polarisStyles from "@shopify/polaris/build/esm/styles.css?url";
 import { authenticate } from "../shopify.server";
-import translations from "@shopify/polaris/locales/fr.json";
+import { NavMenu } from "@shopify/app-bridge-react";
 
 export const links = () => [{ rel: "stylesheet", href: polarisStyles }];
 
@@ -15,18 +14,19 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 export default function App() {
   const { apiKey } = useLoaderData<typeof loader>();
+
   return (
-    <AppProvider apiKey={apiKey}>
-      <PolarisAppProvider i18n={translations}>
-        <nav>
-          <Link to="/app" rel="home">Home</Link>
+    <AppProvider isEmbeddedApp apiKey={apiKey}>
+      <NavMenu>
+        <Link to="/app" rel="home">
+          Home
+        </Link>
           <Link to="/app/settings/company">Company settings</Link>
           <Link to="/app/settings/fiscal-regime">Fiscal regime settings</Link>
           <Link to="/app/dashboard">Dashboard</Link>
           <Link to="/app/reports/manual-export">Reports Manual</Link>
-        </nav>
-        <Outlet />
-      </PolarisAppProvider>
+          </NavMenu>
+      <Outlet />
     </AppProvider>
   );
 }
