@@ -3,7 +3,7 @@
 client_id = "5a5e7ed34f729de84f6d992321961c9d"
 name = "ledger-xport-app"
 handle = "ledger-xport-app-1"
-application_url = "https://constitutes-tony-rapids-demonstration.trycloudflare.com"
+application_url = "https://nirvana-processed-board-kiss.trycloudflare.com"
 embedded = true
 
 [build]
@@ -27,9 +27,9 @@ scopes = "read_orders,write_orders,read_products,read_customers,read_shopify_pay
 
 [auth]
 redirect_urls = [
-  "https://constitutes-tony-rapids-demonstration.trycloudflare.com/auth/callback",
-  "https://constitutes-tony-rapids-demonstration.trycloudflare.com/auth/shopify/callback",
-  "https://constitutes-tony-rapids-demonstration.trycloudflare.com/api/auth/callback"
+  "https://nirvana-processed-board-kiss.trycloudflare.com/auth/callback",
+  "https://nirvana-processed-board-kiss.trycloudflare.com/auth/shopify/callback",
+  "https://nirvana-processed-board-kiss.trycloudflare.com/api/auth/callback"
 ]
 
 [pos]

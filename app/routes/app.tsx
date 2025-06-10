@@ -21,10 +21,10 @@ export default function App() {
         <Link to="/app" rel="home">
           Home
         </Link>
-          <Link to="/app/settings/company">Company settings</Link>
-          <Link to="/app/settings/fiscal-regime">Fiscal regime settings</Link>
+          <Link to="/app/settings/company-fiscal-regime">Company fiscal regime settings</Link>
           <Link to="/app/dashboard">Dashboard</Link>
           <Link to="/app/reports/manual-export">Reports Manual</Link>
+          <Link to="/app/reports/schedule">Reports Schedule</Link>
           </NavMenu>
       <Outlet />
     </AppProvider>

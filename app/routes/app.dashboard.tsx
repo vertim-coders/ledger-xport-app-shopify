@@ -1,338 +1,243 @@
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
-import { useLoaderData } from "@remix-run/react";
+import { useLoaderData, useNavigate } from "@remix-run/react";
 import {
   Page,
   Layout,
   Card,
   Text,
-  TextField,
-  Icon,
+  LegacyStack,
   Button,
-  InlineStack,
-  BlockStack,
-  Select,
-  DatePicker,
-  DataTable
+  Badge,
+  DataTable,
+  Icon,
+  Thumbnail,
+  EmptyState,
 } from "@shopify/polaris";
-import { HomeIcon, SearchIcon, FolderIcon, EditIcon, CalendarIcon } from "@shopify/polaris-icons";
 import { authenticate } from "../shopify.server";
-import { useState, useMemo, useCallback } from "react";
-import { prisma } from "../db.server"; // Import prisma
+import { prisma } from "../db.server";
+import { ReportStatus } from "@prisma/client";
+import { BiSimpleBtn } from "../components/Buttons/BiSimpleBtn";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
-
-  // Fetch reports for the current shop
   const shop = await prisma.shop.findUnique({
     where: { shopifyDomain: session.shop },
-    select: { id: true },
+    include: {
+      reports: {
+        orderBy: { createdAt: 'desc' },
+        take: 5
+      }
+    }
   });
 
-  if (!shop) {
-    // Handle case where shop is not found (should not happen in a typical flow)
-    return json({ allReports: [] });
-  }
-
-  const allReports = await prisma.report.findMany({
-    where: { shopId: shop.id },
-    orderBy: { createdAt: "desc" }, // Order by creation date, newest first
+  // Get successful and failed exports count
+  const successfulExports = await prisma.report.count({
+    where: {
+      shopId: shop?.id,
+      status: ReportStatus.COMPLETED
+    }
   });
 
-  // Convert Date objects to ISO strings for consistent handling in the client
-  const serializableReports = allReports.map(report => ({
-    ...report,
-    createdAt: report.createdAt.toISOString(),
-    updatedAt: report.updatedAt.toISOString(),
-    // Ensure other Date fields like startDate, endDate are also converted if present and used
-    startDate: report.startDate?.toISOString() || null,
-    endDate: report.endDate?.toISOString() || null,
-  }));
+  const failedExports = await prisma.report.count({
+    where: {
+      shopId: shop?.id,
+      status: ReportStatus.ERROR
+    }
+  });
 
-  return json({ allReports: serializableReports });
+  return json({
+    successfulExports,
+    failedExports,
+    recentReports: shop?.reports || []
+  });
 };
 
-export default function DashboardPage() {
-  const { allReports } = useLoaderData<typeof loader>();
+export default function Dashboard() {
+  const { successfulExports, failedExports, recentReports } = useLoaderData<typeof loader>();
+  const navigate = useNavigate();
 
-  // State for search query
-  const [searchQuery, setSearchQuery] = useState("");
-  const handleSearchChange = useCallback((value: string) => {
-    setSearchQuery(value);
-  }, []);
+  const handleNewReport = () => {
+    navigate("/app/reports/manual-export");
+  };
 
-  // State for filters
-  // Initialize with a default date range (e.g., current month)
-  const today = new Date();
-  const firstDayOfCurrentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-  const lastDayOfCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-  const [filterDates, setFilterDates] = useState<{
-    start: Date;
-    end: Date;
-  }>({ start: firstDayOfCurrentMonth, end: lastDayOfCurrentMonth });
-
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [customerFilter, setCustomerFilter] = useState("");
-  const [productFilter, setProductFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-
-  const handleMonthChange = useCallback((month: number, year: number) => {
-    // Update the state with the first and last day of the selected month
-    const start = new Date(year, month, 1);
-    const end = new Date(year, month + 1, 0);
-    setFilterDates({ start, end });
-  }, []);
-
-  const handleDateSelection = useCallback(({ start, end }: { start: Date, end: Date }) => {
-    setFilterDates({ start, end });
-    setShowDatePicker(false);
-  }, []);
-
-  const handleCustomerFilterChange = useCallback((value: string) => setCustomerFilter(value), []);
-  const handleProductFilterChange = useCallback((value: string) => setProductFilter(value), []);
-  const handleStatusFilterChange = useCallback((value: string) => setStatusFilter(value), []);
-
-  // Dummy options for filters (replace with actual data)
-  const customerOptions = useMemo(() => [
-    { label: "All Customers", value: "" },
-    { label: "Customer A", value: "customerA" },
-    { label: "Customer B", value: "customerB" },
-  ], []);
-
-  const productOptions = useMemo(() => [
-    { label: "All Products", value: "" },
-    { label: "Product X", value: "productX" },
-    { label: "Product Y", value: "productY" },
-  ], []);
-
-  const statusOptions = useMemo(() => [
-    { label: "All Statuses", value: "" },
-    { label: "Completed", value: "COMPLETED" },
-    { label: "Processing", value: "PROCESSING" },
-    { label: "Failed", value: "FAILED" },
-  ], []);
-
-  // Filter reports based on state
-  const filteredReports = useMemo(() => {
-    return allReports.filter(report => {
-      // Use available fields for filtering
-      const reportType = report.type || '';
-      const reportStatus = report.status || '';
-      const reportFormat = report.format || '';
-
-      // Convert ISO strings back to Date objects for date comparison
-      const reportCreatedDate = report.createdAt ? new Date(report.createdAt) : null;
-
-      // Derive a searchable name (e.g., combining type and date range)
-      const derivedReportName = `${reportType} ${report.startDate ? new Date(report.startDate).toLocaleDateString() : ''} - ${report.endDate ? new Date(report.endDate).toLocaleDateString() : ''} ${reportFormat}`.toLowerCase();
-
-      // Filter by search query (case-insensitive)
-      const matchesSearch = derivedReportName.includes(searchQuery.toLowerCase()) ||
-                          reportType.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          reportStatus.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          reportFormat.toLowerCase().includes(searchQuery.toLowerCase());
-
-      // Filter by date range (using createdAt)
-      const matchesDateRange = (!filterDates.start || (reportCreatedDate && reportCreatedDate >= filterDates.start)) &&
-                             (!filterDates.end || (reportCreatedDate && reportCreatedDate <= filterDates.end));
-
-      // Filter by status
-      const matchesStatus = !statusFilter || reportStatus === statusFilter;
-
-      // Combine all filters. Customer and Product filters are excluded as fields are not on Report model.
-      return matchesSearch && matchesDateRange && matchesStatus;
-    });
-  }, [searchQuery, filterDates, statusFilter, allReports]);
-
-  // Map filtered reports data to DataTable rows
-  const rows = useMemo(() => filteredReports.map(report => [
-    // Use fileName for Report Name
-    report.fileName || 'Unnamed Report',
-    report.type || '',
-    // Format dates for display, handle potential nulls
-    report.createdAt ? new Date(report.createdAt).toLocaleDateString() : '',
-    report.updatedAt ? new Date(report.updatedAt).toLocaleDateString() : '',
-    // Derive Schedule Type for display (using report.type)
-    report.type === 'scheduled' ? 'Scheduled' : 'None',
-    // Actions column with placeholder icons
-    <InlineStack gap="200">
-      {/* TODO: Implement actual scheduling and edit actions */}
-      {/* Disable schedule button for manual reports */}
-      <Button variant="plain" icon={CalendarIcon} accessibilityLabel="Schedule report" disabled={report.type === 'manual'} />
-      <Button variant="plain" icon={EditIcon} accessibilityLabel="Edit report" />
-    </InlineStack>,
-  ]), [filteredReports]);
-
-  const headings = useMemo(() => [
-    'Report Name',
-    'Report Type',
-    'Created on',
-    'Updated on',
-    'Schedule Type',
-    'Actions',
-  ], []);
-
-  // TODO: Implement Summary View data fetching
+  const rows = recentReports.map(report => [
+    report.fileName,
+    report.type,
+    new Date(report.createdAt).toLocaleDateString(),
+    new Date(report.updatedAt).toLocaleDateString(),
+    report.status === ReportStatus.ERROR ? 'Échec' : 'Manuel',
+    <Button
+      onClick={() => {/* TODO: Implement download */}}
+      disabled={report.status !== ReportStatus.COMPLETED}
+      icon="download"
+    >
+      Télécharger
+    </Button>
+  ]);
 
   return (
-    <Page>
+    <Page title="Tableau de bord">
       <Layout>
-        {/* Header */}
-        <Layout.Section>
-          <InlineStack gap="400">
-            <Text variant="headingLg" as="h1" fontWeight="bold">
-              DASHBOARD
-            </Text>
-          </InlineStack>
-        </Layout.Section>
-
-        {/* Summary View */}
+        {/* Export Statistics */}
         <Layout.Section>
           <Card>
-            <BlockStack gap="300">
-              <Text variant="headingMd" as="h2">Summary</Text>
-              <InlineStack gap="500">
-                <BlockStack gap="100">
-                  <Text variant="bodyMd" as="p" fontWeight="bold">Total Exports:</Text>
-                  <Text variant="bodyMd" as="p">{/* TODO: Fetch total exports */ allReports.length}</Text>
-                </BlockStack>
-                <BlockStack gap="100">
-                  <Text variant="bodyMd" as="p" fontWeight="bold">Errors:</Text>
-                  <Text variant="bodyMd" as="p">{/* TODO: Fetch total errors */ allReports.filter(report => report.status === 'ERROR').length}</Text>
-                </BlockStack>
-                {/* Add more summary items/shortcuts here */}
-              </InlineStack>
-            </BlockStack>
+            <LegacyStack distribution="fill">
+              <div style={{ textAlign: 'center', padding: '20px' }}>
+                <Text variant="headingLg" as="h2">Exports réussis</Text>
+                <Text variant="heading2xl" as="p">{successfulExports}</Text>
+              </div>
+              <div style={{ textAlign: 'center', padding: '20px' }}>
+                <Text variant="headingLg" as="h2">Exports échoués</Text>
+                <Text variant="heading2xl" as="p">{failedExports}</Text>
+              </div>
+            </LegacyStack>
           </Card>
         </Layout.Section>
 
-        {/* Search Bar */}
+        {/* New Report Button */}
         <Layout.Section>
-          <TextField
-            label="Search reports"
-            labelHidden
-            value={searchQuery}
-            placeholder="Search reports by name, keyword, or tag."
-            prefix={<Icon source={SearchIcon} accessibilityLabel="Search" />}
-            onChange={handleSearchChange}
-            autoComplete="off"
-            // The red outline is likely a styling concern, not a prop. We'll address styling later if needed.
-            // error="Hint text: \"Search reports by name, keyword, or tag.\""
-          />
+          <div style={{ marginBottom: '0px' }}>
+            <LegacyStack distribution="fill" spacing="loose">
+              <BiSimpleBtn title="Générer un nouveau rapport" onClick={handleNewReport} />
+              <BiSimpleBtn title="Rapport personnalisé" onClick={() => navigate("/app/reports/custom")} />
+              <BiSimpleBtn title="Planifier un rapport" onClick={() => navigate("/app/reports/schedule")} />
+            </LegacyStack>
+          </div>
         </Layout.Section>
 
-        {/* Report Filters */}
+        {/* Recent Exports */}
         <Layout.Section>
           <Card>
-            <BlockStack gap="300">
-              <Text variant="headingMd" as="h2">Filters</Text>
-              <InlineStack gap="400">
-                {/* Date Filter */}
-                <BlockStack gap="100">
-                  <Text variant="bodyMd" as="p" fontWeight="bold">Date Range</Text>
-                  <div style={{ position: 'relative' }}>
-                    <Button
-                      onClick={() => setShowDatePicker(!showDatePicker)}
-                      fullWidth
+            <div style={{ padding: '20px' }}>
+              <Text variant="headingMd" as="h2">Exports récemment générés</Text>
+              <DataTable
+                columnContentTypes={[
+                  'text',
+                  'text',
+                  'text',
+                  'text',
+                  'text',
+                  'text',
+                ]}
+                headings={[
+                  'Nom du rapport',
+                  'Type de rapport',
+                  'Créé le',
+                  'Mis à jour le',
+                  'Type de planification',
+                  'Actions',
+                ]}
+                rows={rows}
+              />
+            </div>
+          </Card>
+        </Layout.Section>
+
+        {/* Bottom Section - Recent Failures and Upcoming Exports side by side */}
+        <Layout.Section>
+          <LegacyStack distribution="fill" spacing="loose">
+            {/* Recent Failures */}
+            <div style={{ flex: 1 }}>
+              <Card>
+                <div style={{ padding: '20px' }}>
+                  <Text variant="headingMd" as="h2">Échecs récents</Text>
+                  {recentReports && recentReports.filter(report => report.status === ReportStatus.ERROR).length > 0 ? (
+                    <DataTable
+                      columnContentTypes={[
+                        'text',
+                        'text',
+                        'text',
+                        'text',
+                      ]}
+                      headings={[
+                        'Nom du rapport',
+                        'Type de rapport',
+                        'Date d\'échec',
+                        'Actions',
+                      ]}
+                      rows={recentReports
+                        .filter(report => report.status === ReportStatus.ERROR)
+                        .map(report => [
+                          report.fileName,
+                          report.type,
+                          new Date(report.updatedAt).toLocaleDateString(),
+                          <Button onClick={() => {/* TODO: Implement retry */}}>
+                            Corriger
+                          </Button>
+                        ])}
+                    />
+                  ) : (
+                    <EmptyState
+                      heading="Aucun échec récent"
+                      image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
                     >
-                      {filterDates.start.toLocaleDateString()} – {filterDates.end.toLocaleDateString()}
-                    </Button>
-                    {showDatePicker && (
-                      <div style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: 0,
-                        zIndex: 10,
-                        backgroundColor: 'white',
-                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
-                        borderRadius: '4px',
-                        marginTop: '8px'
-                      }}>
-                        <DatePicker
-                          month={filterDates.start.getMonth()}
-                          year={filterDates.start.getFullYear()}
-                          selected={{ start: filterDates.start, end: filterDates.end }}
-                          onMonthChange={handleMonthChange}
-                          onChange={handleDateSelection}
-                          allowRange
-                          multiMonth={false}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </BlockStack>
+                      <p>Tous vos exports ont réussi.</p>
+                    </EmptyState>
+                  )}
+                </div>
+              </Card>
+            </div>
 
-                {/* Customer Filter - Note: Filtering by customer/product requires adding these fields to the Report model */}
-                <BlockStack gap="100">
-                  <Text variant="bodyMd" as="p" fontWeight="bold">Customer</Text>
-                  <Select
-                    label="Customer filter"
-                    labelHidden
-                    options={customerOptions}
-                    onChange={handleCustomerFilterChange}
-                    value={customerFilter}
-                    disabled // Disabled as filtering by customer is not implemented on Report model
-                  />
-                </BlockStack>
-
-                {/* Product Filter - Note: Filtering by customer/product requires adding these fields to the Report model */}
-                <BlockStack gap="100">
-                  <Text variant="bodyMd" as="p" fontWeight="bold">Product</Text>
-                  <Select
-                    label="Product filter"
-                    labelHidden
-                    options={productOptions}
-                    onChange={handleProductFilterChange}
-                    value={productFilter}
-                    disabled // Disabled as filtering by product is not implemented on Report model
-                  />
-                </BlockStack>
-
-                {/* Status Filter */}
-                <BlockStack gap="100">
-                  <Text variant="bodyMd" as="p" fontWeight="bold">Status</Text>
-                  <Select
-                    label="Status filter"
-                    labelHidden
-                    options={statusOptions}
-                    onChange={handleStatusFilterChange}
-                    value={statusFilter}
-                  />
-                </BlockStack>
-              </InlineStack>
-            </BlockStack>
-          </Card>
+            {/* Upcoming Exports */}
+            <div style={{ flex: 1 }}>
+              <Card>
+                <div style={{ padding: '20px' }}>
+                  <Text variant="headingMd" as="h2">Les prochains exports</Text>
+                  <EmptyState
+                    heading="Aucun export planifié"
+                    image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
+                  >
+                    <p>Les exports planifiés apparaîtront ici.</p>
+                  </EmptyState>
+                </div>
+              </Card>
+            </div>
+          </LegacyStack>
         </Layout.Section>
 
-        {/* MY REPORTS section header and Custom Report button */}
-        <Layout.Section>
-          <InlineStack>
-            <InlineStack gap="200">
-              <Icon source={FolderIcon} accessibilityLabel="My Reports" />
-              <Text variant="headingMd" as="h2">
-                MY REPORTS
-              </Text>
-            </InlineStack>
-            <Button variant="primary" url="/app/reports/manual-export">
-              Custom Report
-            </Button>
-          </InlineStack>
-        </Layout.Section>
-
-        {/* Report Table */}
+        {/* Popular Reports */}
         <Layout.Section>
           <Card>
-            <DataTable
-              columnContentTypes={['text', 'text', 'text', 'text', 'text', 'text']}
-              headings={headings}
-              rows={rows}
-              // TODO: Implement sorting and pagination
-              // sortable={[false, false, true, true, false, false]}
-              // defaultSortDirection="descending"
-              // initialSortColumnIndex={2}
-            />
+            <div style={{ padding: '20px' }}>
+              <Text variant="headingMd" as="h2">Rapports populaires</Text>
+              <LegacyStack distribution="fill">
+                <Card>
+                  <div style={{ padding: '16px' }}>
+                    <LegacyStack alignment="center">
+                      <Thumbnail source="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png" alt="Ventes" />
+                      <div>
+                        <Text variant="headingMd" as="h3">Ventes</Text>
+                        <Text variant="bodyMd" as="p">Exports des transactions</Text>
+                      </div>
+                    </LegacyStack>
+                  </div>
+                </Card>
+                <Card>
+                  <div style={{ padding: '16px' }}>
+                    <LegacyStack alignment="center">
+                      <Thumbnail source="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png" alt="Taxes" />
+                      <div>
+                        <Text variant="headingMd" as="h3">Taxes</Text>
+                        <Text variant="bodyMd" as="p">Déclarations fiscales</Text>
+                      </div>
+                    </LegacyStack>
+                  </div>
+                </Card>
+                <Card>
+                  <div style={{ padding: '16px' }}>
+                    <LegacyStack alignment="center">
+                      <Thumbnail source="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png" alt="Clients" />
+                      <div>
+                        <Text variant="headingMd" as="h3">Clients</Text>
+                        <Text variant="bodyMd" as="p">Base clients</Text>
+                      </div>
+                    </LegacyStack>
+                  </div>
+                </Card>
+              </LegacyStack>
+            </div>
           </Card>
         </Layout.Section>
-
       </Layout>
     </Page>
   );

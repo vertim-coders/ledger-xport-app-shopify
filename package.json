@@ -16,7 +16,8 @@
     "shopify": "shopify",
     "prisma": "prisma",
     "graphql-codegen": "graphql-codegen",
-    "vite": "vite"
+    "vite": "vite",
+    "worker": "tsx scripts/run-worker.ts"
   },
   "type": "module",
   "engines": {
@@ -33,12 +34,15 @@
     "@shopify/polaris": "^12.0.0",
     "@shopify/shopify-app-remix": "^3.7.0",
     "@shopify/shopify-app-session-storage-prisma": "^6.0.0",
+    "@types/nodemailer": "^6.4.17",
     "csv-writer": "^1.6.0",
     "fast-xml-parser": "^5.2.3",
     "isbot": "^5.1.0",
+    "nodemailer": "^7.0.3",
     "prisma": "^6.2.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "tsx": "^4.19.4",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

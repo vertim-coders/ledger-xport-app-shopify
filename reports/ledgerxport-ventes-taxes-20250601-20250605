@@ -1,0 +1,10 @@
+{
+  "fiscalRegime": "OHADA",
+  "period": {},
+  "data": {
+    "orders": [],
+    "customers": [],
+    "refunds": [],
+    "taxes": []
+  }
+}

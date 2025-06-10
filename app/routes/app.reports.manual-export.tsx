@@ -17,10 +17,11 @@ import { useState, useCallback, useEffect } from "react";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
 import fiscalRegimesData from "../data/fiscal-regimes.json";
-import { FiscalRegime as FiscalRegimePrisma, ReportStatus, ExportFormat } from "@prisma/client";
+import { FiscalConfiguration as FiscalRegimePrisma, ReportStatus, ExportFormat } from "@prisma/client";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import * as XLSX from 'xlsx';
+import { BiSaveBtn } from "../components/Buttons/BiSaveBtn";
 
 interface DateRange {
   start: Date;
@@ -233,7 +234,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await prisma.shop.findUnique({
     where: { shopifyDomain: session.shop },
-    select: { fiscalRegime: true },
+    select: { fiscalConfig: true },
   });
 
   const today = new Date();
@@ -242,7 +243,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   // Find the full fiscal regime data from the JSON based on the Prisma regime code
   let fiscalRegimeDetails: FiscalRegimeData | undefined;
-  const prismaFiscalRegime = shop?.fiscalRegime; // Extract for clearer check
+  const prismaFiscalRegime = shop?.fiscalConfig; // Extract for clearer check
   if (prismaFiscalRegime?.code) { // Check if prismaFiscalRegime exists and has a code
     fiscalRegimeDetails = fiscalRegimesData.regimes.find(r => r.code === prismaFiscalRegime.code);
   }
@@ -288,10 +289,6 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
           startDate,
           endDate,
           shopId: (await prisma.shop.findUnique({ where: { shopifyDomain: session.shop } }))?.id || '',
-          fiscalRegimeId: (await prisma.shop.findUnique({ 
-            where: { shopifyDomain: session.shop },
-            include: { fiscalRegime: true }
-          }))?.fiscalRegime?.id || '',
           fileSize: 0,
           fileName,
           errorMessage: "Invalid fiscal regime selected"
@@ -303,10 +300,10 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
     // Get the shop and fiscal regime from the database
     const shop = await prisma.shop.findUnique({
       where: { shopifyDomain: session.shop },
-      include: { fiscalRegime: true }
+      include: { fiscalConfig: true }
     });
 
-    if (!shop || !shop.fiscalRegime) {
+    if (!shop || !shop.fiscalConfig) {
       // Create a failed report record
       const report = await prisma.report.create({
         data: {
@@ -316,7 +313,6 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
           startDate,
           endDate,
           shopId: shop?.id || '',
-          fiscalRegimeId: shop?.fiscalRegime?.id || '',
           fileSize: 0,
           fileName,
           errorMessage: "Shop or fiscal regime not found"
@@ -336,7 +332,6 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
           startDate,
           endDate,
           shopId: shop.id,
-          fiscalRegimeId: shop.fiscalRegime.id,
           fileSize: 0,
           fileName,
           errorMessage: `Invalid export format: ${fileFormat}`
@@ -360,7 +355,6 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
         startDate,
         endDate,
         shopId: shop.id,
-        fiscalRegimeId: shop.fiscalRegime.id,
         fileSize: 0,
         fileName,
       }
@@ -701,9 +695,9 @@ export default function ManualExportPage() {
                   autoComplete="off"
                 />
 
-                <Button submit variant="primary">
-                  Générer et télécharger l'export
-                </Button>
+                <div style={{ marginTop: '32px', textAlign: 'center' }}>
+                  <BiSaveBtn title="Générer et télécharger l'export" />
+                </div>
               </FormLayout>
             </form>
           </Card>

@@ -1,0 +1,29 @@
+{
+  "currencies": [
+    {
+      "code": "EUR",
+      "name": "Euro",
+      "symbol": "€"
+    },
+    {
+      "code": "XOF",
+      "name": "Franc CFA",
+      "symbol": "CFA"
+    },
+    {
+      "code": "USD",
+      "name": "US Dollar",
+      "symbol": "$"
+    },
+    {
+      "code": "CAD",
+      "name": "Dollar Canadien",
+      "symbol": "C$"
+    },
+    {
+      "code": "GHS",
+      "name": "Cedi Ghanéen",
+      "symbol": "GH₵"
+    }
+  ]
+} 
