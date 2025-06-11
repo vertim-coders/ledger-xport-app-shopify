@@ -1,15 +1,16 @@
-import type { HeadersFunction, LoaderFunctionArgs } from "@remix-run/node";
-import { Link, Outlet, useLoaderData, useRouteError } from "@remix-run/react";
+import { json, type HeadersFunction, type LoaderFunctionArgs } from "@remix-run/node";
+import { Outlet, useLoaderData } from "@remix-run/react";
 import { AppProvider } from "@shopify/shopify-app-remix/react";
+import { Frame } from "@shopify/polaris";
 import polarisStyles from "@shopify/polaris/build/esm/styles.css?url";
 import { authenticate } from "../shopify.server";
-import { NavMenu } from "@shopify/app-bridge-react";
+import { AppNavbar } from "../components/Navigation/AppNavbar";
 
 export const links = () => [{ rel: "stylesheet", href: polarisStyles }];
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.admin(request);
-  return { apiKey: process.env.SHOPIFY_API_KEY || "" };
+  return json({ apiKey: process.env.SHOPIFY_API_KEY || "" });
 };
 
 export default function App() {
@@ -17,26 +18,14 @@ export default function App() {
 
   return (
     <AppProvider isEmbeddedApp apiKey={apiKey}>
-      <NavMenu>
-        <Link to="/app" rel="home">
-          Home
-        </Link>
-          <Link to="/app/settings/company-fiscal-regime">Company fiscal regime settings</Link>
-          <Link to="/app/dashboard">Dashboard</Link>
-          <Link to="/app/reports/manual-export">Reports Manual</Link>
-          <Link to="/app/reports/schedule">Reports Schedule</Link>
-          </NavMenu>
-      <Outlet />
+      <Frame>
+        <AppNavbar />
+        <div style={{ padding: "20px" }}>
+          <Outlet />
+        </div>
+      </Frame>
     </AppProvider>
   );
-}
-
-export function ErrorBoundary() {
-  const error = useRouteError();
-  const errorMessage = typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string'
-    ? error.message
-    : "Unknown error";
-  return <div>Erreur: {errorMessage}</div>;
 }
 
 export const headers: HeadersFunction = (headersArgs) => {

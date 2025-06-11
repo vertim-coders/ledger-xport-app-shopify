@@ -455,7 +455,7 @@ export default function ScheduleReport() {
 
   // Report name state
   const [reportName, setReportName] = useState("");
-  const [reportNameFormat, setReportNameFormat] = useState("ledgerxport-{type}-{date}");
+  const [reportNameFormat, setReportNameFormat] = useState("ledgerxport-{type}-{date}.{format}");
 
   // Date range states
   const [selectedDates, setSelectedDates] = useState({
