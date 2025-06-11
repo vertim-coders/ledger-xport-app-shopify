@@ -26,6 +26,21 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       reports: {
         orderBy: { createdAt: 'desc' },
         take: 5
+      },
+      scheduledTasks: {
+        where: {
+          status: "ACTIVE",
+          nextRun: {
+            gt: new Date()
+          }
+        },
+        include: {
+          report: true
+        },
+        orderBy: {
+          nextRun: 'asc'
+        },
+        take: 5
       }
     }
   });
@@ -48,12 +63,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   return json({
     successfulExports,
     failedExports,
-    recentReports: shop?.reports || []
+    recentReports: shop?.reports || [],
+    upcomingExports: shop?.scheduledTasks || []
   });
 };
 
 export default function Dashboard() {
-  const { successfulExports, failedExports, recentReports } = useLoaderData<typeof loader>();
+  const { successfulExports, failedExports, recentReports, upcomingExports } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
 
   const handleNewReport = () => {
@@ -74,6 +90,25 @@ export default function Dashboard() {
       Télécharger
     </Button>
   ]);
+
+  // Format date and time for display
+  const formatDateTime = (date: string | Date) => {
+    const d = new Date(date);
+    return {
+      date: d.toLocaleDateString('fr-FR'),
+      time: d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+    };
+  };
+
+  // Get frequency label in French
+  const getFrequencyLabel = (frequency: string) => {
+    switch (frequency) {
+      case 'daily': return 'Quotidien';
+      case 'monthly': return 'Mensuel';
+      case 'yearly': return 'Annuel';
+      default: return frequency;
+    }
+  };
 
   return (
     <Page title="Tableau de bord">
@@ -135,64 +170,112 @@ export default function Dashboard() {
 
         {/* Bottom Section - Recent Failures and Upcoming Exports side by side */}
         <Layout.Section>
-          <LegacyStack distribution="fill" spacing="loose">
+          <div style={{ display: 'flex', gap: '16px' }}>
             {/* Recent Failures */}
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <Card>
-                <div style={{ padding: '20px' }}>
-                  <Text variant="headingMd" as="h2">Échecs récents</Text>
-                  {recentReports && recentReports.filter(report => report.status === ReportStatus.ERROR).length > 0 ? (
-                    <DataTable
-                      columnContentTypes={[
-                        'text',
-                        'text',
-                        'text',
-                        'text',
-                      ]}
-                      headings={[
-                        'Nom du rapport',
-                        'Type de rapport',
-                        'Date d\'échec',
-                        'Actions',
-                      ]}
-                      rows={recentReports
-                        .filter(report => report.status === ReportStatus.ERROR)
-                        .map(report => [
-                          report.fileName,
-                          report.type,
-                          new Date(report.updatedAt).toLocaleDateString(),
-                          <Button onClick={() => {/* TODO: Implement retry */}}>
-                            Corriger
-                          </Button>
-                        ])}
-                    />
-                  ) : (
-                    <EmptyState
-                      heading="Aucun échec récent"
-                      image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
-                    >
-                      <p>Tous vos exports ont réussi.</p>
-                    </EmptyState>
-                  )}
+                <div style={{ 
+                  padding: '20px',
+                  height: '400px',
+                  overflowY: 'auto',
+                  overflowX: 'auto'
+                }}>
+                  <div style={{ minWidth: '600px' }}>
+                    <Text variant="headingMd" as="h2">Échecs récents</Text>
+                    {recentReports && recentReports.filter(report => report.status === ReportStatus.ERROR).length > 0 ? (
+                      <DataTable
+                        columnContentTypes={[
+                          'text',
+                          'text',
+                          'text',
+                          'text',
+                        ]}
+                        headings={[
+                          'Nom du rapport',
+                          'Type de rapport',
+                          'Date d\'échec',
+                          'Actions',
+                        ]}
+                        rows={recentReports
+                          .filter(report => report.status === ReportStatus.ERROR)
+                          .map(report => [
+                            report.fileName,
+                            report.type,
+                            new Date(report.updatedAt).toLocaleDateString(),
+                            <Button onClick={() => {/* TODO: Implement retry */}}>
+                              Corriger
+                            </Button>
+                          ])}
+                      />
+                    ) : (
+                      <EmptyState
+                        heading="Aucun échec récent"
+                        image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
+                      >
+                        <p>Tous vos exports ont réussi.</p>
+                      </EmptyState>
+                    )}
+                  </div>
                 </div>
               </Card>
             </div>
 
             {/* Upcoming Exports */}
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <Card>
-                <div style={{ padding: '20px' }}>
-                  <Text variant="headingMd" as="h2">Les prochains exports</Text>
-                  <EmptyState
-                    heading="Aucun export planifié"
-                    image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
-                  >
-                    <p>Les exports planifiés apparaîtront ici.</p>
-                  </EmptyState>
+                <div style={{ 
+                  padding: '20px',
+                  height: '400px',
+                  overflowY: 'auto',
+                  overflowX: 'auto'
+                }}>
+                  <div style={{ minWidth: '600px' }}>
+                    <Text variant="headingMd" as="h2">Les prochains exports</Text>
+                    {upcomingExports && upcomingExports.length > 0 ? (
+                      <DataTable
+                        columnContentTypes={[
+                          'text',
+                          'text',
+                          'text',
+                          'text',
+                          'text',
+                        ]}
+                        headings={[
+                          'Nom du rapport',
+                          'Date',
+                          'Heure',
+                          'Fréquence',
+                          'Actions',
+                        ]}
+                        rows={upcomingExports.map(task => {
+                          const { date, time } = formatDateTime(task.nextRun);
+                          return [
+                            task.report.fileName,
+                            date,
+                            time,
+                            getFrequencyLabel(task.frequency),
+                            <Button onClick={() => navigate(`/app/reports/schedule?id=${task.id}`)}>
+                              Modifier
+                            </Button>
+                          ];
+                        })}
+                      />
+                    ) : (
+                      <EmptyState
+                        heading="Aucun export planifié"
+                        image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
+                      >
+                        <p>Les exports planifiés apparaîtront ici.</p>
+                        <Button onClick={() => navigate("/app/reports/schedule")}>
+                          Planifier un export
+                        </Button>
+                      </EmptyState>
+                    )}
+                  </div>
                 </div>
               </Card>
             </div>
-          </LegacyStack>
+          </div>
         </Layout.Section>
 
         {/* Popular Reports */}
