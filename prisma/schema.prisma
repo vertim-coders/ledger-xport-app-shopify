@@ -43,51 +43,50 @@ model User {
 }
 
 model Shop {
-  id            String    @id
-  shopifyDomain String    @unique
-  name          String
-  domain        String
-  accessToken   String
-  scope         String?
-  userId        String
-  user          User      @relation(fields: [userId], references: [id])
-  fiscalConfig  FiscalConfiguration?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  reports       Report[]
+  id              String                @id @default(cuid())
+  shopifyDomain   String                @unique
+  name            String
+  domain          String
+  accessToken     String
+  userId          String
+  user            User                  @relation(fields: [userId], references: [id])
+  fiscalConfig    FiscalConfiguration?
+  reports         Report[]
+  generalSettings GeneralSettings?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
   scheduledTasks  ScheduledTask[]
   tasks           Task[]
+
+  @@index([userId])
 }
 
 model FiscalConfiguration {
-  id            String    @id @default(uuid())
-  shopId        String    @unique
-  shop          Shop      @relation(fields: [shopId], references: [id])
-  
-  // Company parameters
-  companyName   String
-  country       String
-  currency      String
-  vatRate       Float?
-  defaultFormat ExportFormat?
-  
-  // Fiscal regime fields (moved from FiscalRegime)
-  code          String    @unique
-  name          String
-  description   String
-  countries     String[]
-  fileFormat    String
-  encoding      String    @default("UTF-8")
-  separator     String
-  requiredColumns Json    // Array of required column names
-  taxRates      Json      // Object containing tax rates
-  specificRules Json?     // Additional regime-specific rules
-  compatibleSoftware Json // Array of compatible software
-  exportFormats Json      // Array of supported export formats
-  notes         String?   // Additional notes
-  
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                String   @id @default(cuid())
+  shopId           String   @unique
+  code             String   // OHADA, SYSCOHADA, etc.
+  name             String
+  description      String
+  countries        String[]
+  currency         String
+  fileFormat       String
+  encoding         String
+  separator        String
+  requiredColumns  String[] // Array of required columns
+  taxRates         Json     // JSON object for tax rates
+  compatibleSoftware String[] // Array of compatible software
+  exportFormats    String[] // Array of export formats
+  notes            String
+  companyName      String?
+  country          String?
+  vatRate          Float?
+  defaultFormat    ExportFormat?
+  salesAccount     String   @default("701")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  shop             Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId])
 }
 
 enum ReportStatus {
@@ -177,4 +176,17 @@ model Task {
   @@index([scheduledTaskId])
   @@index([shopId])
   @@index([reportId])
+}
+
+model GeneralSettings {
+  id           String   @id @default(cuid())
+  shopId       String   @unique
+  timezone     String   @default("UTC")
+  language     String   @default("fr")
+  salesAccount String   @default("701")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  shop         Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId])
 }

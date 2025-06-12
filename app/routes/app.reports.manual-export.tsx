@@ -43,6 +43,7 @@ interface FiscalRegimeData {
   compatibleSoftware: string[];
   exportFormats: string[];
   notes: string;
+  salesAccount?: string; // Add sales account field
 }
 
 // Define a type for the fiscal regime data combined from Prisma and JSON
@@ -95,13 +96,17 @@ function generateReport(data: any, fiscalRegime: CombinedFiscalRegime, fileForma
   // Helper function to format a row of data
   const formatRow = (row: string[]) => row.join(separator);
 
-  // Helper function to get data rows
+  // Helper function to get data rows with sales account
   const getDataRows = (data: any[], columns: string[]) => {
     return data.map(item => {
       const row: string[] = [];
       columns.forEach(col => {
-        const value = item[col as keyof typeof item];
-        row.push(value != null ? String(value) : '');
+        if (col === 'salesAccount') {
+          row.push(fiscalRegime.salesAccount || '701');
+        } else {
+          const value = item[col as keyof typeof item];
+          row.push(value != null ? String(value) : '');
+        }
       });
       return row;
     });

@@ -229,8 +229,8 @@ function generateReport(data: any, fiscalRegime: any, fileFormat: string, separa
 
   let reportContent: string | Buffer = "";
 
-  // Parse required columns from string to array
-  const requiredColumns = JSON.parse(fiscalRegime.requiredColumns);
+  // Use requiredColumns directly since it's already an array
+  const requiredColumns = fiscalRegime.requiredColumns;
 
   // Helper function to format a row of data
   const formatRow = (row: string[]) => row.join(separator);

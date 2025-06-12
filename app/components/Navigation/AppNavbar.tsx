@@ -33,6 +33,11 @@ export function AppNavbar() {
       icon: "calendar",
       url: "/app/reports/schedule",
     },
+    {
+      label: "Parametres générals",
+      icon: "settings",
+      url: "/app/settings/general",
+    },
   ];
 
   const handleNavigationClick = useCallback((url: string) => {

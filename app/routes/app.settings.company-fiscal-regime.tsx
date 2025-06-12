@@ -21,7 +21,7 @@ import {
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
 import { ExportFormat } from "@prisma/client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import fiscalRegimesData from "../data/fiscal-regimes.json";
 import currenciesData from "../data/currencies.json";
 import { BiSaveBtn } from "../components/Buttons/BiSaveBtn";
@@ -34,6 +34,26 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   let fiscalConfig = null;
   if (shop) {
     fiscalConfig = await prisma.fiscalConfiguration.findUnique({ where: { shopId: shop.id } });
+    if (fiscalConfig) {
+      // Helper function to safely parse arrays
+      const safeParseArray = (value: any): string[] => {
+        if (!value) return [];
+        if (Array.isArray(value)) return value;
+        if (typeof value === 'string') {
+          try {
+            return JSON.parse(value);
+          } catch {
+            return value.split(',').map(item => item.trim());
+          }
+        }
+        return [];
+      };
+
+      // Parse JSON strings back into arrays
+      fiscalConfig.requiredColumns = safeParseArray(fiscalConfig.requiredColumns);
+      fiscalConfig.taxRates = JSON.parse(fiscalConfig.taxRates as string);
+      fiscalConfig.exportFormats = safeParseArray(fiscalConfig.exportFormats);
+    }
   }
   return json({
     settings: fiscalConfig || null,
@@ -88,6 +108,7 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
       currency: formData.get("currency") as string,
       vatRate: parseFloat(formData.get("vatRate") as string),
       defaultFormat: formData.get("defaultExportFormat") as ExportFormat,
+      salesAccount: formData.get("salesAccount") as string,
     };
     const regimeCode = formData.get("fiscalRegime") as string;
     const selectedRegime =
@@ -97,6 +118,8 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
     // Fallback to previous settings if no regime selected
     const regime = selectedRegime || (await prisma.fiscalConfiguration.findUnique({ where: { shopId: shop.id } }));
     if (!regime) throw new Error("A regime must be selected at least once.");
+    
+    // Update fiscal configuration
     await prisma.fiscalConfiguration.upsert({
       where: { shopId: shop.id },
       create: {
@@ -109,10 +132,10 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
         fileFormat: regime.fileFormat,
         encoding: regime.encoding,
         separator: regime.separator,
-        requiredColumns: JSON.stringify(regime.requiredColumns),
+        requiredColumns: regime.requiredColumns,
         taxRates: JSON.stringify(regime.taxRates),
-        compatibleSoftware: JSON.stringify(regime.compatibleSoftware),
-        exportFormats: JSON.stringify(regime.exportFormats),
+        compatibleSoftware: regime.compatibleSoftware,
+        exportFormats: regime.exportFormats,
         notes: regime.notes,
       },
       update: {
@@ -124,10 +147,10 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
         fileFormat: regime.fileFormat,
         encoding: regime.encoding,
         separator: regime.separator,
-        requiredColumns: JSON.stringify(regime.requiredColumns),
+        requiredColumns: regime.requiredColumns,
         taxRates: JSON.stringify(regime.taxRates),
-        compatibleSoftware: JSON.stringify(regime.compatibleSoftware),
-        exportFormats: JSON.stringify(regime.exportFormats),
+        compatibleSoftware: regime.compatibleSoftware,
+        exportFormats: regime.exportFormats,
         notes: regime.notes,
       },
     });
@@ -139,10 +162,34 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
       throw new Error("Invalid fiscal regime selected");
     }
 
-    // Update the fiscal configuration with the selected regime
+    // Get current fiscal configuration to preserve user settings
+    const currentConfig = await prisma.fiscalConfiguration.findUnique({
+      where: { shopId: shop.id }
+    });
+
+    // Update the fiscal configuration with the selected regime while preserving user settings
     await prisma.fiscalConfiguration.update({
       where: { shopId: shop.id },
-      data: selectedRegime,
+      data: {
+        code: selectedRegime.code,
+        name: selectedRegime.name,
+        description: selectedRegime.description,
+        countries: selectedRegime.countries,
+        fileFormat: selectedRegime.fileFormat,
+        encoding: selectedRegime.encoding,
+        separator: selectedRegime.separator,
+        requiredColumns: selectedRegime.requiredColumns,
+        taxRates: JSON.stringify(selectedRegime.taxRates),
+        compatibleSoftware: selectedRegime.compatibleSoftware,
+        exportFormats: selectedRegime.exportFormats,
+        notes: selectedRegime.notes,
+        // Preserve user settings
+        companyName: currentConfig?.companyName,
+        country: currentConfig?.country,
+        currency: formData.get("currency") as string || currentConfig?.currency,
+        vatRate: currentConfig?.vatRate,
+        defaultFormat: currentConfig?.defaultFormat,
+      },
     });
   }
 
@@ -160,6 +207,7 @@ export default function CompanyAndFiscalRegimeSettings() {
     currency: settings?.currency || "EUR",
     vatRate: settings?.vatRate?.toString() || "",
     defaultExportFormat: settings?.defaultFormat || "CSV",
+    salesAccount: settings?.salesAccount || "701",
   });
   const [selectedRegime, setSelectedRegime] = useState(settings?.code || "OHADA");
   const [toastActive, setToastActive] = useState(false);
@@ -190,6 +238,7 @@ export default function CompanyAndFiscalRegimeSettings() {
     const data = new FormData();
     data.append("fiscalRegime", selectedRegime);
     data.append("actionType", "fiscal");
+    data.append("currency", companyFormData.currency);
     submit(data, { method: "post" });
     setToastMessage("Régime fiscal enregistré avec succès");
     setToastActive(true);
@@ -218,6 +267,19 @@ export default function CompanyAndFiscalRegimeSettings() {
       panelID: 'fiscal-settings',
     },
   ];
+
+  // Add useEffect to update currency when regime changes
+  useEffect(() => {
+    if (selectedRegime) {
+      const regime = regimes.find(r => r.code === selectedRegime);
+      if (regime) {
+        setCompanyFormData(prev => ({
+          ...prev,
+          currency: regime.currency
+        }));
+      }
+    }
+  }, [selectedRegime]);
 
   return (
     <Frame>
@@ -282,27 +344,22 @@ export default function CompanyAndFiscalRegimeSettings() {
                       <Select
                         label="Devise"
                         name="currency"
-                        options={selectedRegime ? currenciesData.currencies
-                          .filter(currency => {
-                            const regime = regimes.find(r => r.code === selectedRegime);
-                            return regime?.countries.some(country => 
-                              fiscalRegimesData.regimes.find(r => r.countries.includes(country))?.currency === currency.code
-                            );
-                          })
-                          .map(currency => ({
-                            label: `${currency.name} (${currency.code})`,
-                            value: currency.code
-                          })) : []}
+                        options={currenciesData.currencies.map(currency => ({
+                          label: `${currency.name} (${currency.code})`,
+                          value: currency.code
+                        }))}
                         value={companyFormData.currency}
                         onChange={value => handleCompanyChange("currency", value)}
                         disabled={!selectedRegime}
+                        helpText={selectedRegime ? `Devise recommandée pour ${regimes.find(r => r.code === selectedRegime)?.name}: ${regimes.find(r => r.code === selectedRegime)?.currency}` : ''}
                       />
                       <TextField
                         label="Compte de vente"
                         name="salesAccount"
-                        value="701"
-                        onChange={() => {}}
+                        value={companyFormData.salesAccount}
+                        onChange={value => handleCompanyChange("salesAccount", value)}
                         autoComplete="off"
+                        helpText="Code du compte de vente dans votre plan comptable (ex: 701)"
                       />
                     </LegacyStack>
 
