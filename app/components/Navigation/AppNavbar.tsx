@@ -34,6 +34,11 @@ export function AppNavbar() {
       url: "/app/reports/schedule",
     },
     {
+      label: "Historiques des exports",
+      icon: "history",
+      url: "/app/reports/history",
+    },
+    {
       label: "Parametres générals",
       icon: "settings",
       url: "/app/settings/general",

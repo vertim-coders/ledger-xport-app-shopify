@@ -1,0 +1,1 @@
+JournalCode\tJournalLib\tEcritureNum\tEcritureDate\tCompteNum\tCompteLib\tCompAuxNum\tCompAuxLib\tPieceRef\tPieceDate\tLibelle\tDebit\tCredit\tEcritureLet\tDateLet

@@ -63,14 +63,15 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
     // Create a new report record
     const report = await prisma.report.create({
       data: {
-        type: "manual",
-        status: ReportStatus.PROCESSING,
+        type: "scheduled",
+        dataType: dataTypes,
+        status: ReportStatus.PENDING,
         format: fileFormat as ExportFormat,
         startDate,
         endDate,
         shopId: shop.id,
         fileSize: 0,
-        fileName: reportName,
+        fileName: `${dataTypes}_${startDate}_${endDate}.${fileFormat.toLowerCase()}`,
       }
     });
 
@@ -194,29 +195,279 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
   }
 };
 
-// Placeholder functions for fetching data from Shopify API
+// Function to fetch orders from Shopify using GraphQL
 async function fetchOrders(session: any, startDate: string, endDate: string): Promise<any[]> {
-  console.log(`Fetching orders from ${startDate} to ${endDate}...`);
-  // TODO: Implement actual Shopify Admin API call to fetch orders
-  return [];
+  const query = `
+    query GetOrders($startDate: DateTime!, $endDate: DateTime!) {
+      orders(first: 250, query: "created_at:>=$startDate created_at:<=$endDate") {
+        edges {
+          node {
+            id
+            name
+            createdAt
+            totalPriceSet {
+              shopMoney {
+                amount
+                currencyCode
+              }
+            }
+            totalTaxSet {
+              shopMoney {
+                amount
+                currencyCode
+              }
+            }
+            customer {
+              id
+              firstName
+              lastName
+              email
+            }
+            lineItems(first: 50) {
+              edges {
+                node {
+                  id
+                  title
+                  quantity
+                  originalUnitPriceSet {
+                    shopMoney {
+                      amount
+                      currencyCode
+                    }
+                  }
+                  taxLines {
+                    rate
+                    title
+                    priceSet {
+                      shopMoney {
+                        amount
+                        currencyCode
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            transactions(first: 10) {
+              edges {
+                node {
+                  id
+                  status
+                  kind
+                  amountSet {
+                    shopMoney {
+                      amount
+                      currencyCode
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  const response = await fetch(`https://${session.shop}/admin/api/2025-01/graphql.json`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Shopify-Access-Token': session.accessToken || '',
+    },
+    body: JSON.stringify({
+      query,
+      variables: {
+        startDate,
+        endDate,
+      },
+    }),
+  });
+
+  const data = await response.json();
+  return data.data?.orders?.edges?.map((edge: any) => edge.node) || [];
 }
 
+// Function to fetch customers from Shopify using GraphQL
 async function fetchCustomers(session: any, startDate: string, endDate: string): Promise<any[]> {
-  console.log(`Fetching customers from ${startDate} to ${endDate}...`);
-  // TODO: Implement actual Shopify Admin API call to fetch customers
-  return [];
+  const query = `
+    query GetCustomers($startDate: DateTime!, $endDate: DateTime!) {
+      customers(first: 250, query: "created_at:>=$startDate created_at:<=$endDate") {
+        edges {
+          node {
+            id
+            firstName
+            lastName
+            email
+            phone
+            createdAt
+            ordersCount
+            totalSpent
+            defaultAddress {
+              address1
+              address2
+              city
+              province
+              zip
+              country
+            }
+            tags
+          }
+        }
+      }
+    }
+  `;
+
+  const response = await fetch(`https://${session.shop}/admin/api/2025-01/graphql.json`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Shopify-Access-Token': session.accessToken || '',
+    },
+    body: JSON.stringify({
+      query,
+      variables: {
+        startDate,
+        endDate,
+      },
+    }),
+  });
+
+  const data = await response.json();
+  return data.data?.customers?.edges?.map((edge: any) => edge.node) || [];
 }
 
+// Function to fetch refunds from Shopify using GraphQL
 async function fetchRefunds(session: any, startDate: string, endDate: string): Promise<any[]> {
-  console.log(`Fetching refunds from ${startDate} to ${endDate}...`);
-  // TODO: Implement actual Shopify Admin API call to fetch refunds
-  return [];
+  const query = `
+    query GetRefunds($startDate: DateTime!, $endDate: DateTime!) {
+      refunds(first: 250, query: "created_at:>=$startDate created_at:<=$endDate") {
+        edges {
+          node {
+            id
+            createdAt
+            note
+            order {
+              id
+              name
+            }
+            refundLineItems(first: 50) {
+              edges {
+                node {
+                  id
+                  quantity
+                  restockType
+                  subtotalSet {
+                    shopMoney {
+                      amount
+                      currencyCode
+                    }
+                  }
+                  totalTaxSet {
+                    shopMoney {
+                      amount
+                      currencyCode
+                    }
+                  }
+                }
+              }
+            }
+            transactions(first: 10) {
+              edges {
+                node {
+                  id
+                  status
+                  kind
+                  amountSet {
+                    shopMoney {
+                      amount
+                      currencyCode
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  const response = await fetch(`https://${session.shop}/admin/api/2025-01/graphql.json`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Shopify-Access-Token': session.accessToken || '',
+    },
+    body: JSON.stringify({
+      query,
+      variables: {
+        startDate,
+        endDate,
+      },
+    }),
+  });
+
+  const data = await response.json();
+  return data.data?.refunds?.edges?.map((edge: any) => edge.node) || [];
 }
 
+// Function to fetch taxes from Shopify using GraphQL
 async function fetchTaxes(session: any, startDate: string, endDate: string): Promise<any[]> {
-  console.log(`Fetching tax data from ${startDate} to ${endDate}...`);
-  // TODO: Implement actual Shopify Admin API call to fetch taxes
-  return [];
+  const query = `
+    query GetTaxes($startDate: DateTime!, $endDate: DateTime!) {
+      shopifyPaymentsTransactions(first: 250, query: "created_at:>=$startDate created_at:<=$endDate") {
+        edges {
+          node {
+            id
+            createdAt
+            status
+            kind
+            amountSet {
+              shopMoney {
+                amount
+                currencyCode
+              }
+            }
+            feeSet {
+              shopMoney {
+                amount
+                currencyCode
+              }
+            }
+            taxSet {
+              shopMoney {
+                amount
+                currencyCode
+              }
+            }
+            order {
+              id
+              name
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  const response = await fetch(`https://${session.shop}/admin/api/2025-01/graphql.json`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Shopify-Access-Token': session.accessToken || '',
+    },
+    body: JSON.stringify({
+      query,
+      variables: {
+        startDate,
+        endDate,
+      },
+    }),
+  });
+
+  const data = await response.json();
+  return data.data?.shopifyPaymentsTransactions?.edges?.map((edge: any) => edge.node) || [];
 }
 
 // Function to generate report content
