@@ -1,0 +1,38 @@
+[
+  {
+    "Date": "2025-06-16",
+    "Référence": "#1001",
+    "Description": "Bissap, POP",
+    "Montant HT": "120.0",
+    "E-Levy": "1.80",
+    "Total TTC": "121.80",
+    "Mode de paiement": ""
+  },
+  {
+    "Date": "2025-06-16",
+    "Référence": "#1002",
+    "Description": "Bissap, popo",
+    "Montant HT": "120.0",
+    "E-Levy": "1.80",
+    "Total TTC": "121.80",
+    "Mode de paiement": ""
+  },
+  {
+    "Date": "2025-06-16",
+    "Référence": "#1003",
+    "Description": "t-shirt, Bissap",
+    "Montant HT": "80.0",
+    "E-Levy": "1.20",
+    "Total TTC": "81.20",
+    "Mode de paiement": ""
+  },
+  {
+    "Date": "2025-06-16",
+    "Référence": "#1004",
+    "Description": "Bissap, t-shirt",
+    "Montant HT": "160.0",
+    "E-Levy": "2.40",
+    "Total TTC": "162.40",
+    "Mode de paiement": ""
+  }
+]

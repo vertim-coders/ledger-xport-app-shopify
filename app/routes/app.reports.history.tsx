@@ -1,5 +1,5 @@
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
-import { useLoaderData, useSubmit } from "@remix-run/react";
+import { useLoaderData, useSubmit, useNavigate } from "@remix-run/react";
 import {
   Page,
   Layout,
@@ -146,6 +146,7 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
 export default function ExportHistory() {
   const { reports } = useLoaderData<typeof loader>();
   const submit = useSubmit();
+  const navigate = useNavigate();
   const [selectedPeriod, setSelectedPeriod] = useState("all");
   const [selectedType, setSelectedType] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
@@ -209,7 +210,12 @@ export default function ExportHistory() {
     }[report.status];
 
     return [
-      new Date(report.createdAt).toLocaleDateString("fr-FR"),
+      <div 
+        style={{ cursor: 'pointer' }} 
+        onClick={() => navigate(`/app/reports/view/${report.id}`)}
+      >
+        {new Date(report.createdAt).toLocaleDateString("fr-FR")}
+      </div>,
       `${new Date(report.startDate).toLocaleDateString("fr-FR")} → ${new Date(report.endDate).toLocaleDateString("fr-FR")}`,
       report.type === "manual" ? "Manuel" : "Auto",
       report.format.toUpperCase(),

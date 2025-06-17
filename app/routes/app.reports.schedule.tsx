@@ -25,22 +25,49 @@ import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import * as XLSX from 'xlsx';
 import { ReportStatus, ExportFormat } from "@prisma/client";
+import { ShopifyCustomerService } from "../models/ShopifyCustomer.service";
+import { ShopifyOrderService } from "../models/ShopifyOrder.service";
+import { ShopifyRefundService } from "../models/ShopifyRefund.service";
+import { ShopifyTaxService } from "../models/ShopifyTax.service";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
   const shop = await prisma.shop.findUnique({
     where: { shopifyDomain: session.shop },
     include: { fiscalConfig: true },
   });
 
+  // Get current date and date 30 days ago for the date range
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - 30);
+
+  // Fetch data from all services
+  const customers = await ShopifyCustomerService.getCustomers(admin, startDate.toISOString(), endDate.toISOString());
+  const orders = await ShopifyOrderService.getOrders(admin, startDate.toISOString(), endDate.toISOString());
+  const refunds = await ShopifyRefundService.getRefunds(admin, startDate.toISOString(), endDate.toISOString());
+  const taxes = await ShopifyTaxService.getTaxes(admin, startDate.toISOString(), endDate.toISOString());
+
+  // Log the data to console
+  console.log("Customers data:", customers);
+  console.log("Orders data:", orders);
+  console.log("Refunds data:", refunds);
+  console.log("Taxes data:", taxes);
+
   return json({
     shop,
+    data: {
+      customers,
+      orders,
+      refunds,
+      taxes
+    }
   });
 };
 
 export const action = async ({ request }: LoaderFunctionArgs) => {
   try {
-    const { session } = await authenticate.admin(request);
+    const { admin, session } = await authenticate.admin(request);
     const formData = await request.formData();
     
     const startDate = new Date(formData.get("startDate") as string);
@@ -64,14 +91,20 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
     const report = await prisma.report.create({
       data: {
         type: "scheduled",
-        dataType: dataTypes,
+        dataType: Object.entries(dataTypes)
+          .filter(([_, value]) => value === true)
+          .map(([key]) => key)
+          .join(','),
         status: ReportStatus.PENDING,
         format: fileFormat as ExportFormat,
         startDate,
         endDate,
         shopId: shop.id,
         fileSize: 0,
-        fileName: `${dataTypes}_${startDate}_${endDate}.${fileFormat.toLowerCase()}`,
+        fileName: reportName || `${Object.entries(dataTypes)
+          .filter(([_, value]) => value === true)
+          .map(([key]) => key)
+          .join('_')}_${startDate.toISOString()}_${endDate.toISOString()}.${fileFormat.toLowerCase()}`,
       }
     });
 
@@ -80,16 +113,16 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
 
       // Fetch data based on selected types
       if (dataTypes.ventes) {
-        fetchedData.orders = await fetchOrders(session, startDate.toISOString(), endDate.toISOString());
+        fetchedData.orders = await ShopifyOrderService.getOrders(admin, startDate.toISOString(), endDate.toISOString());
       }
       if (dataTypes.clients) {
-        fetchedData.customers = await fetchCustomers(session, startDate.toISOString(), endDate.toISOString());
+        fetchedData.customers = await ShopifyCustomerService.getCustomers(admin, startDate.toISOString(), endDate.toISOString());
       }
       if (dataTypes.remboursements) {
-        fetchedData.refunds = await fetchRefunds(session, startDate.toISOString(), endDate.toISOString());
+        fetchedData.refunds = await ShopifyRefundService.getRefunds(admin, startDate.toISOString(), endDate.toISOString());
       }
       if (dataTypes.taxes) {
-        fetchedData.taxes = await fetchTaxes(session, startDate.toISOString(), endDate.toISOString());
+        fetchedData.taxes = await ShopifyTaxService.getTaxes(admin, startDate.toISOString(), endDate.toISOString());
       }
 
       // Generate the report content
@@ -105,7 +138,7 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
       await mkdir(reportsDir, { recursive: true });
 
       // Store the file with the custom filename
-      const filePath = join(reportsDir, reportName);
+      const filePath = join(reportsDir, report.fileName);
       await writeFile(filePath, reportContent);
 
       // Update the report record with the file path and completed status
@@ -159,7 +192,7 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
         }[fileFormat.toUpperCase()] || "application/octet-stream";
         
         headers.set("Content-Type", contentType);
-        headers.set("Content-Disposition", `attachment; filename="${reportName}"`);
+        headers.set("Content-Disposition", `attachment; filename="${report.fileName}"`);
         headers.set("Content-Length", Buffer.byteLength(reportContent).toString());
         headers.set("Cache-Control", "no-cache");
         headers.set("Pragma", "no-cache");
@@ -195,291 +228,8 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
   }
 };
 
-// Function to fetch orders from Shopify using GraphQL
-async function fetchOrders(session: any, startDate: string, endDate: string): Promise<any[]> {
-  const query = `
-    query GetOrders($startDate: DateTime!, $endDate: DateTime!) {
-      orders(first: 250, query: "created_at:>=$startDate created_at:<=$endDate") {
-        edges {
-          node {
-            id
-            name
-            createdAt
-            totalPriceSet {
-              shopMoney {
-                amount
-                currencyCode
-              }
-            }
-            totalTaxSet {
-              shopMoney {
-                amount
-                currencyCode
-              }
-            }
-            customer {
-              id
-              firstName
-              lastName
-              email
-            }
-            lineItems(first: 50) {
-              edges {
-                node {
-                  id
-                  title
-                  quantity
-                  originalUnitPriceSet {
-                    shopMoney {
-                      amount
-                      currencyCode
-                    }
-                  }
-                  taxLines {
-                    rate
-                    title
-                    priceSet {
-                      shopMoney {
-                        amount
-                        currencyCode
-                      }
-                    }
-                  }
-                }
-              }
-            }
-            transactions(first: 10) {
-              edges {
-                node {
-                  id
-                  status
-                  kind
-                  amountSet {
-                    shopMoney {
-                      amount
-                      currencyCode
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  `;
-
-  const response = await fetch(`https://${session.shop}/admin/api/2025-01/graphql.json`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Shopify-Access-Token': session.accessToken || '',
-    },
-    body: JSON.stringify({
-      query,
-      variables: {
-        startDate,
-        endDate,
-      },
-    }),
-  });
-
-  const data = await response.json();
-  return data.data?.orders?.edges?.map((edge: any) => edge.node) || [];
-}
-
-// Function to fetch customers from Shopify using GraphQL
-async function fetchCustomers(session: any, startDate: string, endDate: string): Promise<any[]> {
-  const query = `
-    query GetCustomers($startDate: DateTime!, $endDate: DateTime!) {
-      customers(first: 250, query: "created_at:>=$startDate created_at:<=$endDate") {
-        edges {
-          node {
-            id
-            firstName
-            lastName
-            email
-            phone
-            createdAt
-            ordersCount
-            totalSpent
-            defaultAddress {
-              address1
-              address2
-              city
-              province
-              zip
-              country
-            }
-            tags
-          }
-        }
-      }
-    }
-  `;
-
-  const response = await fetch(`https://${session.shop}/admin/api/2025-01/graphql.json`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Shopify-Access-Token': session.accessToken || '',
-    },
-    body: JSON.stringify({
-      query,
-      variables: {
-        startDate,
-        endDate,
-      },
-    }),
-  });
-
-  const data = await response.json();
-  return data.data?.customers?.edges?.map((edge: any) => edge.node) || [];
-}
-
-// Function to fetch refunds from Shopify using GraphQL
-async function fetchRefunds(session: any, startDate: string, endDate: string): Promise<any[]> {
-  const query = `
-    query GetRefunds($startDate: DateTime!, $endDate: DateTime!) {
-      refunds(first: 250, query: "created_at:>=$startDate created_at:<=$endDate") {
-        edges {
-          node {
-            id
-            createdAt
-            note
-            order {
-              id
-              name
-            }
-            refundLineItems(first: 50) {
-              edges {
-                node {
-                  id
-                  quantity
-                  restockType
-                  subtotalSet {
-                    shopMoney {
-                      amount
-                      currencyCode
-                    }
-                  }
-                  totalTaxSet {
-                    shopMoney {
-                      amount
-                      currencyCode
-                    }
-                  }
-                }
-              }
-            }
-            transactions(first: 10) {
-              edges {
-                node {
-                  id
-                  status
-                  kind
-                  amountSet {
-                    shopMoney {
-                      amount
-                      currencyCode
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  `;
-
-  const response = await fetch(`https://${session.shop}/admin/api/2025-01/graphql.json`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Shopify-Access-Token': session.accessToken || '',
-    },
-    body: JSON.stringify({
-      query,
-      variables: {
-        startDate,
-        endDate,
-      },
-    }),
-  });
-
-  const data = await response.json();
-  return data.data?.refunds?.edges?.map((edge: any) => edge.node) || [];
-}
-
-// Function to fetch taxes from Shopify using GraphQL
-async function fetchTaxes(session: any, startDate: string, endDate: string): Promise<any[]> {
-  const query = `
-    query GetTaxes($startDate: DateTime!, $endDate: DateTime!) {
-      shopifyPaymentsTransactions(first: 250, query: "created_at:>=$startDate created_at:<=$endDate") {
-        edges {
-          node {
-            id
-            createdAt
-            status
-            kind
-            amountSet {
-              shopMoney {
-                amount
-                currencyCode
-              }
-            }
-            feeSet {
-              shopMoney {
-                amount
-                currencyCode
-              }
-            }
-            taxSet {
-              shopMoney {
-                amount
-                currencyCode
-              }
-            }
-            order {
-              id
-              name
-            }
-          }
-        }
-      }
-    }
-  `;
-
-  const response = await fetch(`https://${session.shop}/admin/api/2025-01/graphql.json`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Shopify-Access-Token': session.accessToken || '',
-    },
-    body: JSON.stringify({
-      query,
-      variables: {
-        startDate,
-        endDate,
-      },
-    }),
-  });
-
-  const data = await response.json();
-  return data.data?.shopifyPaymentsTransactions?.edges?.map((edge: any) => edge.node) || [];
-}
-
 // Function to generate report content
 function generateReport(data: any, fiscalRegime: any, fileFormat: string, separator: string): string | Buffer {
-  console.log("Generating report...");
-  console.log("Data:", data);
-  console.log("Fiscal Regime:", fiscalRegime);
-  console.log("File Format:", fileFormat);
-  console.log("Separator:", separator);
-
-  let reportContent: string | Buffer = "";
-
   // Use requiredColumns directly since it's already an array
   const requiredColumns = fiscalRegime.requiredColumns;
 
@@ -491,129 +241,110 @@ function generateReport(data: any, fiscalRegime: any, fileFormat: string, separa
     if (!data || data.length === 0) {
       return [];
     }
+
     return data.map(item => {
-      const row: string[] = [];
-      columns.forEach(col => {
-        const value = item[col as keyof typeof item];
-        row.push(value != null ? String(value) : '');
+      return columns.map(column => {
+        // Handle nested properties
+        const value = column.split('.').reduce((obj, key) => obj?.[key], item);
+        
+        // Format the value based on the column type
+        if (value === undefined || value === null) {
+          return '';
+        }
+
+        // Handle special column types
+        switch (column) {
+          case 'EcritureDate':
+          case 'PieceDate':
+          case 'DateLet':
+            return new Date(value).toISOString().split('T')[0];
+          case 'Debit':
+          case 'Credit':
+            return typeof value === 'number' ? value.toFixed(2) : value;
+          case 'CompteNum':
+            return String(value).padStart(6, '0');
+          default:
+            return String(value);
+        }
       });
-      return row;
     });
   };
 
-  // Get the format without the dot and ensure it's uppercase
-  const format = fileFormat.replace('.', '').toUpperCase();
+  // Generate the report content based on file format
+  if (fileFormat === 'XLSX') {
+    const workbook = XLSX.utils.book_new();
+    
+    // Add orders sheet if available
+    if (data.orders && data.orders.length > 0) {
+      const ordersSheet = XLSX.utils.aoa_to_sheet([
+        requiredColumns,
+        ...getDataRows(data.orders, requiredColumns)
+      ]);
+      XLSX.utils.book_append_sheet(workbook, ordersSheet, 'Orders');
+    }
 
-  switch (format) {
-    case "CSV":
-    case "TXT":
-      // For both CSV and TXT, we use the same format but with different separators
-      const rows: string[][] = [];
-      // Add header row
-      rows.push(requiredColumns);
-      
-      // Add data rows from orders
-      if (data.orders) {
-        rows.push(...getDataRows(data.orders, requiredColumns));
-      }
-      // Add data rows from customers
-      if (data.customers) {
-        rows.push(...getDataRows(data.customers, requiredColumns));
-      }
-      // Add data rows from refunds
-      if (data.refunds) {
-        rows.push(...getDataRows(data.refunds, requiredColumns));
-      }
-      // Add data rows from taxes
-      if (data.taxes) {
-        rows.push(...getDataRows(data.taxes, requiredColumns));
-      }
+    // Add customers sheet if available
+    if (data.customers && data.customers.length > 0) {
+      const customersSheet = XLSX.utils.aoa_to_sheet([
+        requiredColumns,
+        ...getDataRows(data.customers, requiredColumns)
+      ]);
+      XLSX.utils.book_append_sheet(workbook, customersSheet, 'Customers');
+    }
 
-      // If no data rows were added, add an empty row
-      if (rows.length === 1) {
-        rows.push(requiredColumns.map(() => ''));
+    // Add refunds sheet if available
+    if (data.refunds && data.refunds.length > 0) {
+      const refundsSheet = XLSX.utils.aoa_to_sheet([
+        requiredColumns,
+        ...getDataRows(data.refunds, requiredColumns)
+      ]);
+      XLSX.utils.book_append_sheet(workbook, refundsSheet, 'Refunds');
+    }
+
+    // Add taxes sheet if available
+    if (data.taxes && data.taxes.length > 0) {
+      const taxesSheet = XLSX.utils.aoa_to_sheet([
+        requiredColumns,
+        ...getDataRows(data.taxes, requiredColumns)
+      ]);
+      XLSX.utils.book_append_sheet(workbook, taxesSheet, 'Taxes');
+    }
+
+    return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+  } else if (fileFormat === 'JSON') {
+    // Create a structured JSON object
+    const jsonData = {
+      fiscalRegime: fiscalRegime.code,
+      period: {
+        start: data.startDate,
+        end: data.endDate
+      },
+      data: {
+        orders: data.orders || [],
+        customers: data.customers || [],
+        refunds: data.refunds || [],
+        taxes: data.taxes || []
       }
-
-      // Join all rows with newlines
-      reportContent = rows.map(formatRow).join('\n');
-      break;
-
-    case "XLSX":
-      // Create a new workbook
-      const workbook = XLSX.utils.book_new();
-      
-      // Create worksheets for each data type
-      if (data.orders && data.orders.length > 0) {
-        const ordersData = [requiredColumns, ...getDataRows(data.orders, requiredColumns)];
-        const ordersSheet = XLSX.utils.aoa_to_sheet(ordersData);
-        XLSX.utils.book_append_sheet(workbook, ordersSheet, "Orders");
+    };
+    return JSON.stringify(jsonData, null, 2);
+  } else if (fileFormat === 'XML') {
+    // Create XML structure
+    const xmlData = {
+      fiscalRegime: fiscalRegime.code,
+      period: {
+        start: data.startDate,
+        end: data.endDate
+      },
+      data: {
+        orders: data.orders || [],
+        customers: data.customers || [],
+        refunds: data.refunds || [],
+        taxes: data.taxes || []
       }
-      
-      if (data.customers && data.customers.length > 0) {
-        const customersData = [requiredColumns, ...getDataRows(data.customers, requiredColumns)];
-        const customersSheet = XLSX.utils.aoa_to_sheet(customersData);
-        XLSX.utils.book_append_sheet(workbook, customersSheet, "Customers");
-      }
-      
-      if (data.refunds && data.refunds.length > 0) {
-        const refundsData = [requiredColumns, ...getDataRows(data.refunds, requiredColumns)];
-        const refundsSheet = XLSX.utils.aoa_to_sheet(refundsData);
-        XLSX.utils.book_append_sheet(workbook, refundsSheet, "Refunds");
-      }
-      
-      if (data.taxes && data.taxes.length > 0) {
-        const taxesData = [requiredColumns, ...getDataRows(data.taxes, requiredColumns)];
-        const taxesSheet = XLSX.utils.aoa_to_sheet(taxesData);
-        XLSX.utils.book_append_sheet(workbook, taxesSheet, "Taxes");
-      }
+    };
 
-      // If no data was added, create a default sheet with headers
-      if (workbook.SheetNames.length === 0) {
-        const defaultData = [requiredColumns, requiredColumns.map(() => '')];
-        const defaultSheet = XLSX.utils.aoa_to_sheet(defaultData);
-        XLSX.utils.book_append_sheet(workbook, defaultSheet, "Data");
-      }
-
-      // Generate the Excel file as a buffer
-      reportContent = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-      break;
-
-    case "JSON":
-      // Create a structured JSON object
-      const jsonData = {
-        fiscalRegime: fiscalRegime.code,
-        period: {
-          start: data.startDate,
-          end: data.endDate
-        },
-        data: {
-          orders: data.orders || [],
-          customers: data.customers || [],
-          refunds: data.refunds || [],
-          taxes: data.taxes || []
-        }
-      };
-      reportContent = JSON.stringify(jsonData, null, 2);
-      break;
-
-    case "XML":
-      // Create XML structure
-      const xmlData = {
-        fiscalRegime: fiscalRegime.code,
-        period: {
-          start: data.startDate,
-          end: data.endDate
-        },
-        data: {
-          orders: data.orders || [],
-          customers: data.customers || [],
-          refunds: data.refunds || [],
-          taxes: data.taxes || []
-        }
-      };
-
-      // Convert to XML
-      reportContent = `<?xml version="1.0" encoding="${fiscalRegime.encoding}"?>
+    // Convert to XML
+    return `<?xml version="1.0" encoding="${fiscalRegime.encoding}"?>
 <report>
   <fiscalRegime>${xmlData.fiscalRegime}</fiscalRegime>
   <period>
@@ -627,13 +358,18 @@ function generateReport(data: any, fiscalRegime: any, fileFormat: string, separa
     <taxes>${JSON.stringify(xmlData.data.taxes)}</taxes>
   </data>
 </report>`;
-      break;
+  } else {
+    // For CSV and TXT formats
+    const rows = [
+      formatRow(requiredColumns),
+      ...getDataRows(data.orders || [], requiredColumns).map(formatRow),
+      ...getDataRows(data.customers || [], requiredColumns).map(formatRow),
+      ...getDataRows(data.refunds || [], requiredColumns).map(formatRow),
+      ...getDataRows(data.taxes || [], requiredColumns).map(formatRow)
+    ];
 
-    default:
-      throw new Error(`Unsupported file format: ${format}`);
+    return rows.join('\n');
   }
-
-  return reportContent;
 }
 
 // Helper function to calculate the next run time
@@ -698,11 +434,19 @@ async function scheduleImmediateTask(taskId: string, shopId: string, reportId: s
 }
 
 export default function ScheduleReport() {
-  const { shop } = useLoaderData<typeof loader>();
+  const { shop, data } = useLoaderData<typeof loader>();
   const submit = useSubmit();
   const navigate = useNavigate();
   const [toastActive, setToastActive] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+
+  useEffect(() => {
+    console.log("All data from services:", data);
+    console.log("Customers:", data.customers);
+    console.log("Orders:", data.orders);
+    console.log("Refunds:", data.refunds);
+    console.log("Taxes:", data.taxes);
+  }, [data]);
 
   // Report name state
   const [reportName, setReportName] = useState("");

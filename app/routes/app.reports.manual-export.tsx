@@ -22,13 +22,19 @@ import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import * as XLSX from 'xlsx';
 import { BiSaveBtn } from "../components/Buttons/BiSaveBtn";
+import { ShopifyCustomerService } from "../models/ShopifyCustomer.service";
+import { ShopifyOrderService } from "../models/ShopifyOrder.service";
+import { ShopifyRefundService } from "../models/ShopifyRefund.service";
+import { ShopifyTaxService } from "../models/ShopifyTax.service";
+import { MappingService } from "../services/mapping.service";
+import { ReportService } from "../services/report.service";
 
 interface DateRange {
   start: Date;
   end: Date;
 }
 
-// Define a type for the fiscal regime data from the JSON file
+// Define the fiscal regime data type based on the JSON structure
 interface FiscalRegimeData {
   code: string;
   name: string;
@@ -39,690 +45,610 @@ interface FiscalRegimeData {
   encoding: string;
   separator: string;
   requiredColumns: string[];
-  taxRates: any; // Use a more specific type if possible
+  taxRates: {
+    standard?: number;
+    reduced?: number;
+    superReduced?: number;
+    gst?: number;
+    pst?: Record<string, number>;
+    eLevy?: number;
+    varies?: string;
+  };
   compatibleSoftware: string[];
   exportFormats: string[];
   notes: string;
-  salesAccount?: string; // Add sales account field
+}
+
+interface FiscalRegimesData {
+  regimes: FiscalRegimeData[];
 }
 
 // Define a type for the fiscal regime data combined from Prisma and JSON
-type CombinedFiscalRegime = FiscalRegimePrisma & FiscalRegimeData;
+type CombinedFiscalRegime = {
+  id: string;
+  shopId: string;
+  code: string;
+  name: string;
+  description: string;
+  countries: string[];
+  currency: string;
+  fileFormat: string; // The fileFormat (from JSON, e.g., ".csv")
+  encoding: string;
+  separator: string;
+  requiredColumns: string[];
+  taxRates: any;
+  compatibleSoftware: string[];
+  notes: string;
+  companyName: string | null;
+  country: string | null;
+  vatRate: number | null;
+  salesAccount: string; // Always from Prisma FiscalConfiguration or default
+  createdAt: Date;
+  updatedAt: Date;
+  
+  // Transformed properties
+  exportFormats: ExportFormat[];
+  defaultFormat?: ExportFormat; // Optional, derived from Prisma or JSON's fileFormat
+};
 
-// Function to fetch orders from Shopify using GraphQL
-async function fetchOrders(session: any, startDate: string, endDate: string): Promise<any[]> {
-  const query = `
-    query GetOrders($startDate: DateTime!, $endDate: DateTime!) {
-      orders(first: 250, query: "created_at:>=$startDate created_at:<=$endDate") {
-        edges {
-          node {
-            id
-            name
-            createdAt
-            totalPriceSet {
-              shopMoney {
-                amount
-                currencyCode
-              }
-            }
-            totalTaxSet {
-              shopMoney {
-                amount
-                currencyCode
-              }
-            }
-            customer {
-              id
-              firstName
-              lastName
-              email
-            }
-            lineItems(first: 50) {
-              edges {
-                node {
-                  id
-                  title
-                  quantity
-                  originalUnitPriceSet {
-                    shopMoney {
-                      amount
-                      currencyCode
-                    }
-                  }
-                  taxLines {
-                    rate
-                    title
-                    priceSet {
-                      shopMoney {
-                        amount
-                        currencyCode
-                      }
-                    }
-                  }
-                }
-              }
-            }
-            transactions(first: 10) {
-              edges {
-                node {
-                  id
-                  status
-                  kind
-                  amountSet {
-                    shopMoney {
-                      amount
-                      currencyCode
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  `;
-
-  const response = await fetch(`https://${session.shop}/admin/api/2025-01/graphql.json`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Shopify-Access-Token': session.accessToken || '',
-    },
-    body: JSON.stringify({
-      query,
-      variables: {
-        startDate,
-        endDate,
-      },
-    }),
-  });
-
-  const data = await response.json();
-  return data.data?.orders?.edges?.map((edge: any) => edge.node) || [];
+// Update the interfaces
+interface ColumnMapping {
+  requiredColumn: string;
+  shopifyField: string;
+  description: string;
+  isRequired: boolean;
+  defaultValue?: string;
+  validation?: (value: any) => boolean;
 }
 
-// Function to fetch customers from Shopify using GraphQL
-async function fetchCustomers(session: any, startDate: string, endDate: string): Promise<any[]> {
-  const query = `
-    query GetCustomers($startDate: DateTime!, $endDate: DateTime!) {
-      customers(first: 250, query: "created_at:>=$startDate created_at:<=$endDate") {
-        edges {
-          node {
-            id
-            firstName
-            lastName
-            email
-            phone
-            createdAt
-            ordersCount
-            totalSpent
-            defaultAddress {
-              address1
-              address2
-              city
-              province
-              zip
-              country
-            }
-            tags
-          }
-        }
-      }
-    }
-  `;
-
-  const response = await fetch(`https://${session.shop}/admin/api/2025-01/graphql.json`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Shopify-Access-Token': session.accessToken || '',
-    },
-    body: JSON.stringify({
-      query,
-      variables: {
-        startDate,
-        endDate,
-      },
-    }),
-  });
-
-  const data = await response.json();
-  return data.data?.customers?.edges?.map((edge: any) => edge.node) || [];
+interface ReportMapping {
+  dataType: string;
+  columns: ColumnMapping[];
+  journalCode: string;
+  defaultAccount: string;
 }
 
-// Function to fetch refunds from Shopify using GraphQL
-async function fetchRefunds(session: any, startDate: string, endDate: string): Promise<any[]> {
-  const query = `
-    query GetRefunds($startDate: DateTime!, $endDate: DateTime!) {
-      refunds(first: 250, query: "created_at:>=$startDate created_at:<=$endDate") {
-        edges {
-          node {
-            id
-            createdAt
-            note
-            order {
-              id
-              name
-            }
-            refundLineItems(first: 50) {
-              edges {
-                node {
-                  id
-                  quantity
-                  restockType
-                  subtotalSet {
-                    shopMoney {
-                      amount
-                      currencyCode
-                    }
-                  }
-                  totalTaxSet {
-                    shopMoney {
-                      amount
-                      currencyCode
-                    }
-                  }
-                }
-              }
-            }
-            transactions(first: 10) {
-              edges {
-                node {
-                  id
-                  status
-                  kind
-                  amountSet {
-                    shopMoney {
-                      amount
-                      currencyCode
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  `;
+// Frontend helper functions for display purposes (mirroring backend logic)
+const defaultMappingsFrontend: Record<string, Record<string, string>> = {
+  ventes: {
+    'Date': 'created_at',
+    'Libellé': 'line_items[].title',
+    'Compte général': 'salesAccount',
+    'Débit': 'debit',
+    'Crédit': 'total_price',
+    'Numéro d\'écriture': 'entry_number',
+    'Journal': 'journal',
+    'Compte auxiliaire': 'customer.id',
+    'Référence de pièce': 'name'
+  },
+  clients: {
+    'Date': 'createdAt',
+    'Libellé': 'default_address.company',
+    'Compte général': 'customerAccount',
+    'Compte auxiliaire': 'id',
+    'Débit': 'balance',
+    'Crédit': '0',
+    'Numéro d\'écriture': 'entry_number',
+    'Journal': 'journal'
+  },
+  remboursements: {
+    'Date': 'created_at',
+    'Libellé': 'note',
+    'Compte général': 'refundAccount',
+    'Débit': 'total_refunded',
+    'Crédit': '0',
+    'Numéro d\'écriture': 'entry_number',
+    'Journal': 'journal'
+  },
+  taxes: {
+    'Date': 'created_at',
+    'Libellé': 'tax_lines[].title',
+    'Compte général': 'taxAccount',
+    'Débit': '0',
+    'Crédit': 'total_tax',
+    'Numéro d\'écriture': 'entry_number',
+    'Journal': 'journal'
+  }
+};
 
-  const response = await fetch(`https://${session.shop}/admin/api/2025-01/graphql.json`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Shopify-Access-Token': session.accessToken || '',
-    },
-    body: JSON.stringify({
-      query,
-      variables: {
-        startDate,
-        endDate,
-      },
-    }),
+const columnDescriptionsFrontend: Record<string, string> = {
+  'Date': 'Date de la transaction',
+  'Libellé': 'Description de l\'opération',
+  'Compte général': 'Compte comptable principal',
+  'Compte auxiliaire': 'Compte client/fournisseur',
+  'Débit': 'Montant au débit',
+  'Crédit': 'Montant au crédit',
+  'Numéro d\'écriture': 'Numéro unique de l\'écriture',
+  'Journal': 'Code du journal comptable',
+  'Référence de pièce': 'Référence du document'
+};
+
+function generateMappingsFrontend(fiscalRegime: any, dataType: string): ColumnMapping[] {
+  const typeMapping = defaultMappingsFrontend[dataType] || {};
+  const columns: ColumnMapping[] = fiscalRegime.requiredColumns.map((column: string) => {
+    const shopifyField = typeMapping[column] || '';
+    return {
+      requiredColumn: column,
+      shopifyField,
+      description: columnDescriptionsFrontend[column] || column,
+      isRequired: true,
+      // defaultValue and validation are not strictly needed for display, but included for completeness
+      defaultValue: '',
+      validation: undefined
+    };
   });
-
-  const data = await response.json();
-  return data.data?.refunds?.edges?.map((edge: any) => edge.node) || [];
+  return columns;
 }
 
-// Function to fetch taxes from Shopify using GraphQL
-async function fetchTaxes(session: any, startDate: string, endDate: string): Promise<any[]> {
-  const query = `
-    query GetTaxes($startDate: DateTime!, $endDate: DateTime!) {
-      shopifyPaymentsTransactions(first: 250, query: "created_at:>=$startDate created_at:<=$endDate") {
-        edges {
-          node {
-            id
-            createdAt
-            status
-            kind
-            amountSet {
-              shopMoney {
-                amount
-                currencyCode
-              }
-            }
-            feeSet {
-              shopMoney {
-                amount
-                currencyCode
-              }
-            }
-            taxSet {
-              shopMoney {
-                amount
-                currencyCode
-              }
-            }
-            order {
-              id
-              name
-            }
-          }
-        }
-      }
-    }
-  `;
-
-  const response = await fetch(`https://${session.shop}/admin/api/2025-01/graphql.json`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Shopify-Access-Token': session.accessToken || '',
+// Function to generate mappings based on fiscal regime
+function generateMappings(fiscalRegime: any, dataType: string): ReportMapping {
+  // Default field mappings for different data types
+  const defaultMappings: Record<string, Record<string, string>> = {
+    ventes: {
+      'Date': 'created_at',
+      'Libellé': 'line_items[].title',
+      'Compte général': 'salesAccount',
+      'Débit': 'debit',
+      'Crédit': 'total_price',
+      'Numéro d\'écriture': 'entry_number',
+      'Journal': 'journal',
+      'Compte auxiliaire': 'customer.id',
+      'Référence de pièce': 'name'
     },
-    body: JSON.stringify({
-      query,
-      variables: {
-        startDate,
-        endDate,
-      },
-    }),
-  });
-
-  const data = await response.json();
-  return data.data?.shopifyPaymentsTransactions?.edges?.map((edge: any) => edge.node) || [];
-}
-
-// Placeholder function for generating the report content
-function generateReport(data: any, fiscalRegime: CombinedFiscalRegime, fileFormat: string, separator: string): string | Buffer {
-  console.log("Generating report...");
-  console.log("Data:", data);
-  console.log("Fiscal Regime:", fiscalRegime);
-  console.log("File Format:", fileFormat);
-  console.log("Separator:", separator);
-
-  let reportContent: string | Buffer = "";
-
-  // Helper function to format a row of data
-  const formatRow = (row: string[]) => row.join(separator);
-
-  // Helper function to get data rows with sales account
-  const getDataRows = (data: any[], columns: string[]) => {
-    return data.map(item => {
-      const row: string[] = [];
-      columns.forEach(col => {
-        if (col === 'salesAccount') {
-          row.push(fiscalRegime.salesAccount || '701');
-        } else {
-          const value = item[col as keyof typeof item];
-          row.push(value != null ? String(value) : '');
-        }
-      });
-      return row;
-    });
+    clients: {
+      'Date': 'createdAt',
+      'Libellé': 'default_address.company',
+      'Compte général': 'customerAccount',
+      'Compte auxiliaire': 'id',
+      'Débit': 'balance',
+      'Crédit': '0',
+      'Numéro d\'écriture': 'entry_number',
+      'Journal': 'journal'
+    },
+    remboursements: {
+      'Date': 'created_at',
+      'Libellé': 'note',
+      'Compte général': 'refundAccount',
+      'Débit': 'total_refunded',
+      'Crédit': '0',
+      'Numéro d\'écriture': 'entry_number',
+      'Journal': 'journal'
+    },
+    taxes: {
+      'Date': 'created_at',
+      'Libellé': 'tax_lines[].title',
+      'Compte général': 'taxAccount',
+      'Débit': '0',
+      'Crédit': 'total_tax',
+      'Numéro d\'écriture': 'entry_number',
+      'Journal': 'journal'
+    }
   };
 
-  // Get the format without the dot
-  const format = fileFormat.replace('.', '').toUpperCase();
+  // Default descriptions for columns
+  const columnDescriptions: Record<string, string> = {
+    'Date': 'Date de la transaction',
+    'Libellé': 'Description de l\'opération',
+    'Compte général': 'Compte comptable principal',
+    'Compte auxiliaire': 'Compte client/fournisseur',
+    'Débit': 'Montant au débit',
+    'Crédit': 'Montant au crédit',
+    'Numéro d\'écriture': 'Numéro unique de l\'écriture',
+    'Journal': 'Code du journal comptable',
+    'Référence de pièce': 'Référence du document'
+  };
 
-  switch (format) {
-    case "CSV":
-    case "TXT":
-      // For both CSV and TXT, we use the same format but with different separators
-      const rows: string[][] = [];
-      // Add header row
-      rows.push(fiscalRegime.requiredColumns);
-      
-      // Add data rows from orders
-      if (data.orders) {
-        rows.push(...getDataRows(data.orders, fiscalRegime.requiredColumns));
-      }
-      // Add data rows from customers
-      if (data.customers) {
-        rows.push(...getDataRows(data.customers, fiscalRegime.requiredColumns));
-      }
-      // Add data rows from refunds
-      if (data.refunds) {
-        rows.push(...getDataRows(data.refunds, fiscalRegime.requiredColumns));
-      }
-      // Add data rows from taxes
-      if (data.taxes) {
-        rows.push(...getDataRows(data.taxes, fiscalRegime.requiredColumns));
-      }
+  // Get the default mapping for the data type
+  const typeMapping = defaultMappings[dataType] || {};
 
-      // Join all rows with newlines
-      reportContent = rows.map(formatRow).join('\n');
-      break;
+  // Generate column mappings based on required columns
+  const columns: ColumnMapping[] = fiscalRegime.requiredColumns.map((column: string) => {
+    const shopifyField = typeMapping[column] || '';
+    
+    return {
+      requiredColumn: column,
+      shopifyField,
+      description: columnDescriptions[column] || column,
+      isRequired: true,
+      defaultValue: getDefaultValue(column, dataType, fiscalRegime),
+      validation: getValidation(column)
+    };
+  });
 
-    case "XLSX":
-      // Create a new workbook
-      const workbook = XLSX.utils.book_new();
-      
-      // Create worksheets for each data type
-      if (data.orders) {
-        const ordersData = [fiscalRegime.requiredColumns, ...getDataRows(data.orders, fiscalRegime.requiredColumns)];
-        const ordersSheet = XLSX.utils.aoa_to_sheet(ordersData);
-        XLSX.utils.book_append_sheet(workbook, ordersSheet, "Orders");
-      }
-      
-      if (data.customers) {
-        const customersData = [fiscalRegime.requiredColumns, ...getDataRows(data.customers, fiscalRegime.requiredColumns)];
-        const customersSheet = XLSX.utils.aoa_to_sheet(customersData);
-        XLSX.utils.book_append_sheet(workbook, customersSheet, "Customers");
-      }
-      
-      if (data.refunds) {
-        const refundsData = [fiscalRegime.requiredColumns, ...getDataRows(data.refunds, fiscalRegime.requiredColumns)];
-        const refundsSheet = XLSX.utils.aoa_to_sheet(refundsData);
-        XLSX.utils.book_append_sheet(workbook, refundsSheet, "Refunds");
-      }
-      
-      if (data.taxes) {
-        const taxesData = [fiscalRegime.requiredColumns, ...getDataRows(data.taxes, fiscalRegime.requiredColumns)];
-        const taxesSheet = XLSX.utils.aoa_to_sheet(taxesData);
-        XLSX.utils.book_append_sheet(workbook, taxesSheet, "Taxes");
-      }
+  return {
+    dataType,
+    columns,
+    journalCode: getJournalCode(dataType),
+    defaultAccount: getDefaultAccount(dataType, fiscalRegime)
+  };
+}
 
-      // Generate the Excel file as a buffer
-      reportContent = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-      break;
-
-    case "JSON":
-      // Create a structured JSON object
-      const jsonData = {
-        fiscalRegime: fiscalRegime.code,
-        period: {
-          start: data.startDate,
-          end: data.endDate
-        },
-        data: {
-          orders: data.orders || [],
-          customers: data.customers || [],
-          refunds: data.refunds || [],
-          taxes: data.taxes || []
-        }
-      };
-      reportContent = JSON.stringify(jsonData, null, 2);
-      break;
-
-    case "XML":
-      // Create XML structure
-      const xmlData = {
-        fiscalRegime: fiscalRegime.code,
-        period: {
-          start: data.startDate,
-          end: data.endDate
-        },
-        data: {
-          orders: data.orders || [],
-          customers: data.customers || [],
-          refunds: data.refunds || [],
-          taxes: data.taxes || []
-        }
-      };
-
-      // Convert to XML (you might want to use a proper XML library in production)
-      reportContent = `<?xml version="1.0" encoding="${fiscalRegime.encoding}"?>
-<report>
-  <fiscalRegime>${xmlData.fiscalRegime}</fiscalRegime>
-  <period>
-    <start>${xmlData.period.start}</start>
-    <end>${xmlData.period.end}</end>
-  </period>
-  <data>
-    <orders>${JSON.stringify(xmlData.data.orders)}</orders>
-    <customers>${JSON.stringify(xmlData.data.customers)}</customers>
-    <refunds>${JSON.stringify(xmlData.data.refunds)}</refunds>
-    <taxes>${JSON.stringify(xmlData.data.taxes)}</taxes>
-  </data>
-</report>`;
-      break;
-
+// Helper function to get default values
+function getDefaultValue(column: string, dataType: string, fiscalRegime: any): string {
+  switch (column) {
+    case 'Compte général':
+      return fiscalRegime.salesAccount || '701000';
+    case 'Débit':
+      return dataType === 'ventes' ? '0' : '';
+    case 'Crédit':
+      return dataType === 'ventes' ? '' : '0';
+    case 'Journal':
+      return getJournalCode(dataType);
     default:
-      throw new Error(`Unsupported file format: ${format}`);
+      return '';
+  }
+}
+
+// Helper function to get validation rules
+function getValidation(column: string): ((value: any) => boolean) | undefined {
+  switch (column) {
+    case 'Date':
+      return (value) => !isNaN(Date.parse(value));
+    case 'Débit':
+    case 'Crédit':
+      return (value) => !isNaN(parseFloat(value));
+    default:
+      return undefined;
+  }
+}
+
+// Helper function to get journal code
+function getJournalCode(dataType: string): string {
+  switch (dataType) {
+    case 'ventes':
+      return 'Ventes';
+    case 'clients':
+      return 'Clients';
+    case 'remboursements':
+      return 'Remboursements';
+    case 'taxes':
+      return 'Taxes';
+    default:
+      return 'Divers';
+  }
+}
+
+// Helper function to get default account
+function getDefaultAccount(dataType: string, fiscalRegime: any): string {
+  switch (dataType) {
+    case 'ventes':
+      return fiscalRegime.salesAccount || '701000';
+    case 'clients':
+      return fiscalRegime.customerAccount || '411000';
+    case 'remboursements':
+      return fiscalRegime.refundAccount || '708000';
+    case 'taxes':
+      return fiscalRegime.taxAccount || '445000';
+    default:
+      return '';
+  }
+}
+
+// Add this function to validate and map the data
+function validateAndMapData(data: any[], mapping: ReportMapping): any[] {
+  const mappedData: any[] = [];
+  let entryNumber = 1;
+
+  if (Array.isArray(data)) {
+    data.forEach(item => {
+      const mappedRow: Record<string, string> = {};
+      
+      mapping.columns.forEach(column => {
+        let value: string;
+
+        // Handle special cases
+        if (column.shopifyField === 'entry_number') {
+          value = `ENT-${entryNumber.toString().padStart(6, '0')}`;
+          entryNumber++;
+        } else if (column.shopifyField === 'journal') {
+          value = mapping.journalCode;
+        } else if (column.shopifyField === 'salesAccount') {
+          value = column.defaultValue || '';
+        } else if (column.shopifyField === 'debit') {
+          value = '0';
+        } else if (column.shopifyField === 'total_price') {
+          // Calculate price without tax
+          const totalPrice = parseFloat(item.total_price || '0');
+          const totalTax = parseFloat(item.total_tax || '0');
+          value = (totalPrice - totalTax).toFixed(2);
+        } else {
+          // Handle nested fields (e.g., line_items[].title)
+          const fieldParts = column.shopifyField.split('.');
+          value = fieldParts.reduce((obj: any, part: string) => {
+            if (part.includes('[]')) {
+              const arrayField = part.replace('[]', '');
+              return obj[arrayField]?.[0] || obj[arrayField] || '';
+            }
+            return obj[part] || '';
+          }, item);
+        }
+
+        // Apply validation if exists
+        if (column.validation && !column.validation(value)) {
+          throw new Error(`Invalid value for ${column.requiredColumn}: ${value}`);
+        }
+
+        mappedRow[column.requiredColumn] = value || column.defaultValue || '';
+      });
+
+      mappedData.push(mappedRow);
+    });
   }
 
-  return reportContent;
+  return mappedData;
 }
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
+
   const shop = await prisma.shop.findUnique({
     where: { shopifyDomain: session.shop },
-    select: { fiscalConfig: true },
+    include: { fiscalConfig: true }
   });
 
-  const today = new Date();
-  const initialEndDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-  const initialStartDate = new Date(today.getFullYear(), today.getMonth(), 1);
-
-  // Find the full fiscal regime data from the JSON based on the Prisma regime code
-  let fiscalRegimeDetails: FiscalRegimeData | undefined;
-  const prismaFiscalRegime = shop?.fiscalConfig; // Extract for clearer check
-  if (prismaFiscalRegime?.code) { // Check if prismaFiscalRegime exists and has a code
-    fiscalRegimeDetails = fiscalRegimesData.regimes.find(r => r.code === prismaFiscalRegime.code);
+  if (!shop || !shop.fiscalConfig) {
+    throw new Error("Shop or fiscal configuration not found");
   }
 
-  // Combine Prisma data with JSON data
-  const combinedFiscalRegime: CombinedFiscalRegime | null = (prismaFiscalRegime && fiscalRegimeDetails)
-    ? { ...prismaFiscalRegime, ...fiscalRegimeDetails }
-    : null;
+  const fiscalConfig = shop.fiscalConfig;
 
-  return json({
-    fiscalRegime: combinedFiscalRegime,
-    regimes: fiscalRegimesData.regimes,
-    initialDateRange: {
-      start: initialStartDate.toISOString(), // Send as ISO string
-      end: initialEndDate.toISOString(),     // Send as ISO string
-    }
-  });
+  const matchingFiscalRegimeData = fiscalRegimesData.regimes.find(
+    (fr: FiscalRegimeData) => fr.code === fiscalConfig.code
+  );
+
+  if (!matchingFiscalRegimeData) {
+    throw new Error("Fiscal regime data not found in JSON for the shop's fiscal code.");
+  }
+
+  let finalDefaultFormat: ExportFormat | undefined;
+  if (fiscalConfig.defaultFormat) {
+    finalDefaultFormat = fiscalConfig.defaultFormat;
+  } else if (matchingFiscalRegimeData.fileFormat) {
+    finalDefaultFormat = matchingFiscalRegimeData.fileFormat.replace('.', '').toUpperCase() as ExportFormat;
+  }
+
+  let finalExportFormats: ExportFormat[];
+  if (fiscalConfig.exportFormats && fiscalConfig.exportFormats.length > 0) {
+    // Map Prisma's string[] to ExportFormat[]
+    finalExportFormats = fiscalConfig.exportFormats.map((format: string) => format.toUpperCase() as ExportFormat);
+  } else {
+    // Map JSON's string[] to ExportFormat[]
+    finalExportFormats = matchingFiscalRegimeData.exportFormats.map(
+      (format: string) => format.toUpperCase() as ExportFormat
+    );
+  }
+
+  // Construct combinedFiscalRegime explicitly, assigning each property
+  const combinedFiscalRegime: CombinedFiscalRegime = {
+    id: fiscalConfig.id,
+    shopId: fiscalConfig.shopId,
+    code: matchingFiscalRegimeData.code,
+    name: matchingFiscalRegimeData.name,
+    description: matchingFiscalRegimeData.description,
+    countries: matchingFiscalRegimeData.countries,
+    currency: matchingFiscalRegimeData.currency,
+    fileFormat: matchingFiscalRegimeData.fileFormat,
+    encoding: matchingFiscalRegimeData.encoding,
+    separator: matchingFiscalRegimeData.separator,
+    requiredColumns: matchingFiscalRegimeData.requiredColumns,
+    taxRates: matchingFiscalRegimeData.taxRates,
+    compatibleSoftware: matchingFiscalRegimeData.compatibleSoftware,
+    notes: matchingFiscalRegimeData.notes,
+    companyName: fiscalConfig.companyName,
+    country: fiscalConfig.country,
+    vatRate: fiscalConfig.vatRate,
+    salesAccount: fiscalConfig.salesAccount,
+    createdAt: fiscalConfig.createdAt,
+    updatedAt: fiscalConfig.updatedAt,
+    exportFormats: finalExportFormats,
+    defaultFormat: finalDefaultFormat,
+  };
+
+  return json({ fiscalRegime: combinedFiscalRegime });
 };
 
 export const action = async ({ request }: LoaderFunctionArgs) => {
-  try {
-    const { session } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
     const formData = await request.formData();
     
-    const startDate = new Date(formData.get("startDate") as string);
-    const endDate = new Date(formData.get("endDate") as string);
-    const selectedTypes = JSON.parse(formData.get("selectedTypes") as string);
-    const fileFormat = formData.get("fileFormat") as string;
-    const software = formData.get("software") as string;
-    const fileName = formData.get("fileName") as string;
-    const fiscalRegimeCode = formData.get("fiscalRegimeCode") as string;
+  console.log("Server received formData:", Object.fromEntries(formData.entries()));
 
-    // Find the fiscal regime details from the JSON data
-    const fiscalRegimeDetails = fiscalRegimesData.regimes.find(r => r.code === fiscalRegimeCode);
-    
-    if (!fiscalRegimeDetails) {
-      // Create a failed report record
-      const report = await prisma.report.create({
-        data: {
-          type: "manual",
-          status: ReportStatus.ERROR,
-          format: fileFormat as ExportFormat,
-          startDate,
-          endDate,
-          shopId: (await prisma.shop.findUnique({ where: { shopifyDomain: session.shop } }))?.id || '',
-          fileSize: 0,
-          fileName,
-          errorMessage: "Invalid fiscal regime selected"
-        }
-      });
-      return json({ error: "Invalid fiscal regime selected" }, { status: 400 });
-    }
+  const startDate = formData.get("startDate") as string;
+  const endDate = formData.get("endDate") as string;
+  const fiscalRegimeId = formData.get("fiscalRegimeId") as string; // Corrected field name
+  const format = formData.get("format") as ExportFormat;
+  const dataTypesRaw = formData.get("dataTypes") as string;
 
-    // Get the shop and fiscal regime from the database
-    const shop = await prisma.shop.findUnique({
-      where: { shopifyDomain: session.shop },
-      include: { fiscalConfig: true }
+  let dataTypes: string[] = [];
+  try {
+    const parsedDataTypes = JSON.parse(dataTypesRaw);
+    dataTypes = Object.keys(parsedDataTypes).filter(key => parsedDataTypes[key] === true);
+    console.log("Parsed dataTypes:", dataTypes);
+  } catch (e) {
+    console.error("Error parsing dataTypes:", e);
+    return json({ error: "Invalid dataTypes format" }, { status: 400 });
+  }
+
+  console.log("Validation check: startDate=", startDate, "endDate=", endDate, "fiscalRegimeId=", fiscalRegimeId, "format=", format, "dataTypes.length=", dataTypes.length);
+
+  if (!startDate || !endDate || !fiscalRegimeId || !format || dataTypes.length === 0) {
+    console.error("Missing required fields:", { startDate, endDate, fiscalRegimeId, format, dataTypesLength: dataTypes.length });
+    return json({ error: "Missing required fields" }, { status: 400 });
+  }
+
+  try {
+    // Get fiscal regime configuration
+    console.log("Fetching fiscal regime with ID:", fiscalRegimeId);
+    const fiscalRegime = await prisma.fiscalConfiguration.findUnique({
+      where: { id: fiscalRegimeId },
     });
 
-    if (!shop || !shop.fiscalConfig) {
-      // Create a failed report record
-      const report = await prisma.report.create({
-        data: {
-          type: "manual",
-          status: ReportStatus.ERROR,
-          format: fileFormat as ExportFormat,
-          startDate,
-          endDate,
-          shopId: shop?.id || '',
-          fileSize: 0,
-          fileName,
-          errorMessage: "Shop or fiscal regime not found"
-        }
-      });
-      return json({ error: "Shop or fiscal regime not found" }, { status: 400 });
+    if (!fiscalRegime) {
+      console.error("Fiscal regime not found for ID:", fiscalRegimeId);
+      return json({ error: "Fiscal regime not found" }, { status: 404 });
     }
 
-    // Validate the format
-    if (!Object.values(ExportFormat).includes(fileFormat as ExportFormat)) {
-      // Create a failed report record
-      const report = await prisma.report.create({
-        data: {
-          type: "manual",
-          status: ReportStatus.ERROR,
-          format: fileFormat as ExportFormat,
-          startDate,
-          endDate,
-          shopId: shop.id,
-          fileSize: 0,
-          fileName,
-          errorMessage: `Invalid export format: ${fileFormat}`
-        }
-      });
-      return json({ 
-        error: "Invalid export format", 
-        details: {
-          received: fileFormat,
-          available: Object.values(ExportFormat)
-        }
-      }, { status: 400 });
+    console.log("Found fiscal regime:", fiscalRegime.code);
+
+    // Get fiscal regime data from JSON
+    const fiscalRegimeData = (fiscalRegimesData as FiscalRegimesData).regimes.find(
+      (regime) => regime.code === fiscalRegime.code
+    );
+
+    if (!fiscalRegimeData) {
+      console.error("Fiscal regime data not found in JSON for code:", fiscalRegime.code);
+      return json({ error: "Fiscal regime data not found" }, { status: 404 });
     }
 
-    // Create a new report record
+    // Combine fiscal regime data
+    const combinedFiscalRegime: CombinedFiscalRegime = {
+      ...fiscalRegime,
+      ...fiscalRegimeData,
+      exportFormats: fiscalRegime.exportFormats as ExportFormat[],
+      defaultFormat: fiscalRegime.defaultFormat || undefined,
+    };
+
+    console.log("Combined fiscal regime data:", combinedFiscalRegime);
+
+    // Fetch data based on selected data types
+    const data: Record<string, any[]> = {};
+
+    for (const dataType of dataTypes) {
+      console.log(`Fetching data for type: ${dataType} from ${startDate} to ${endDate}`);
+      switch (dataType) {
+        case "ventes":
+          data[dataType] = await ShopifyOrderService.getOrders(admin, startDate, endDate) || [];
+          break;
+        case "clients":
+          data[dataType] = await ShopifyCustomerService.getCustomers(admin, startDate, endDate) || [];
+          break;
+        case "remboursements":
+          data[dataType] = await ShopifyRefundService.getRefunds(admin, startDate, endDate) || [];
+          break;
+        case "taxes":
+          data[dataType] = await ShopifyTaxService.getTaxes(admin, startDate, endDate) || [];
+          break;
+      }
+    }
+
+    // Generate reports for each data type
+    const reports: Record<string, string | Buffer> = {};
+    const fileNames: Record<string, string> = {};
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+
+    for (const dataType of dataTypes) {
+      const reportContent = ReportService.generateReport(
+        data[dataType],
+        fiscalRegime.code,
+        format,
+        dataType,
+        fiscalRegime.separator
+      );
+
+      reports[dataType] = reportContent;
+      fileNames[dataType] = `${dataType}_${timestamp}.${format.toLowerCase()}`;
+    }
+
+    // Create export directory if it doesn't exist
+    const exportDir = join(process.cwd(), "reports"); // Changed to 'reports' directory
+    await mkdir(exportDir, { recursive: true });
+
+    // Save reports to files
+    for (const [dataType, reportContent] of Object.entries(reports)) {
+      const filePath = join(exportDir, fileNames[dataType]);
+      await writeFile(filePath, reportContent);
+    }
+
+    // Create report record in database
     const report = await prisma.report.create({
       data: {
         type: "manual",
-        dataType: selectedTypes.ventes ? 'orders' : selectedTypes.clients ? 'customers' : selectedTypes.remboursements ? 'refunds' : selectedTypes.taxes ? 'taxes' : '',
-        status: ReportStatus.PROCESSING,
-        format: fileFormat as ExportFormat,
-        startDate,
-        endDate,
-        shopId: shop.id,
+        dataType: dataTypes.join(","),
+        shopId: session.shop,
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+        format: format,
+        status: ReportStatus.PROCESSING, // Start with PROCESSING status
         fileSize: 0,
-        fileName,
-      }
+        fileName: Object.values(fileNames).join(","),
+        filePath: join(exportDir, `${Object.values(fileNames).join(",")}.${format.toLowerCase()}`), // Store complete file path
+      },
     });
 
     try {
-      let fetchedData: any = {};
+      // Determine which report to return for download (e.g., the first one)
+      const firstDataType = dataTypes[0];
+      const reportContentToDownload = reports[firstDataType];
+      const fileNameToDownload = formData.get("fileName") as string;
 
-      // Fetch data based on selected types
-      if (selectedTypes.ventes) {
-        fetchedData.orders = await fetchOrders(session, startDate.toISOString(), endDate.toISOString());
+      if (!reportContentToDownload) {
+        // Update report status to ERROR if no content was generated
+        await prisma.report.update({
+          where: { id: report.id },
+          data: {
+            status: ReportStatus.ERROR,
+            errorMessage: "Failed to generate report content"
+          }
+        });
+        throw new Error("Failed to generate report content");
       }
-      if (selectedTypes.clients) {
-        fetchedData.customers = await fetchCustomers(session, startDate.toISOString(), endDate.toISOString());
+
+      // Write the report content to file
+      if (!report.filePath) {
+        throw new Error("Report file path is not set");
       }
-      if (selectedTypes.remboursements) {
-        fetchedData.refunds = await fetchRefunds(session, startDate.toISOString(), endDate.toISOString());
-      }
-      if (selectedTypes.taxes) {
-        fetchedData.taxes = await fetchTaxes(session, startDate.toISOString(), endDate.toISOString());
-      }
+      await writeFile(report.filePath, reportContentToDownload);
 
-      // Generate the report content
-      const reportContent = generateReport(
-        fetchedData,
-        fiscalRegimeDetails as CombinedFiscalRegime,
-        fileFormat,
-        fiscalRegimeDetails.separator
-      );
-
-      // Create reports directory if it doesn't exist
-      const reportsDir = join(process.cwd(), "reports");
-      await mkdir(reportsDir, { recursive: true });
-
-      // Store the file with the custom filename
-      const filePath = join(reportsDir, fileName);
-      await writeFile(filePath, reportContent);
-
-      // Update the report record with the file path and completed status
+      // Update report status to COMPLETED if everything went well
       await prisma.report.update({
         where: { id: report.id },
         data: {
           status: ReportStatus.COMPLETED,
-          filePath,
-          fileSize: Buffer.byteLength(reportContent)
+          fileSize: Buffer.byteLength(reportContentToDownload)
         }
       });
 
-      // Set appropriate headers for file download
-      const headers = new Headers();
-      const contentType = {
-        ".csv": "text/csv",
-        ".json": "application/json",
-        ".txt": "text/plain",
-        ".xml": "application/xml",
-        ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-      }[fileFormat] || "application/octet-stream";
-      
-      headers.set("Content-Type", contentType);
-      headers.set("Content-Disposition", `attachment; filename="${fileName}"`);
-      headers.set("Content-Length", Buffer.byteLength(reportContent).toString());
-      headers.set("Cache-Control", "no-cache");
-      headers.set("Pragma", "no-cache");
+      const contentTypeMap: Record<ExportFormat, string> = {
+        CSV: "text/csv",
+        XML: "application/xml",
+        XLSX: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        TXT: "text/plain",
+        JSON: "application/json",
+        PDF: "application/pdf",
+      };
 
-      // Return the report content as a downloadable file
-      return new Response(reportContent, { 
-        headers,
-        status: 200
+      const contentType = contentTypeMap[format];
+
+      return new Response(reportContentToDownload, {
+        status: 200,
+        headers: {
+          "Content-Type": contentType,
+          "Content-Disposition": `attachment; filename="${fileNameToDownload}"`, // Use the filename provided by the client
+        },
       });
-
     } catch (error) {
-      // Update the report record with failed status and error message
-      await prisma.report.update({
-        where: { id: report.id },
-        data: {
-          status: ReportStatus.ERROR,
-          errorMessage: error instanceof Error ? error.message : String(error)
-        }
-      });
-
-      throw error; // Re-throw to be caught by outer try-catch
+      console.error('Error downloading report:', error);
+      alert(error instanceof Error ? error.message : 'An error occurred while generating the report');
+      return json({ error: "Failed to generate report" }, { status: 500 });
     }
-
   } catch (error) {
-    console.error('Error in manual export action:', error);
-    return json({ 
-      error: "An error occurred while processing your request",
-      details: error instanceof Error ? error.message : String(error)
-    }, { status: 500 });
+    console.error("Error generating report:", error);
+    return json({ error: "Failed to generate report" }, { status: 500 });
   }
 };
 
 export default function ManualExportPage() {
-  const { fiscalRegime, regimes, initialDateRange } = useLoaderData<typeof loader>();
-  const submit = useSubmit();
+  const { fiscalRegime } = useLoaderData<typeof loader>();
 
-  // Parse dates back from ISO strings
-  const initialDates: DateRange = {
-    start: new Date(initialDateRange.start),
-    end: new Date(initialDateRange.end),
-  };
-
-  const [selectedDates, setSelectedDates] = useState<DateRange>(initialDates);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-
-  const handleMonthChange = useCallback(
-    (month: number, year: number) => {
-      const start = new Date(year, month, 1);
-      const end = new Date(year, month + 1, 0);
-      setSelectedDates({ start, end });
-    },
-    [setSelectedDates],
-  );
-
-  const handleDateSelection = useCallback(
-    ({ end, start }: { start: Date, end: Date }) => {
-      setSelectedDates({ start, end });
-      setShowDatePicker(false);
-    },
-    [setSelectedDates, setShowDatePicker],
-  );
+  const [selectedDates, setSelectedDates] = useState<DateRange>(() => {
+    const today = new Date();
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    return { start: startOfMonth, end: endOfMonth };
+  });
+  // Add state for current month and year displayed in DatePicker
+  const [currentMonth, setCurrentMonth] = useState(selectedDates.start.getMonth());
+  const [currentYear, setCurrentYear] = useState(selectedDates.start.getFullYear());
 
   const [dataTypes, setDataTypes] = useState({
     ventes: false,
@@ -730,60 +656,114 @@ export default function ManualExportPage() {
     remboursements: false,
     taxes: false,
   });
-
-  const handleDataTypeChange = useCallback((type: string, checked: boolean) => {
-    setDataTypes(prev => ({ ...prev, [type]: checked }));
-  }, []);
-
-  const [selectedFormat, setSelectedFormat] = useState("");
-  const [selectedSoftware, setSelectedSoftware] = useState("");
+  // Initialize selectedFormat with a default from enum if fiscalRegime.defaultFormat is undefined
+  const [selectedFormat, setSelectedFormat] = useState<ExportFormat>(fiscalRegime?.defaultFormat || ExportFormat.CSV); 
+  const [selectedSoftware, setSelectedSoftware] = useState(fiscalRegime?.compatibleSoftware?.[0] || "");
   const [fileName, setFileName] = useState("");
 
-  // Access formats and software directly from the combined fiscalRegime object
-  const availableFormats = fiscalRegime?.exportFormats || [];
-  const availableSoftware = fiscalRegime?.compatibleSoftware || [];
+  const submit = useSubmit();
 
-  // Helper function to format date as YYYYMMDD
+  const handleMonthChange = useCallback(
+    (month: number, year: number) => {
+      setCurrentMonth(month);
+      setCurrentYear(year);
+    },
+    [],
+  );
+
+  // New useEffect to synchronize currentMonth and currentYear with selectedDates.start
+  useEffect(() => {
+    setCurrentMonth(selectedDates.start.getMonth());
+    setCurrentYear(selectedDates.start.getFullYear());
+  }, [selectedDates.start]); // Only re-run when selectedDates.start changes
+
+  useEffect(() => {
+    // This useEffect is now solely for filename and dropdown initializations.
+    const start = selectedDates.start;
+    const end = selectedDates.end;
+    const selectedTypeKeys = Object.entries(dataTypes)
+      .filter(([_, value]) => value === true)
+      .map(([key]) => key);
+
+    let generatedFileName = `ledgerxport-${fiscalRegime?.code || ""}`;
+    if (selectedTypeKeys.length > 0) {
+      generatedFileName += `-${selectedTypeKeys.join("_")}`;
+    }
+    // Remove leading dot from selectedFormat if it exists for filename generation
+    const cleanFormat = selectedFormat.startsWith('.') ? selectedFormat.substring(1) : selectedFormat;
+    generatedFileName += `-${formatDate(start)}-${formatDate(end)}.${cleanFormat.toLowerCase()}`;
+    setFileName(generatedFileName);
+
+    if (fiscalRegime?.compatibleSoftware && fiscalRegime.compatibleSoftware.length > 0) {
+      setSelectedSoftware(fiscalRegime.compatibleSoftware[0]);
+    }
+  }, [selectedDates, dataTypes, selectedFormat, fiscalRegime]);
+
   const formatDate = (date: Date) => {
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear();
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+    const day = d.getDate().toString().padStart(2, '0');
     return `${year}${month}${day}`;
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    // Validate that at least one data type is selected
+    if (!Object.values(dataTypes).some(value => value === true)) {
+      alert('Please select at least one data type');
+      return;
+    }
+
     const formData = new FormData();
     formData.append("startDate", selectedDates.start.toISOString());
     formData.append("endDate", selectedDates.end.toISOString());
-    formData.append("selectedTypes", JSON.stringify(dataTypes));
+    formData.append("fiscalRegimeId", fiscalRegime?.id || "");
+    formData.append("dataTypes", JSON.stringify(dataTypes));
     
-    // Ensure the format is properly formatted
-    const format = selectedFormat.startsWith('.') ? selectedFormat.substring(1) : selectedFormat;
-    console.log('Submitting format:', format); // Debug log
-    formData.append("fileFormat", format.toUpperCase()); // Send without the dot
+    // Format handling
+    const format = selectedFormat.replace('.', '').toUpperCase();
+    formData.append("format", format);
 
     formData.append("software", selectedSoftware);
     formData.append("fileName", fileName);
 
-    // Add active fiscal regime code to formData if available
-    if (fiscalRegime) {
-      formData.append("fiscalRegimeCode", fiscalRegime.code);
-    }
-
     try {
+      console.log("Submitting form data:", {
+        startDate: selectedDates.start.toISOString(),
+        endDate: selectedDates.end.toISOString(),
+        dataTypes,
+        format,
+        software: selectedSoftware,
+        fileName
+      });
+
       const response = await fetch('/app/reports/manual-export', {
         method: 'POST',
         body: formData
       });
 
+      console.log("Response status:", response.status);
+      console.log("Response headers:", Object.fromEntries(response.headers.entries()));
+
+      // Check if the response is JSON (error) or a file (success)
+      const contentType = response.headers.get('content-type');
+      console.log("Response content type:", contentType);
+
+      if (contentType && contentType.includes('application/json')) {
+        const errorData = await response.json();
+        console.error("Error response:", errorData);
+        throw new Error(errorData.error || errorData.details || 'Failed to generate report');
+      }
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to generate report');
+        throw new Error('Failed to generate report');
       }
 
       // Get the blob from the response
       const blob = await response.blob();
+      console.log("Received blob:", blob.size, "bytes");
       
       // Create a URL for the blob
       const url = window.URL.createObjectURL(blob);
@@ -791,7 +771,7 @@ export default function ManualExportPage() {
       // Create a temporary link element
       const link = document.createElement('a');
       link.href = url;
-      link.download = fileName;
+      link.download = fileName || `export-${formatDate(selectedDates.start)}-${formatDate(selectedDates.end)}.${format.toLowerCase()}`;
       
       // Append to body, click, and remove
       document.body.appendChild(link);
@@ -802,149 +782,107 @@ export default function ManualExportPage() {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Error downloading report:', error);
-      // TODO: Show error message to user
+      alert(error instanceof Error ? error.message : 'An error occurred while generating the report');
     }
   };
 
-  // Set initial values for dropdowns and file name using useEffect
-  useEffect(() => {
-    if (fiscalRegime) {
-      if (availableFormats.length > 0) {
-        setSelectedFormat(availableFormats[0]);
-      }
-      if (availableSoftware.length > 0) {
-        setSelectedSoftware(availableSoftware[0]);
-      }
-      // Only set initial filename if it's empty
-      if (!fileName) {
-        const startDateStr = formatDate(selectedDates.start);
-        const endDateStr = formatDate(selectedDates.end);
-        setFileName(`ledgerxport-${fiscalRegime.code.toLowerCase()}-${startDateStr}-${endDateStr}${fiscalRegime.fileFormat || '.csv'}`);
-      }
-    }
-  }, [fiscalRegime, availableFormats, availableSoftware, selectedDates]);
-
-  // Update file extension when format changes
-  useEffect(() => {
-    if (selectedFormat && fileName) {
-      // Get the current filename without extension
-      const baseName = fileName.split('.').slice(0, -1).join('.');
-      // Update only the extension
-      setFileName(`${baseName}${selectedFormat}`);
-    }
-  }, [selectedFormat]);
-
-  // Update filename when dates change
-  useEffect(() => {
-    if (fiscalRegime) {
-      const startDateStr = formatDate(selectedDates.start);
-      const endDateStr = formatDate(selectedDates.end);
-      const currentExtension = fileName.split('.').pop() || fiscalRegime.fileFormat || 'csv';
-      setFileName(`ledgerxport-${fiscalRegime.code.toLowerCase()}-${startDateStr}-${endDateStr}.${currentExtension}`);
-    }
-  }, [selectedDates, fiscalRegime]);
+  // Determine the selected data type for dynamic column display
+  const selectedDataTypeForDisplay = Object.entries(dataTypes).find(([, value]) => value === true)?.[0] as keyof typeof dataTypes | undefined;
+  const displayedColumns = selectedDataTypeForDisplay 
+    ? generateMappingsFrontend(fiscalRegime, selectedDataTypeForDisplay) 
+    : [];
 
   return (
-    <Page title="Export manuel">
+    <Page>
+      <ui-title-bar title="Export manuel" />
       <Layout>
         <Layout.Section>
           <Card>
             <form onSubmit={handleSubmit}>
               <FormLayout>
-                <Text variant="headingMd" as="h2">Période à exporter</Text>
-                <div style={{ position: 'relative' }}>
-                  <Button
-                    onClick={() => setShowDatePicker(!showDatePicker)}
-                    fullWidth
-                  >
-                    {`${selectedDates.start.toLocaleDateString()} – ${selectedDates.end.toLocaleDateString()}`}
-                  </Button>
-
-                  {showDatePicker && (
-                    <div style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: 0,
-                      zIndex: 10,
-                      backgroundColor: 'white',
-                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
-                      borderRadius: '4px',
-                      marginTop: '8px'
-                    }}>
                       <DatePicker
-                        month={selectedDates.start.getMonth()}
-                        year={selectedDates.start.getFullYear()}
+                  month={currentMonth}
+                  year={currentYear}
+                  onChange={newRange => {
+                    if (newRange.start && newRange.end) {
+                      setSelectedDates({ start: newRange.start, end: newRange.end });
+                    }
+                  }}
+                  onMonthChange={handleMonthChange}
                         selected={{ start: selectedDates.start, end: selectedDates.end }}
-                        onMonthChange={handleMonthChange}
-                        onChange={handleDateSelection}
+                  disableDatesBefore={new Date(2023, 0, 1)}
                         allowRange
-                        multiMonth={false}
-                        disableDatesAfter={new Date()}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <Text variant="headingMd" as="h2">Types de données</Text>
-                <LegacyStack vertical spacing="tight">
+                />
+                <Text as="h3" variant="headingMd">
+                  Types de données
+                </Text>
+                <LegacyStack vertical spacing="extraTight">
                   <Checkbox
                     label="Ventes"
                     checked={dataTypes.ventes}
-                    onChange={checked => handleDataTypeChange('ventes', checked)}
+                    onChange={(checked) => setDataTypes({ ...dataTypes, ventes: checked })}
                   />
                   <Checkbox
                     label="Clients"
                     checked={dataTypes.clients}
-                    onChange={checked => handleDataTypeChange('clients', checked)}
+                    onChange={(checked) => setDataTypes({ ...dataTypes, clients: checked })}
                   />
                   <Checkbox
                     label="Remboursements"
                     checked={dataTypes.remboursements}
-                    onChange={checked => handleDataTypeChange('remboursements', checked)}
+                    onChange={(checked) => setDataTypes({ ...dataTypes, remboursements: checked })}
                   />
                   <Checkbox
                     label="Taxes"
                     checked={dataTypes.taxes}
-                    onChange={checked => handleDataTypeChange('taxes', checked)}
+                    onChange={(checked) => setDataTypes({ ...dataTypes, taxes: checked })}
                   />
                 </LegacyStack>
-
-                {fiscalRegime && ( // Only show if fiscal regime is loaded
-                  <Text variant="bodyMd" as="p">Régime fiscal actif: {fiscalRegime.name} – {fiscalRegime.countries.join(', ')}</Text>
+                {fiscalRegime && (
+                  <Text as="h3" variant="headingMd">
+                    Régime fiscal actif: {fiscalRegime.name} - {fiscalRegime.countries.join(", ")}
+                  </Text>
                 )}
 
-                <Text variant="headingMd" as="h2">Format du fichier</Text>
+                {selectedDataTypeForDisplay && displayedColumns.length > 0 && (
+                  <Card>
+                    <Text as="h2" variant="headingMd">
+                      Colonnes attendues pour le rapport
+                    </Text>
+                    <FormLayout>
+                      {displayedColumns.map((col, index) => (
+                        <div key={index}>
+                          <Text as="p" variant="bodyMd">
+                            <strong>{col.requiredColumn}:</strong> {col.description}
+                          </Text>
+                        </div>
+                      ))}
+                    </FormLayout>
+                  </Card>
+                )}
+
                 <Select
-                  label="Select file format"
-                  labelHidden
-                  options={availableFormats.map(format => ({ label: format.toUpperCase().replace('.', ''), value: format }))}
-                  onChange={setSelectedFormat}
+                  label="Format du fichier"
+                  options={fiscalRegime?.exportFormats?.map((format: ExportFormat) => ({
+                    label: format,
+                    value: format
+                  })) || []}
+                  onChange={(value) => setSelectedFormat(value as ExportFormat)}
                   value={selectedFormat}
-                  disabled={availableFormats.length === 0}
                 />
-
-                <Text variant="headingMd" as="h2">Logiciel comptable cible</Text>
                 <Select
-                  label="Select accounting software"
-                  labelHidden
-                  options={availableSoftware.map(software => ({ label: software, value: software }))}
-                  onChange={setSelectedSoftware}
+                  label="Logiciel comptable cible"
+                  options={fiscalRegime?.compatibleSoftware?.map((software: string) => ({ label: software, value: software })) || []}
+                  onChange={(value) => setSelectedSoftware(value)}
                   value={selectedSoftware}
-                  disabled={availableSoftware.length === 0}
                 />
-
-                <Text variant="headingMd" as="h2">Nom du fichier exporté</Text>
                 <TextField
-                  label="Export file name"
-                  labelHidden
+                  label="Nom du fichier exporté"
                   value={fileName}
-                  onChange={setFileName}
+                  onChange={(value) => setFileName(value)}
                   autoComplete="off"
                 />
-
-                <div style={{ marginTop: '32px', textAlign: 'center' }}>
                   <BiSaveBtn title="Générer et télécharger l'export" />
-                </div>
               </FormLayout>
             </form>
           </Card>

@@ -77,7 +77,12 @@ export default function Dashboard() {
   };
 
   const rows = recentReports.map(report => [
-    report.fileName,
+    <div 
+      style={{ cursor: 'pointer' }} 
+      onClick={() => navigate(`/app/reports/view/${report.id}`)}
+    >
+      {report.fileName}
+    </div>,
     report.type,
     new Date(report.createdAt).toLocaleDateString(),
     new Date(report.updatedAt).toLocaleDateString(),
