@@ -29,6 +29,180 @@ import { ShopifyCustomerService } from "../models/ShopifyCustomer.service";
 import { ShopifyOrderService } from "../models/ShopifyOrder.service";
 import { ShopifyRefundService } from "../models/ShopifyRefund.service";
 import { ShopifyTaxService } from "../models/ShopifyTax.service";
+import { MappingService } from "../services/mapping.service";
+import { ReportService } from "../services/report.service";
+import type { ColumnMapping } from "../types/ColumnMappingType";
+import type { ReportMapping } from "../types/ReportMappingType";
+
+// Default mappings for different data types
+const defaultMappings: Record<string, Record<string, string>> = {
+  ventes: {
+    'Date': 'created_at',
+    'Libellé': 'line_items[].title',
+    'Compte général': 'salesAccount',
+    'Débit': 'debit',
+    'Crédit': 'total_price',
+    'Numéro d\'écriture': 'entry_number',
+    'Journal': 'journal',
+    'Compte auxiliaire': 'customer.id',
+    'Référence de pièce': 'name'
+  },
+  clients: {
+    'Date': 'createdAt',
+    'Libellé': 'default_address.company',
+    'Compte général': 'customerAccount',
+    'Compte auxiliaire': 'id',
+    'Débit': 'balance',
+    'Crédit': '0',
+    'Numéro d\'écriture': 'entry_number',
+    'Journal': 'journal'
+  },
+  remboursements: {
+    'Date': 'created_at',
+    'Libellé': 'note',
+    'Compte général': 'refundAccount',
+    'Débit': 'total_refunded',
+    'Crédit': '0',
+    'Numéro d\'écriture': 'entry_number',
+    'Journal': 'journal'
+  },
+  taxes: {
+    'Date': 'created_at',
+    'Libellé': 'tax_lines[].title',
+    'Compte général': 'taxAccount',
+    'Débit': '0',
+    'Crédit': 'total_tax',
+    'Numéro d\'écriture': 'entry_number',
+    'Journal': 'journal'
+  }
+};
+
+// Column descriptions
+const columnDescriptions: Record<string, string> = {
+  'Date': 'Date de la transaction',
+  'Libellé': 'Description de l\'opération',
+  'Compte général': 'Compte comptable principal',
+  'Compte auxiliaire': 'Compte client/fournisseur',
+  'Débit': 'Montant au débit',
+  'Crédit': 'Montant au crédit',
+  'Numéro d\'écriture': 'Numéro unique de l\'écriture',
+  'Journal': 'Code du journal comptable',
+  'Référence de pièce': 'Référence du document'
+};
+
+// Function to generate mappings based on fiscal regime
+function generateMappings(fiscalRegime: any, dataType: string): ReportMapping {
+  const typeMapping = defaultMappings[dataType] || {};
+  const columns: ColumnMapping[] = fiscalRegime.requiredColumns.map((column: string) => ({
+    requiredColumn: column,
+    shopifyField: typeMapping[column] || '',
+    description: columnDescriptions[column] || column,
+    isRequired: true,
+    defaultValue: getDefaultValue(column, dataType, fiscalRegime),
+    validation: getValidation(column)
+  }));
+
+  return {
+    dataType,
+    columns,
+    journalCode: getJournalCode(dataType),
+    defaultAccount: getDefaultAccount(dataType, fiscalRegime)
+  };
+}
+
+function getDefaultValue(column: string, dataType: string, fiscalRegime: any): string {
+  // Add default value logic based on column and data type
+  switch (column) {
+    case 'Journal':
+      return getJournalCode(dataType);
+    case 'Compte général':
+      return getDefaultAccount(dataType, fiscalRegime);
+    case 'Crédit':
+      return dataType === 'taxes' ? '0' : '';
+    case 'Débit':
+      return dataType === 'taxes' ? '0' : '';
+    default:
+      return '';
+  }
+}
+
+function getValidation(column: string): ((value: any) => boolean) | undefined {
+  // Add validation logic based on column
+  switch (column) {
+    case 'Date':
+      return (value: any) => !isNaN(Date.parse(value));
+    case 'Débit':
+    case 'Crédit':
+      return (value: any) => !isNaN(parseFloat(value));
+    default:
+      return undefined;
+  }
+}
+
+function getJournalCode(dataType: string): string {
+  switch (dataType) {
+    case 'ventes':
+      return 'VT';
+    case 'clients':
+      return 'CL';
+    case 'remboursements':
+      return 'RB';
+    case 'taxes':
+      return 'TX';
+    default:
+      return '';
+  }
+}
+
+function getDefaultAccount(dataType: string, fiscalRegime: any): string {
+  switch (dataType) {
+    case 'ventes':
+      return fiscalRegime.salesAccount || '70700000';
+    case 'clients':
+      return fiscalRegime.customerAccount || '41100000';
+    case 'remboursements':
+      return fiscalRegime.refundAccount || '70800000';
+    case 'taxes':
+      return fiscalRegime.taxAccount || '44566000';
+    default:
+      return '';
+  }
+}
+
+function validateAndMapData(data: any[], mapping: ReportMapping): any[] {
+  return data.map(item => {
+    const mappedRow: any = {};
+    mapping.columns.forEach(column => {
+      let value = '';
+      
+      // Get the value from the Shopify field
+      if (column.shopifyField) {
+        const fields = column.shopifyField.split('.');
+        value = fields.reduce((obj: any, field: string) => {
+          if (field.includes('[]')) {
+            const arrayField = field.replace('[]', '');
+            return obj[arrayField]?.[0] || '';
+          }
+          return obj[field] || '';
+        }, item);
+      }
+
+      // Apply validation if exists
+      if (column.validation && !column.validation(value)) {
+        value = column.defaultValue || '';
+      }
+
+      // If no value and default exists, use default
+      if (!value && column.defaultValue) {
+        value = column.defaultValue;
+      }
+
+      mappedRow[column.requiredColumn] = value;
+    });
+
+    return mappedRow;
+  });
+}
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
@@ -95,7 +269,7 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
           .filter(([_, value]) => value === true)
           .map(([key]) => key)
           .join(','),
-        status: ReportStatus.PENDING,
+        status: ReportStatus.PROCESSING,
         format: fileFormat as ExportFormat,
         startDate,
         endDate,
@@ -109,9 +283,12 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
     });
 
     try {
-      let fetchedData: any = {};
+      // Create export directory if it doesn't exist
+      const exportDir = join(process.cwd(), 'exports', shop.id);
+      await mkdir(exportDir, { recursive: true });
 
       // Fetch data based on selected types
+      let fetchedData: any = {};
       if (dataTypes.ventes) {
         fetchedData.orders = await ShopifyOrderService.getOrders(admin, startDate.toISOString(), endDate.toISOString());
       }
@@ -125,31 +302,58 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
         fetchedData.taxes = await ShopifyTaxService.getTaxes(admin, startDate.toISOString(), endDate.toISOString());
       }
 
-      // Generate the report content
-      const reportContent = generateReport(
-        fetchedData,
-        shop.fiscalConfig,
-        fileFormat,
-        shop.fiscalConfig.separator
-      );
+      // Generate report content
+      const reportContent = await generateReport(fetchedData, shop.fiscalConfig, fileFormat, shop.fiscalConfig.separator || ',');
 
-      // Create reports directory if it doesn't exist
-      const reportsDir = join(process.cwd(), "reports");
-      await mkdir(reportsDir, { recursive: true });
+      if (!reportContent) {
+        // Update report status to ERROR if no content was generated
+        await prisma.report.update({
+          where: { id: report.id },
+          data: {
+            status: ReportStatus.ERROR,
+            errorMessage: "Failed to generate report content"
+          }
+        });
+        throw new Error("Failed to generate report content");
+      }
 
-      // Store the file with the custom filename
-      const filePath = join(reportsDir, report.fileName);
+      // Write the report content to file
+      const filePath = join(exportDir, `${report.fileName}`);
       await writeFile(filePath, reportContent);
 
-      // Update the report record with the file path and completed status
+      // Update report status to COMPLETED if everything went well
       await prisma.report.update({
         where: { id: report.id },
         data: {
           status: ReportStatus.COMPLETED,
-          filePath,
-          fileSize: Buffer.byteLength(reportContent)
+          fileSize: Buffer.byteLength(reportContent),
+          filePath: filePath
         }
       });
+
+      // If this is a generate and download action, return the file
+      if (actionType === "generate") {
+        // Set appropriate headers for file download
+        const headers = new Headers();
+        const contentType = {
+          "CSV": "text/csv",
+          "JSON": "application/json",
+          "TXT": "text/plain",
+          "XML": "application/xml",
+          "XLSX": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        }[fileFormat.toUpperCase()] || "application/octet-stream";
+        
+        headers.set("Content-Type", contentType);
+        headers.set("Content-Disposition", `attachment; filename="${report.fileName}"`);
+        headers.set("Content-Length", Buffer.byteLength(reportContent).toString());
+        headers.set("Cache-Control", "no-cache");
+        headers.set("Pragma", "no-cache");
+
+        return new Response(reportContent, { 
+          headers,
+          status: 200
+        });
+      }
 
       // If this is a schedule action, create a scheduled task
       if (actionType === "schedule") {
@@ -179,30 +383,6 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
         }
       }
 
-      // If this is a generate and download action, return the file
-      if (actionType === "generate") {
-        // Set appropriate headers for file download
-        const headers = new Headers();
-        const contentType = {
-          "CSV": "text/csv",
-          "JSON": "application/json",
-          "TXT": "text/plain",
-          "XML": "application/xml",
-          "XLSX": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        }[fileFormat.toUpperCase()] || "application/octet-stream";
-        
-        headers.set("Content-Type", contentType);
-        headers.set("Content-Disposition", `attachment; filename="${report.fileName}"`);
-        headers.set("Content-Length", Buffer.byteLength(reportContent).toString());
-        headers.set("Cache-Control", "no-cache");
-        headers.set("Pragma", "no-cache");
-
-        return new Response(reportContent, { 
-          headers,
-          status: 200
-        });
-      }
-
       // For schedule action, just return success
       return json({ success: true });
 
@@ -230,145 +410,79 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
 
 // Function to generate report content
 function generateReport(data: any, fiscalRegime: any, fileFormat: string, separator: string): string | Buffer {
-  // Use requiredColumns directly since it's already an array
   const requiredColumns = fiscalRegime.requiredColumns;
+  let allData: any[] = [];
 
-  // Helper function to format a row of data
-  const formatRow = (row: string[]) => row.join(separator);
-
-  // Helper function to get data rows
-  const getDataRows = (data: any[], columns: string[]) => {
-    if (!data || data.length === 0) {
-      return [];
-    }
-
-    return data.map(item => {
-      return columns.map(column => {
-        // Handle nested properties
-        const value = column.split('.').reduce((obj, key) => obj?.[key], item);
-        
-        // Format the value based on the column type
-        if (value === undefined || value === null) {
-          return '';
-        }
-
-        // Handle special column types
-        switch (column) {
-          case 'EcritureDate':
-          case 'PieceDate':
-          case 'DateLet':
-            return new Date(value).toISOString().split('T')[0];
-          case 'Debit':
-          case 'Credit':
-            return typeof value === 'number' ? value.toFixed(2) : value;
-          case 'CompteNum':
-            return String(value).padStart(6, '0');
-          default:
-            return String(value);
+  // Process each data type using MappingService
+  if (data.orders) {
+    data.orders.forEach((order: any) => {
+      const mappedData = MappingService.mapData(order, fiscalRegime.code, 'ventes');
+      if (Array.isArray(mappedData)) {
+        allData.push(...mappedData);
+      } else {
+        allData.push(mappedData);
         }
       });
+  }
+
+  if (data.customers) {
+    data.customers.forEach((customer: any) => {
+      const mappedData = MappingService.mapData(customer, fiscalRegime.code, 'clients');
+      if (Array.isArray(mappedData)) {
+        allData.push(...mappedData);
+      } else {
+        allData.push(mappedData);
+    }
     });
-  };
+  }
 
-  // Generate the report content based on file format
-  if (fileFormat === 'XLSX') {
-    const workbook = XLSX.utils.book_new();
-    
-    // Add orders sheet if available
-    if (data.orders && data.orders.length > 0) {
-      const ordersSheet = XLSX.utils.aoa_to_sheet([
-        requiredColumns,
-        ...getDataRows(data.orders, requiredColumns)
-      ]);
-      XLSX.utils.book_append_sheet(workbook, ordersSheet, 'Orders');
-    }
-
-    // Add customers sheet if available
-    if (data.customers && data.customers.length > 0) {
-      const customersSheet = XLSX.utils.aoa_to_sheet([
-        requiredColumns,
-        ...getDataRows(data.customers, requiredColumns)
-      ]);
-      XLSX.utils.book_append_sheet(workbook, customersSheet, 'Customers');
-    }
-
-    // Add refunds sheet if available
-    if (data.refunds && data.refunds.length > 0) {
-      const refundsSheet = XLSX.utils.aoa_to_sheet([
-        requiredColumns,
-        ...getDataRows(data.refunds, requiredColumns)
-      ]);
-      XLSX.utils.book_append_sheet(workbook, refundsSheet, 'Refunds');
-    }
-
-    // Add taxes sheet if available
-    if (data.taxes && data.taxes.length > 0) {
-      const taxesSheet = XLSX.utils.aoa_to_sheet([
-        requiredColumns,
-        ...getDataRows(data.taxes, requiredColumns)
-      ]);
-      XLSX.utils.book_append_sheet(workbook, taxesSheet, 'Taxes');
-    }
-
-    return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-  } else if (fileFormat === 'JSON') {
-    // Create a structured JSON object
-    const jsonData = {
-      fiscalRegime: fiscalRegime.code,
-      period: {
-        start: data.startDate,
-        end: data.endDate
-      },
-      data: {
-        orders: data.orders || [],
-        customers: data.customers || [],
-        refunds: data.refunds || [],
-        taxes: data.taxes || []
+  if (data.refunds) {
+    data.refunds.forEach((refund: any) => {
+      const mappedData = MappingService.mapData(refund, fiscalRegime.code, 'remboursements');
+      if (Array.isArray(mappedData)) {
+        allData.push(...mappedData);
+      } else {
+        allData.push(mappedData);
       }
-    };
-    return JSON.stringify(jsonData, null, 2);
-  } else if (fileFormat === 'XML') {
-    // Create XML structure
-    const xmlData = {
-      fiscalRegime: fiscalRegime.code,
-      period: {
-        start: data.startDate,
-        end: data.endDate
-      },
-      data: {
-        orders: data.orders || [],
-        customers: data.customers || [],
-        refunds: data.refunds || [],
-        taxes: data.taxes || []
+    });
+  }
+
+  if (data.taxes) {
+    data.taxes.forEach((tax: any) => {
+      const mappedData = MappingService.mapData(tax, fiscalRegime.code, 'taxes');
+      if (Array.isArray(mappedData)) {
+        allData.push(...mappedData);
+      } else {
+        allData.push(mappedData);
       }
-    };
+    });
+  }
 
-    // Convert to XML
-    return `<?xml version="1.0" encoding="${fiscalRegime.encoding}"?>
-<report>
-  <fiscalRegime>${xmlData.fiscalRegime}</fiscalRegime>
-  <period>
-    <start>${xmlData.period.start}</start>
-    <end>${xmlData.period.end}</end>
-  </period>
-  <data>
-    <orders>${JSON.stringify(xmlData.data.orders)}</orders>
-    <customers>${JSON.stringify(xmlData.data.customers)}</customers>
-    <refunds>${JSON.stringify(xmlData.data.refunds)}</refunds>
-    <taxes>${JSON.stringify(xmlData.data.taxes)}</taxes>
-  </data>
-</report>`;
-  } else {
-    // For CSV and TXT formats
-    const rows = [
-      formatRow(requiredColumns),
-      ...getDataRows(data.orders || [], requiredColumns).map(formatRow),
-      ...getDataRows(data.customers || [], requiredColumns).map(formatRow),
-      ...getDataRows(data.refunds || [], requiredColumns).map(formatRow),
-      ...getDataRows(data.taxes || [], requiredColumns).map(formatRow)
-    ];
+  // Sort data by date if date column exists
+  if (allData.length > 0 && 'Date' in allData[0]) {
+    allData.sort((a, b) => new Date(a.Date).getTime() - new Date(b.Date).getTime());
+  }
 
-    return rows.join('\n');
+  // Generate the report based on file format
+  switch (fileFormat.toUpperCase()) {
+    case 'CSV':
+      const csvRows = [
+        requiredColumns.join(separator),
+        ...allData.map(row => requiredColumns.map((col: string) => row[col] || '').join(separator))
+      ];
+      return csvRows.join('\n');
+
+    case 'XLSX':
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(allData);
+      XLSX.utils.book_append_sheet(wb, ws, 'Report');
+      return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+    case 'JSON':
+      return JSON.stringify(allData, null, 2);
+
+    default:
+      throw new Error(`Unsupported file format: ${fileFormat}`);
   }
 }
 

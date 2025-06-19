@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "ReportStatus" ADD VALUE 'COMPLETED_WITH_EMPTY_DATA';

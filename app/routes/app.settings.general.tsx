@@ -23,29 +23,7 @@ import fiscalRegimesData from "../data/fiscal-regimes.json";
 import currenciesData from "../data/currencies.json";
 import { BiSaveBtn } from "../components/Buttons/BiSaveBtn";
 import shopify from "../shopify.server";
-
-interface Settings {
-  companyName: string;
-  country: string;
-  currency: string;
-  vatRate: number | null;
-  defaultFormat: ExportFormat | null;
-  timezone: string;
-  language: string;
-  code: string;
-  name: string;
-  description: string;
-  countries: string[];
-  fileFormat: string;
-  encoding: string;
-  separator: string;
-  requiredColumns: string;
-  taxRates: string;
-  compatibleSoftware: string;
-  exportFormats: string;
-  notes: string;
-  salesAccount?: string;
-}
+import type { Settings } from "../types/SettingsType";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);

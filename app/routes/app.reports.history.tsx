@@ -92,10 +92,14 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     ];
   }
 
+  console.log('Fetching reports with where clause:', where);
+
   const reports = await prisma.report.findMany({
     where,
     orderBy: { createdAt: "desc" },
   });
+
+  console.log('Found reports:', reports.map(r => ({ id: r.id, status: r.status })));
 
   // Serialize dates to strings for JSON
   const serializedReports = reports.map(report => ({
@@ -202,12 +206,17 @@ export default function ExportHistory() {
   }, [submit]);
 
   const rows = reports.map((report) => {
+    console.log('Processing report:', { id: report.id, status: report.status });
+    
     const statusBadge = {
       [ReportStatus.COMPLETED]: { content: "✅ Succès", tone: "success" as const },
+      [ReportStatus.COMPLETED_WITH_EMPTY_DATA]: { content: "ℹ️ Données vides", tone: "info" as const },
       [ReportStatus.PROCESSING]: { content: "⏳ En cours", tone: "warning" as const },
       [ReportStatus.ERROR]: { content: "❌ Échec", tone: "critical" as const },
       [ReportStatus.PENDING]: { content: "⏳ En attente", tone: "warning" as const },
-    }[report.status];
+    }[report.status] || { content: "❓ Inconnu", tone: "warning" as const };
+
+    console.log('Status badge:', statusBadge);
 
     return [
       <div 
@@ -222,7 +231,7 @@ export default function ExportHistory() {
       <Badge tone={statusBadge.tone}>{statusBadge.content}</Badge>,
       report.fileName || "—",
       <LegacyStack spacing="tight">
-        {report.status === ReportStatus.COMPLETED && (
+        {(report.status === ReportStatus.COMPLETED || report.status === ReportStatus.COMPLETED_WITH_EMPTY_DATA) && (
           <Button
             icon={ArrowDownIcon}
             onClick={() => handleDownload(report.id)}

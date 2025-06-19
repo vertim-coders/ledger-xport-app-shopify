@@ -1,18 +1,5 @@
 import nodemailer from 'nodemailer';
-
-interface EmailConfig {
-  to: string[];
-  cc?: string[];
-  bcc?: string[];
-  replyTo?: string[];
-  subject: string;
-  text: string;
-  html?: string;
-  attachments?: {
-    filename: string;
-    content: Buffer | string;
-  }[];
-}
+import type { EmailConfig } from "../types/EmailConfigType";
 
 // Create a transporter using Gmail SMTP
 const transporter = nodemailer.createTransport({

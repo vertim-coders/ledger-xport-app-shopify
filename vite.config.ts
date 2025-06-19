@@ -69,5 +69,14 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ["@shopify/app-bridge-react", "@shopify/polaris"],
+    esbuildOptions: {
+      target: "es2020",
+      supported: {
+        'top-level-await': true
+      },
+    }
   },
+  resolve: {
+    mainFields: ['module', 'jsnext:main', 'jsnext', 'browser', 'main'],
+  }
 }) satisfies UserConfig;

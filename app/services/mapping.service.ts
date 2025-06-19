@@ -1,123 +1,9 @@
+import type { ShopifyOrder } from "../types/ShopifyOrderType";
+import type { ShopifyCustomer } from "../types/ShopifyCustomerType";
+import type { ShopifyRefund } from "../types/ShopifyRefundType";
+import type { ShopifyTax } from "../types/ShopifyTaxType";
+import type { MappedData } from "../types/MappedDataType";
 import { ExportFormat } from "@prisma/client";
-
-interface ShopifyOrder {
-  id: string;
-  name: string;
-  created_at: string;
-  closed_at?: string;
-  subtotal_price: string;
-  total_price: string;
-  total_tax: string;
-  currency: string;
-  customer?: {
-    id: string;
-    first_name?: string;
-    last_name?: string;
-    email?: string;
-    tax_exempt?: boolean;
-    vat_number?: string;
-  };
-  line_items: Array<{
-    id: string;
-    title: string;
-    product_type?: string;
-    grams?: number;
-  }>;
-  shipping_address?: {
-    country?: string;
-    country_code?: string;
-    province?: string;
-    province_code?: string;
-    city?: string;
-    zip?: string;
-  };
-  tax_lines: Array<{
-    title: string;
-    rate: number;
-    price: string;
-  }>;
-  gateway?: string;
-}
-
-interface ShopifyCustomer {
-  id: string;
-  firstName?: string;
-  lastName?: string;
-  email?: string;
-  phone?: string;
-  createdAt: string;
-  tags: string[];
-  taxExempt: boolean;
-  taxExemptions: string[];
-  default_address?: {
-    address1?: string;
-    address2?: string;
-    city?: string;
-    province?: string;
-    zip?: string;
-    country?: string;
-    countryCodeV2?: string;
-  };
-  currency?: string; // from orders.edges[0].node.totalPriceSet.shopMoney.currencyCode
-  metafields: Array<{
-    key: string;
-    value: string;
-    namespace: string;
-  }>;
-}
-
-interface ShopifyRefund {
-  id: string;
-  order_id: string;
-  order_name: string;
-  created_at: string;
-  note?: string;
-  refund_line_items: Array<{
-    id: string;
-    quantity: number;
-    restock_type: string;
-    subtotal: string;
-    total_tax: string;
-    currency: string;
-    line_item: {
-      id: string;
-      name: string;
-      title: string;
-      quantity: number;
-      sku?: string;
-      taxable: boolean;
-      tax_lines: Array<{
-        rate: number;
-        title: string;
-      }>;
-      variant?: {
-        id: string;
-        legacy_resource_id: string;
-        sku?: string;
-        title?: string;
-        price?: string;
-      };
-      product?: {
-        id: string;
-        legacy_resource_id: string;
-        product_type?: string;
-      };
-    };
-  }>;
-  transactions: Array<{
-    id: string;
-    amount: string;
-    currency: string;
-    kind: string;
-    status: string;
-    gateway?: string;
-    processed_at: string;
-  }>;
-}
-
-interface MappedData {
-  [key: string]: string | number | null;
-}
 
 export class MappingService {
   private static generateEntryNumber(orderId: string, index: number): string {
@@ -236,7 +122,7 @@ export class MappingService {
     };
   }
 
-  static mapToGhana(data: ShopifyOrder | ShopifyCustomer | ShopifyRefund, dataType: string): MappedData {
+  static mapToGhana(data: ShopifyOrder | ShopifyCustomer | ShopifyRefund | ShopifyTax, dataType: string): MappedData {
     if (dataType === 'ventes') {
       const order = data as ShopifyOrder;
       const total = parseFloat(order.total_price);
@@ -276,11 +162,25 @@ export class MappingService {
         "Total TTC": (totalRefundAmount + parseFloat(eLevyOnRefund)).toFixed(2),
         "Mode de paiement": refund.transactions[0]?.gateway || ""
       };
+    } else if (dataType === 'taxes') {
+      const tax = data as ShopifyTax;
+      const totalTax = parseFloat(tax.total_tax);
+      const eLevy = (totalTax * 0.015).toFixed(2);
+
+      return {
+        "Date": tax.created_at,
+        "Référence": tax.order_name,
+        "Description": tax.tax_lines.map(t => t.title).join(", "),
+        "Montant HT": "0.00", // Tax amount is already included in the total
+        "E-Levy": eLevy,
+        "Total TTC": (totalTax + parseFloat(eLevy)).toFixed(2),
+        "Mode de paiement": "N/A"
+      };
     }
-    return {}; // Should not reach here
+    return {};
   }
 
-  static mapToStandard(data: ShopifyOrder | ShopifyCustomer | ShopifyRefund, dataType: string): MappedData {
+  static mapToStandard(data: ShopifyOrder | ShopifyCustomer | ShopifyRefund | ShopifyTax, dataType: string): MappedData {
     if (dataType === 'ventes') {
       const order = data as ShopifyOrder;
       return {
@@ -317,15 +217,27 @@ export class MappingService {
         "Type de transaction": refund.transactions[0]?.kind || "",
         "Passerelle de paiement": refund.transactions[0]?.gateway || ""
       };
+    } else if (dataType === 'taxes') {
+      const tax = data as ShopifyTax;
+      return {
+        "Date": tax.created_at,
+        "Référence": tax.order_name,
+        "Description": tax.tax_lines.map(t => t.title).join(", "),
+        "Montant HT": "0.00", // Tax amount is already included in the total
+        "Taxe": tax.total_tax,
+        "Total TTC": tax.total_tax,
+        "Devise": tax.currency,
+        "Compte comptable": "44571" // Default tax account
+      };
     }
     return {};
   }
 
-  static mapData(item: ShopifyOrder | ShopifyCustomer | ShopifyRefund, fiscalRegime: string, dataType: string): MappedData | MappedData[] {
+  static mapData(item: ShopifyOrder | ShopifyCustomer | ShopifyRefund | ShopifyTax, fiscalRegime: string, dataType: string): MappedData | MappedData[] {
     console.log("MappingService.mapData - item:", item, "dataType:", dataType, "fiscalRegime:", fiscalRegime);
     console.trace("Call stack for MappingService.mapData:");
 
-    let processedItem: ShopifyOrder | ShopifyCustomer | ShopifyRefund;
+    let processedItem: ShopifyOrder | ShopifyCustomer | ShopifyRefund | ShopifyTax;
 
     if (dataType === 'ventes') {
       processedItem = item as ShopifyOrder;
@@ -333,6 +245,8 @@ export class MappingService {
       processedItem = item as ShopifyCustomer;
     } else if (dataType === 'remboursements') {
       processedItem = item as ShopifyRefund;
+    } else if (dataType === 'taxes') {
+      processedItem = item as unknown as ShopifyTax;
     } else {
       // Fallback if dataType is unexpected, though it should be covered by outer logic
       console.error("MappingService.mapData received an unexpected dataType:", dataType);
@@ -384,6 +298,8 @@ export class MappingService {
           return this.mapToGhana(processedItem as ShopifyCustomer, dataType);
         } else if (dataType === 'remboursements') {
           return this.mapToGhana(processedItem as ShopifyRefund, dataType);
+        } else if (dataType === 'taxes') {
+          return this.mapToGhana(processedItem as unknown as ShopifyTax, dataType);
         }
         break;
       default:
@@ -393,6 +309,8 @@ export class MappingService {
           return this.mapToStandard(processedItem as ShopifyCustomer, dataType);
         } else if (dataType === 'remboursements') {
           return this.mapToStandard(processedItem as ShopifyRefund, dataType);
+        } else if (dataType === 'taxes') {
+          return this.mapToStandard(processedItem as unknown as ShopifyTax, dataType);
         }
         break;
     }

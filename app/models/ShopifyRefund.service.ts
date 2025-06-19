@@ -7,7 +7,7 @@ export class ShopifyRefundService {
 
             const query = `
                 query GetRefunds {
-                    orders(first: 250, query: "created_at:>${formattedStartDate} created_at:<${formattedEndDate}") {
+                    orders(first: 250) {
                         edges {
                             node {
                                 id

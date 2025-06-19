@@ -1,6 +1,6 @@
 import { ExportFormat } from "@prisma/client";
 import { MappingService } from "./mapping.service";
-import { Builder } from "xml2js";
+import { XMLBuilder } from "fast-xml-parser";
 import * as XLSX from "xlsx";
 
 export class ReportService {
@@ -29,15 +29,12 @@ export class ReportService {
   }
 
   private static generateXML(data: any[]): string {
-    const builder = new Builder({
-      rootName: "Report",
-      renderOpts: {
-        pretty: true,
-        indent: "  ",
-        newline: "\n"
-      }
+    const builder = new XMLBuilder({
+      format: true,
+      indentBy: "  ",
+      ignoreAttributes: false
     });
-    return builder.buildObject({ entries: data });
+    return builder.build({ Report: { entries: data } });
   }
 
   private static generateXLSX(data: any[]): Buffer {
