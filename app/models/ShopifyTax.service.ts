@@ -47,14 +47,15 @@ export class ShopifyTaxService {
                 }
             `;
 
-            const response = await admin.graphql(query, {
-                variables: {
-                    startDate: formattedStartDate,
-                    endDate: formattedEndDate
-                }
-            });
-
-            const data = await response.json();
+            let data;
+            if (typeof admin.graphql === "function") {
+                const response = await admin.graphql(query);
+                data = await response.json();
+            } else if (typeof admin.request === "function") {
+                data = await admin.request(query);
+            } else {
+                throw new Error("No valid Shopify GraphQL client found");
+            }
 
             if (data.errors) {
                 console.log("GraphQL errors:", data.errors);

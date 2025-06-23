@@ -91,16 +91,15 @@ export class ShopifyOrderService {
                 }
             `;
 
-            //, {
-            //    variables: {
-            //        startDate: formattedStartDate,
-            //        endDate: formattedEndDate
-            //    }
-            //}
-
-            const response = await admin.graphql(query);
-
-            const data = await response.json();
+            let data;
+            if (typeof admin.graphql === "function") {
+                const response = await admin.graphql(query);
+                data = await response.json();
+            } else if (typeof admin.request === "function") {
+                data = await admin.request(query);
+            } else {
+                throw new Error("No valid Shopify GraphQL client found");
+            }
 
             if (data.errors) {
                 console.log("GraphQL errors:", data.errors);
@@ -130,10 +129,6 @@ export class ShopifyOrderService {
                     sku: item.sku,
                     taxable: item.taxable,
                     tax_lines: item.taxLines,
-//                    variant_id: item.variant.legacyResourceId,
-//                    product_id: item.product.legacyResourceId,
-//                    product_type: item.product.productType,
-//                    price: item.variant.price
                 })),
                 shipping_address: edge.node.shippingAddress,
                 transactions: edge.node.transactions,

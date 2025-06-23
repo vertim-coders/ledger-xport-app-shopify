@@ -19,6 +19,10 @@ const shopify = shopifyApp({
   future: {
     unstable_newEmbeddedAuthStrategy: true,
     removeRest: true,
+    // @ts-expect-error: lineItemBilling is a future flag not yet in types
+    lineItemBilling: true,
+    customerAddressDefaultFix: true,
+    unstable_managedPricingSupport: true,
   },
   ...(process.env.SHOP_CUSTOM_DOMAIN
     ? { customShopDomains: [process.env.SHOP_CUSTOM_DOMAIN] }

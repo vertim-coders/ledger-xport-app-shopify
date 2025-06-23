@@ -1,3 +1,5 @@
+import "@shopify/shopify-api/adapters/node";
+import "@shopify/shopify-app-remix/adapters/node";
 import { prisma } from "../db.server";
 import { sendEmail } from "../utils/email.server";
 import { readFile, writeFile, mkdir } from "fs/promises";
@@ -7,10 +9,30 @@ import { ShopifyOrderService } from "../models/ShopifyOrder.service";
 import { ShopifyRefundService } from "../models/ShopifyRefund.service";
 import { ShopifyTaxService } from "../models/ShopifyTax.service";
 import { ReportService } from "../services/report.service";
-import { sessionStorage } from "../shopify.server";
 import { shopifyApi, LATEST_API_VERSION } from "@shopify/shopify-api";
-import type { ExportFormat } from "@prisma/client";
+import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
+import type { ExportFormat, ScheduledTask, Report, Shop, Session } from "@prisma/client";
 import type { EmailConfig } from "../types/EmailConfigType";
+
+// Create session storage instance
+const sessionStorage = new PrismaSessionStorage(prisma);
+
+// Create Shopify API instance
+const shopify = shopifyApi({
+  apiKey: process.env.SHOPIFY_API_KEY!,
+  apiSecretKey: process.env.SHOPIFY_API_SECRET!,
+  scopes: process.env.SCOPES?.split(",") || [],
+  hostName: process.env.SHOPIFY_APP_URL?.replace(/https?:\/\//, '') || '',
+  apiVersion: LATEST_API_VERSION,
+  isEmbeddedApp: true,
+  sessionStorage,
+  future: {
+    unstable_newEmbeddedAuthStrategy: true,
+    removeRest: true,
+    lineItemBilling: true,
+    customerAddressDefaultFix: true,
+  }
+});
 
 // Fonction pour traiter les tâches planifiées
 export async function processScheduledTasks() {
@@ -24,7 +46,11 @@ export async function processScheduledTasks() {
       },
       include: {
         report: true,
-        shop: { include: { fiscalConfig: true } }
+        shop: { 
+          include: { 
+            fiscalConfig: true
+          } 
+        }
       }
     });
 
@@ -47,7 +73,7 @@ export async function processScheduledTasks() {
         });
 
         // 3. Générer le rapport si nécessaire
-        const filePaths = await generateAndSaveReport(task);
+        const filePaths = await generateAndSaveReport(task, shopify);
 
         // 4. Envoyer l'email avec le rapport en pièce jointe
         const emailConfig = JSON.parse(task.emailConfig);
@@ -105,7 +131,15 @@ export async function processScheduledTasks() {
 }
 
 // Génère et sauvegarde le rapport si besoin, retourne les chemins des fichiers générés
-async function generateAndSaveReport(task: any): Promise<string[]> {
+async function generateAndSaveReport(
+  task: ScheduledTask & { 
+    report: Report; 
+    shop: Shop & { 
+      fiscalConfig: any;
+    }
+  }, 
+  shopifyInstance: any
+): Promise<string[]> {
   const report = task.report;
   const shop = task.shop;
   const fiscalConfig = shop.fiscalConfig;
@@ -121,26 +155,22 @@ async function generateAndSaveReport(task: any): Promise<string[]> {
     return report.filePath.split(',');
   }
 
-  // Créer l'API client Shopify pour cette boutique
-  const shopify = shopifyApi({
-    apiKey: process.env.SHOPIFY_API_KEY!,
-    apiSecretKey: process.env.SHOPIFY_API_SECRET!,
-    scopes: process.env.SCOPES?.split(",") || [],
-    hostName: process.env.SHOPIFY_APP_URL?.replace(/https?:\/\//, '') || '',
-    apiVersion: LATEST_API_VERSION,
-    isEmbeddedApp: true,
-    sessionStorage: sessionStorage,
+  // Get the session from the database
+  const dbSession = await prisma.session.findFirst({
+    where: { shop: shop.shopifyDomain }
   });
 
-  // Charger la session de la boutique
-  const session = await sessionStorage.loadSession(shop.shopifyDomain);
-  if (!session) {
-    throw new Error(`Session non trouvée pour la boutique ${shop.shopifyDomain}`);
+  if (!dbSession) {
+    throw new Error(`No session found for shop ${shop.shopifyDomain}. Please reinstall the app.`);
   }
 
+  // Create a session with the access token
+  const session = shopifyInstance.session.customAppSession(shop.shopifyDomain);
+  session.accessToken = dbSession.accessToken;
+
   // Créer le client admin
-  const admin = new shopify.clients.Graphql({
-    session: session,
+  const admin = new shopifyInstance.clients.Graphql({
+    session: session
   });
 
   let filePaths: string[] = [];

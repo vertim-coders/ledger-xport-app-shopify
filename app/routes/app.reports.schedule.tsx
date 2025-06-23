@@ -333,11 +333,16 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
       return json({ success: true });
     }
 
-    // Fetch data from all services
-    const customers = await ShopifyCustomerService.getCustomers(admin, startDate.toISOString(), endDate.toISOString());
-    const orders = await ShopifyOrderService.getOrders(admin, startDate.toISOString(), endDate.toISOString());
-    const refunds = await ShopifyRefundService.getRefunds(admin, startDate.toISOString(), endDate.toISOString());
-    const taxes = await ShopifyTaxService.getTaxes(admin, startDate.toISOString(), endDate.toISOString());
+    // Helper to fetch data with compatibility for both admin clients
+    async function fetchShopifyData(serviceFn: any, ...args: any[]) {
+      return await serviceFn(admin, ...args);
+    }
+
+    // Fetch data from all services using the compatibility helper
+    const customers = await fetchShopifyData(ShopifyCustomerService.getCustomers, startDate.toISOString(), endDate.toISOString());
+    const orders = await fetchShopifyData(ShopifyOrderService.getOrders, startDate.toISOString(), endDate.toISOString());
+    const refunds = await fetchShopifyData(ShopifyRefundService.getRefunds, startDate.toISOString(), endDate.toISOString());
+    const taxes = await fetchShopifyData(ShopifyTaxService.getTaxes, startDate.toISOString(), endDate.toISOString());
 
     // Log the data to console
     console.log("Customers data:", customers);
@@ -354,16 +359,16 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
       let data: any[] | null = null;
       switch (dataType) {
         case "ventes":
-          data = await ShopifyOrderService.getOrders(admin, startDate.toISOString(), endDate.toISOString());
+          data = await fetchShopifyData(ShopifyOrderService.getOrders, startDate.toISOString(), endDate.toISOString());
           break;
         case "clients":
-          data = await ShopifyCustomerService.getCustomers(admin, startDate.toISOString(), endDate.toISOString());
+          data = await fetchShopifyData(ShopifyCustomerService.getCustomers, startDate.toISOString(), endDate.toISOString());
           break;
         case "remboursements":
-          data = await ShopifyRefundService.getRefunds(admin, startDate.toISOString(), endDate.toISOString());
+          data = await fetchShopifyData(ShopifyRefundService.getRefunds, startDate.toISOString(), endDate.toISOString());
           break;
         case "taxes":
-          data = await ShopifyTaxService.getTaxes(admin, startDate.toISOString(), endDate.toISOString());
+          data = await fetchShopifyData(ShopifyTaxService.getTaxes, startDate.toISOString(), endDate.toISOString());
           break;
       }
 

@@ -233,7 +233,7 @@ export class MappingService {
     return {};
   }
 
-  static mapData(item: ShopifyOrder | ShopifyCustomer | ShopifyRefund | ShopifyTax, fiscalRegime: string, dataType: string): MappedData | MappedData[] {
+  static mapData(item: ShopifyOrder | ShopifyCustomer | ShopifyRefund | ShopifyTax, fiscalRegime: string, dataType: string): MappedData[] {
     console.log("MappingService.mapData - item:", item, "dataType:", dataType, "fiscalRegime:", fiscalRegime);
     console.trace("Call stack for MappingService.mapData:");
 
@@ -248,72 +248,64 @@ export class MappingService {
     } else if (dataType === 'taxes') {
       processedItem = item as unknown as ShopifyTax;
     } else {
-      // Fallback if dataType is unexpected, though it should be covered by outer logic
-      console.error("MappingService.mapData received an unexpected dataType:", dataType);
-      return {};
+      return [];
     }
-
-    console.log("Debug: processedItem after type assertion:", processedItem); // Dummy log to force recompile
 
     // Defensive check: If processedItem somehow turns out to be an array, handle it
     if (Array.isArray(processedItem)) {
-      console.error("MappingService.mapData received an array when a single item was expected. Processing only the first element.", processedItem);
       if (processedItem.length > 0) {
-        processedItem = processedItem[0]; // Take the first element if an array is passed
+        processedItem = processedItem[0];
       } else {
-        return {}; // Return empty if an empty array is passed
+        return [];
       }
     }
 
+    let mapped: MappedData | MappedData[] = [];
     switch (fiscalRegime) {
       case "OHADA":
         if (dataType === 'ventes') {
-          return this.mapToOHADA(processedItem as ShopifyOrder);
+          mapped = this.mapToOHADA(processedItem as ShopifyOrder);
         }
         break;
       case "FRANCE":
         if (dataType === 'ventes') {
-          return this.mapToFEC(processedItem as ShopifyOrder);
+          mapped = this.mapToFEC(processedItem as ShopifyOrder);
         }
         break;
       case "CANADA":
         if (dataType === 'ventes') {
-          return this.mapToCanada(processedItem as ShopifyOrder);
+          mapped = this.mapToCanada(processedItem as ShopifyOrder);
         }
         break;
       case "USA":
         if (dataType === 'ventes') {
-          return this.mapToUSA(processedItem as ShopifyOrder);
+          mapped = this.mapToUSA(processedItem as ShopifyOrder);
         }
         break;
       case "BELUX":
         if (dataType === 'ventes') {
-          return this.mapToBELUX(processedItem as ShopifyOrder);
+          mapped = this.mapToBELUX(processedItem as ShopifyOrder);
         }
         break;
       case "GHANA":
         if (dataType === 'ventes') {
-          return this.mapToGhana(processedItem as ShopifyOrder, dataType);
+          mapped = this.mapToGhana(processedItem as ShopifyOrder, dataType);
         } else if (dataType === 'clients') {
-          return this.mapToGhana(processedItem as ShopifyCustomer, dataType);
+          mapped = this.mapToGhana(processedItem as ShopifyCustomer, dataType);
         } else if (dataType === 'remboursements') {
-          return this.mapToGhana(processedItem as ShopifyRefund, dataType);
+          mapped = this.mapToGhana(processedItem as ShopifyRefund, dataType);
         } else if (dataType === 'taxes') {
-          return this.mapToGhana(processedItem as unknown as ShopifyTax, dataType);
+          mapped = this.mapToGhana(processedItem as unknown as ShopifyTax, dataType);
         }
         break;
       default:
-        if (dataType === 'ventes') {
-          return this.mapToStandard(processedItem as ShopifyOrder, dataType);
-        } else if (dataType === 'clients') {
-          return this.mapToStandard(processedItem as ShopifyCustomer, dataType);
-        } else if (dataType === 'remboursements') {
-          return this.mapToStandard(processedItem as ShopifyRefund, dataType);
-        } else if (dataType === 'taxes') {
-          return this.mapToStandard(processedItem as unknown as ShopifyTax, dataType);
-        }
+        // No-op, will fallback below
         break;
     }
-    return {}; // Return empty for unsupported data types/fiscal regime combinations
+    if (!mapped || (Array.isArray(mapped) && mapped.length === 0)) {
+      mapped = this.mapToStandard(processedItem, dataType);
+    }
+    // Always return an array
+    return Array.isArray(mapped) ? mapped : [mapped];
   }
 } 
