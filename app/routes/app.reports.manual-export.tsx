@@ -551,7 +551,14 @@ export default function ManualExportPage() {
       // Get the blob from the response
       const data = await response.json();
       if (data.fileName) {
-        window.location.href = `/api/reports/${encodeURIComponent(data.fileName)}/download`;
+        // Use a dynamic <a> to trigger the download natively
+        const downloadUrl = `/api/reports/${encodeURIComponent(data.fileName)}/download`;
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.setAttribute('download', data.fileName); // optional, helps with some browsers
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
         return;
       }
     } catch (error) {

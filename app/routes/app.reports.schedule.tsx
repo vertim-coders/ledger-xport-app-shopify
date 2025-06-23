@@ -204,6 +204,14 @@ function validateAndMapData(data: any[], mapping: ReportMapping): any[] {
   });
 }
 
+// Helper function to format date as YYYYMMDD
+function formatDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  return `${year}${month}${day}`;
+}
+
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
   const shop = await prisma.shop.findUnique({
@@ -244,12 +252,34 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
     const { admin, session } = await authenticate.admin(request);
     const formData = await request.formData();
     
+    // Log all form fields for debugging
+    for (const [key, value] of formData.entries()) {
+      console.log(`Form field: ${key} = ${value}`);
+    }
+
     const startDate = new Date(formData.get("startDate") as string);
     const endDate = new Date(formData.get("endDate") as string);
     const dataTypes = JSON.parse(formData.get("dataTypes") as string);
     const fileFormat = formData.get("fileFormat") as string;
-    const reportName = formData.get("reportName") as string;
     const actionType = formData.get("actionType") as string;
+    const schedulingType = formData.get("schedulingType") as string;
+    const reportNames = JSON.parse(formData.get("reportNames") as string);
+
+    // Validate required scheduling fields if scheduling
+    if (actionType === "schedule") {
+      if (!schedulingType) {
+        return json({ error: "Missing schedulingType" }, { status: 400 });
+      }
+      if (schedulingType === "email") {
+        const emailConfig = formData.get("emailConfig");
+        const frequency = formData.get("frequency");
+        const executionDay = formData.get("executionDay");
+        const executionTime = formData.get("executionTime");
+        if (!emailConfig || !frequency || !executionDay || !executionTime) {
+          return json({ error: "Missing one or more required scheduling fields (emailConfig, frequency, executionDay, executionTime)" }, { status: 400 });
+        }
+      }
+    }
 
     // Get the shop and fiscal regime from the database
     const shop = await prisma.shop.findUnique({
@@ -261,7 +291,116 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
       return json({ error: "Shop or fiscal regime not found" }, { status: 400 });
     }
 
-    // Create a new report record
+    if (actionType === "schedule") {
+      // Create a report record with status PENDING (no file yet)
+      const report = await prisma.report.create({
+        data: {
+          type: "scheduled",
+          dataType: Object.entries(dataTypes)
+            .filter(([_, value]) => value === true)
+            .map(([key]) => key)
+            .join(','),
+          status: ReportStatus.PENDING,
+          format: fileFormat as ExportFormat,
+          startDate,
+          endDate,
+          shopId: shop.id,
+          fileSize: 0,
+          fileName: (Object.values(reportNames).find(name => !!name) as string) || "export",
+        }
+      });
+
+      // Create the scheduled task
+      if (schedulingType === "email") {
+        const emailConfig = formData.get("emailConfig") as string;
+        const frequency = formData.get("frequency") as string;
+        const executionDay = parseInt(formData.get("executionDay") as string);
+        const executionTime = formData.get("executionTime") as string;
+        await prisma.scheduledTask.create({
+          data: {
+            reportId: report.id,
+            shopId: shop.id,
+            frequency,
+            executionDay,
+            executionTime,
+            emailConfig,
+            lastRun: null,
+            nextRun: calculateNextRun(frequency, executionDay, executionTime),
+            status: "ACTIVE"
+          }
+        });
+      }
+      return json({ success: true });
+    }
+
+    // Fetch data from all services
+    const customers = await ShopifyCustomerService.getCustomers(admin, startDate.toISOString(), endDate.toISOString());
+    const orders = await ShopifyOrderService.getOrders(admin, startDate.toISOString(), endDate.toISOString());
+    const refunds = await ShopifyRefundService.getRefunds(admin, startDate.toISOString(), endDate.toISOString());
+    const taxes = await ShopifyTaxService.getTaxes(admin, startDate.toISOString(), endDate.toISOString());
+
+    // Log the data to console
+    console.log("Customers data:", customers);
+    console.log("Orders data:", orders);
+    console.log("Refunds data:", refunds);
+    console.log("Taxes data:", taxes);
+
+    const savedFiles: { filePath: string; fileName: string; content: Buffer | string }[] = [];
+    let hasEmptyData = false;
+
+    for (const [dataType, isSelected] of Object.entries(dataTypes)) {
+      if (!isSelected) continue;
+
+      let data: any[] | null = null;
+      switch (dataType) {
+        case "ventes":
+          data = await ShopifyOrderService.getOrders(admin, startDate.toISOString(), endDate.toISOString());
+          break;
+        case "clients":
+          data = await ShopifyCustomerService.getCustomers(admin, startDate.toISOString(), endDate.toISOString());
+          break;
+        case "remboursements":
+          data = await ShopifyRefundService.getRefunds(admin, startDate.toISOString(), endDate.toISOString());
+          break;
+        case "taxes":
+          data = await ShopifyTaxService.getTaxes(admin, startDate.toISOString(), endDate.toISOString());
+          break;
+      }
+
+      if (!data || data.length === 0) {
+        hasEmptyData = true;
+        continue;
+      }
+
+      const reportContent = ReportService.generateReport(
+        data,
+        shop.fiscalConfig.code,
+        fileFormat as ExportFormat,
+        dataType,
+        shop.fiscalConfig.separator
+      );
+
+      if (!reportContent) {
+        hasEmptyData = true;
+        continue;
+      }
+
+      // Use the report name from the form if available, otherwise use default format
+      const fileName = reportNames[dataType] || `${dataType}_${startDate.toISOString()}_${endDate.toISOString()}.${fileFormat.toLowerCase()}`;
+      // Save to 'reports-schedule' directory
+      const exportDir = join(process.cwd(), 'reports-schedule');
+      await mkdir(exportDir, { recursive: true });
+      const filePath = join(exportDir, fileName);
+      await writeFile(filePath, reportContent);
+      savedFiles.push({ filePath, fileName, content: reportContent });
+    }
+
+    // If no data was found for any type
+    if (savedFiles.length === 0) {
+      return json({ error: "No data found for the selected types" }, { status: 400 });
+    }
+
+    // Create report record in database
     const report = await prisma.report.create({
       data: {
         type: "scheduled",
@@ -275,84 +414,58 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
         endDate,
         shopId: shop.id,
         fileSize: 0,
-        fileName: reportName || `${Object.entries(dataTypes)
-          .filter(([_, value]) => value === true)
-          .map(([key]) => key)
-          .join('_')}_${startDate.toISOString()}_${endDate.toISOString()}.${fileFormat.toLowerCase()}`,
+        fileName: savedFiles[0].fileName, // Use the actual generated file name
       }
     });
 
     try {
-      // Create export directory if it doesn't exist
-      const exportDir = join(process.cwd(), 'exports', shop.id);
-      await mkdir(exportDir, { recursive: true });
-
-      // Fetch data based on selected types
-      let fetchedData: any = {};
-      if (dataTypes.ventes) {
-        fetchedData.orders = await ShopifyOrderService.getOrders(admin, startDate.toISOString(), endDate.toISOString());
-      }
-      if (dataTypes.clients) {
-        fetchedData.customers = await ShopifyCustomerService.getCustomers(admin, startDate.toISOString(), endDate.toISOString());
-      }
-      if (dataTypes.remboursements) {
-        fetchedData.refunds = await ShopifyRefundService.getRefunds(admin, startDate.toISOString(), endDate.toISOString());
-      }
-      if (dataTypes.taxes) {
-        fetchedData.taxes = await ShopifyTaxService.getTaxes(admin, startDate.toISOString(), endDate.toISOString());
-      }
-
-      // Generate report content
-      const reportContent = await generateReport(fetchedData, shop.fiscalConfig, fileFormat, shop.fiscalConfig.separator || ',');
-
-      if (!reportContent) {
-        // Update report status to ERROR if no content was generated
-        await prisma.report.update({
-          where: { id: report.id },
-          data: {
-            status: ReportStatus.ERROR,
-            errorMessage: "Failed to generate report content"
-          }
-        });
-        throw new Error("Failed to generate report content");
-      }
-
-      // Write the report content to file
-      const filePath = join(exportDir, `${report.fileName}`);
-      await writeFile(filePath, reportContent);
-
       // Update report status to COMPLETED if everything went well
       await prisma.report.update({
         where: { id: report.id },
         data: {
           status: ReportStatus.COMPLETED,
-          fileSize: Buffer.byteLength(reportContent),
-          filePath: filePath
+          fileSize: savedFiles.reduce((total, { content }) => total + Buffer.byteLength(content), 0),
+          filePath: savedFiles.map(({ filePath }) => filePath).join(',')
         }
       });
 
+      // If only one file, return it directly
+      if (savedFiles.length === 1) {
+        const { fileName, content } = savedFiles[0];
+        let contentType = "application/octet-stream";
+        if (fileName.endsWith(".csv")) contentType = "text/csv";
+        else if (fileName.endsWith(".xlsx")) contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        else if (fileName.endsWith(".json")) contentType = "application/json";
+        else if (fileName.endsWith(".txt")) contentType = "text/plain";
+        return new Response(content, {
+          headers: {
+            "Content-Type": contentType,
+            "Content-Disposition": `attachment; filename=\"${fileName}\"`,
+          },
+        });
+      }
+
+      // If multiple files, zip them
+      if (savedFiles.length > 1) {
+        const JSZip = (await import('jszip')).default;
+        const zip = new JSZip();
+        for (const { fileName, content } of savedFiles) {
+          zip.file(fileName, content);
+        }
+        const zipContent = await zip.generateAsync({ type: "nodebuffer" });
+        const zipFileName = `ledgerxport-schedule-${new Date().toISOString().replace(/[:.]/g, "-")}.zip`;
+        return new Response(zipContent, {
+          headers: {
+            "Content-Type": "application/zip",
+            "Content-Disposition": `attachment; filename=\"${zipFileName}\"`,
+          },
+        });
+      }
+
       // If this is a generate and download action, return the file
       if (actionType === "generate") {
-        // Set appropriate headers for file download
-        const headers = new Headers();
-        const contentType = {
-          "CSV": "text/csv",
-          "JSON": "application/json",
-          "TXT": "text/plain",
-          "XML": "application/xml",
-          "XLSX": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        }[fileFormat.toUpperCase()] || "application/octet-stream";
-        
-        headers.set("Content-Type", contentType);
-        headers.set("Content-Disposition", `attachment; filename="${report.fileName}"`);
-        headers.set("Content-Length", Buffer.byteLength(reportContent).toString());
-        headers.set("Cache-Control", "no-cache");
-        headers.set("Pragma", "no-cache");
-
-        return new Response(reportContent, { 
-          headers,
-          status: 200
-        });
+        // Instead of download logic, just return the file name for the client to handle download
+        return json({ fileName: savedFiles[0].fileName });
       }
 
       // If this is a schedule action, create a scheduled task
@@ -563,8 +676,12 @@ export default function ScheduleReport() {
   }, [data]);
 
   // Report name state
-  const [reportName, setReportName] = useState("");
-  const [reportNameFormat, setReportNameFormat] = useState("ledgerxport-{type}-{date}.{format}");
+  const [reportNames, setReportNames] = useState<{ [key: string]: string }>({
+    ventes: "",
+    clients: "",
+    remboursements: "",
+    taxes: "",
+  });
 
   // Date range states
   const [selectedDates, setSelectedDates] = useState({
@@ -607,32 +724,37 @@ export default function ScheduleReport() {
   const [executionDay, setExecutionDay] = useState("1");
   const [executionTime, setExecutionTime] = useState("09:00");
 
-  // Helper function to format date as YYYYMMDD
-  const formatDate = (date: Date) => {
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear();
-    return `${year}${month}${day}`;
-  };
-
-  // Update report name when format or dates change
+  // Update report names when file format changes
   useEffect(() => {
-    if (reportNameFormat) {
-      const startDateStr = formatDate(selectedDates.start);
-      const endDateStr = formatDate(selectedDates.end);
-      const selectedTypes = Object.entries(dataTypes)
-        .filter(([_, value]) => value)
-        .map(([key]) => key)
-        .join('-');
+    setReportNames(prev => {
+      const updated = { ...prev };
+      Object.keys(updated).forEach(key => {
+        if (updated[key]) {
+          // Replace the extension with the new file format
+          updated[key] = updated[key].replace(/\.[a-zA-Z0-9]+$/, '') + '.' + fileFormat.toLowerCase();
+        }
+      });
+      return updated;
+    });
+  }, [fileFormat]);
 
-      let name = reportNameFormat
-        .replace('{type}', selectedTypes || 'all')
-        .replace('{date}', `${startDateStr}-${endDateStr}`)
-        .replace('{format}', fileFormat.toLowerCase());
+  // Update report names when dates or file format changes
+  useEffect(() => {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const formattedStartDate = formatDate(selectedDates.start);
+    const formattedEndDate = formatDate(selectedDates.end);
+    const fiscalCode = shop?.fiscalConfig?.code || 'EXPORT';
 
-      setReportName(name);
-    }
-  }, [reportNameFormat, selectedDates, dataTypes, fileFormat]);
+    setReportNames(prev => {
+      const newReportNames = { ...prev };
+      Object.entries(dataTypes).forEach(([key, isSelected]) => {
+        if (isSelected) {
+          newReportNames[key] = `ledgerxport-${fiscalCode}-${key}-${formattedStartDate}-${formattedEndDate}-${timestamp}.${fileFormat.toLowerCase()}`;
+        }
+      });
+      return newReportNames;
+    });
+  }, [selectedDates, dataTypes, shop?.fiscalConfig?.code, fileFormat]);
 
   const handleDateSelection = useCallback(
     ({ start, end }: { start: Date; end: Date }) => {
@@ -642,9 +764,23 @@ export default function ScheduleReport() {
     []
   );
 
-  const handleDataTypeChange = useCallback((type: string, checked: boolean) => {
-    setDataTypes((prev) => ({ ...prev, [type]: checked }));
-  }, []);
+  const handleDataTypeChange = (key: string, checked: boolean) => {
+    setDataTypes(prev => ({ ...prev, [key]: checked }));
+    
+    // Update report names when data type changes
+    if (checked) {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const formattedStartDate = formatDate(selectedDates.start);
+      const formattedEndDate = formatDate(selectedDates.end);
+      const fiscalCode = shop?.fiscalConfig?.code || 'EXPORT';
+      setReportNames(prev => ({
+        ...prev,
+        [key]: `ledgerxport-${fiscalCode}-${key}-${formattedStartDate}-${formattedEndDate}-${timestamp}.${fileFormat.toLowerCase()}`
+      }));
+    } else {
+      setReportNames(prev => ({ ...prev, [key]: "" }));
+    }
+  };
 
   // Email validation function
   const isValidEmail = (email: string) => {
@@ -681,12 +817,12 @@ export default function ScheduleReport() {
   const handleGenerateAndDownload = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData();
-    formData.append("reportName", reportName);
     formData.append("startDate", selectedDates.start.toISOString());
     formData.append("endDate", selectedDates.end.toISOString());
     formData.append("dataTypes", JSON.stringify(dataTypes));
     formData.append("fileFormat", fileFormat);
     formData.append("actionType", "generate");
+    formData.append("reportNames", JSON.stringify(reportNames));
 
     try {
       setToastMessage("Génération du rapport en cours...");
@@ -702,27 +838,17 @@ export default function ScheduleReport() {
         throw new Error(error.error || 'Failed to generate report');
       }
 
-      // Get the blob from the response
-      const blob = await response.blob();
-      
-      // Create a URL for the blob
-      const url = window.URL.createObjectURL(blob);
-      
-      // Create a temporary link element
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = reportName;
-      
-      // Append to body, click, and remove
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      // Clean up the URL
-      window.URL.revokeObjectURL(url);
-
-      setToastMessage("Rapport généré et téléchargé avec succès");
-      setToastActive(true);
+      const data = await response.json();
+      if (data.fileName) {
+        const downloadUrl = `/api/reports/${encodeURIComponent(data.fileName)}/download`;
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.setAttribute('download', data.fileName);
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        return;
+      }
     } catch (error) {
       console.error('Error downloading report:', error);
       setToastMessage("Erreur lors de la génération du rapport");
@@ -734,25 +860,26 @@ export default function ScheduleReport() {
     event.preventDefault();
 
     // Validate required To recipients
-    if (emailConfig.to.length === 0) {
+    if (schedulingType === 'email' && emailConfig.to.length === 0) {
       setToastMessage("Au moins un destinataire (To) est requis");
       setToastActive(true);
       return;
     }
 
     const formData = new FormData();
-    formData.append("reportName", reportName);
+    formData.append("reportNames", JSON.stringify(reportNames));
     formData.append("startDate", selectedDates.start.toISOString());
     formData.append("endDate", selectedDates.end.toISOString());
     formData.append("dataTypes", JSON.stringify(dataTypes));
     formData.append("fileFormat", fileFormat);
     formData.append("actionType", "schedule");
+    formData.append("schedulingType", schedulingType);
     if (schedulingType === "email") {
       formData.append("emailConfig", JSON.stringify(emailConfig));
+      formData.append("frequency", frequency);
+      formData.append("executionDay", executionDay);
+      formData.append("executionTime", executionTime);
     }
-    formData.append("frequency", frequency);
-    formData.append("executionDay", executionDay);
-    formData.append("executionTime", executionTime);
 
     try {
       setToastMessage("Planification du rapport en cours...");
@@ -803,31 +930,6 @@ export default function ScheduleReport() {
             <Card>
               <form onSubmit={handleGenerateAndDownload}>
                 <FormLayout>
-                  {/* Report Name */}
-                  <TextField
-                    label="Nom du rapport"
-                    value={reportName}
-                    onChange={setReportName}
-                    autoComplete="off"
-                  />
-
-                  {/* Report Name Format */}
-                  <div>
-                    <Text variant="headingMd" as="h2">Format du nom du rapport</Text>
-                    <LegacyStack vertical spacing="tight">
-                      <TextField
-                        label="Format"
-                        value={reportNameFormat}
-                        onChange={setReportNameFormat}
-                        helpText="Utilisez {type} pour les types de données, {date} pour la période, et {format} pour le format du fichier"
-                        autoComplete="off"
-                      />
-                      <Text variant="bodyMd" as="p">
-                        Nom généré: <strong>{reportName}</strong>
-                      </Text>
-                    </LegacyStack>
-                  </div>
-
                   {/* Date Range */}
                   <div>
                     <Text variant="headingMd" as="h2">Période du rapport</Text>
@@ -867,26 +969,23 @@ export default function ScheduleReport() {
                   <div>
                     <Text variant="headingMd" as="h2">Types de données</Text>
                     <LegacyStack vertical spacing="tight">
-                      <Checkbox
-                        label="Ventes"
-                        checked={dataTypes.ventes}
-                        onChange={(checked) => handleDataTypeChange('ventes', checked)}
-                      />
-                      <Checkbox
-                        label="Clients"
-                        checked={dataTypes.clients}
-                        onChange={(checked) => handleDataTypeChange('clients', checked)}
-                      />
-                      <Checkbox
-                        label="Remboursements"
-                        checked={dataTypes.remboursements}
-                        onChange={(checked) => handleDataTypeChange('remboursements', checked)}
-                      />
-                      <Checkbox
-                        label="Taxes"
-                        checked={dataTypes.taxes}
-                        onChange={(checked) => handleDataTypeChange('taxes', checked)}
-                      />
+                      {Object.entries(dataTypes).map(([key, value]) => (
+                        <LegacyStack key={key} spacing="tight">
+                          <Checkbox
+                            label={key.charAt(0).toUpperCase() + key.slice(1)}
+                            checked={value}
+                            onChange={(checked) => handleDataTypeChange(key, checked)}
+                          />
+                          {value && (
+                            <TextField
+                              label="Nom du rapport"
+                              value={reportNames[key as keyof typeof reportNames]}
+                              onChange={(val) => setReportNames(prev => ({ ...prev, [key]: val }))}
+                              autoComplete="off"
+                            />
+                          )}
+                        </LegacyStack>
+                      ))}
                     </LegacyStack>
                   </div>
 

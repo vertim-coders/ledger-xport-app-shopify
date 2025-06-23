@@ -1,32 +1,39 @@
 import { prisma } from "../db.server";
 import { sendEmail } from "../utils/email.server";
-import { readFile } from "fs/promises";
+import { readFile, writeFile, mkdir } from "fs/promises";
 import { join } from "path";
+import { ShopifyCustomerService } from "../models/ShopifyCustomer.service";
+import { ShopifyOrderService } from "../models/ShopifyOrder.service";
+import { ShopifyRefundService } from "../models/ShopifyRefund.service";
+import { ShopifyTaxService } from "../models/ShopifyTax.service";
+import { ReportService } from "../services/report.service";
+import { sessionStorage } from "../shopify.server";
+import { shopifyApi, LATEST_API_VERSION } from "@shopify/shopify-api";
+import type { ExportFormat } from "@prisma/client";
+import type { EmailConfig } from "../types/EmailConfigType";
 
-// Function to process scheduled tasks
+// Fonction pour traiter les tâches planifiées
 export async function processScheduledTasks() {
   try {
-    // Find all active scheduled tasks that are due
+    // 1. Trouver toutes les tâches planifiées actives et arrivées à échéance
     const now = new Date();
     const dueTasks = await prisma.scheduledTask.findMany({
       where: {
         status: "ACTIVE",
-        nextRun: {
-          lte: now
-        }
+        nextRun: { lte: now }
       },
       include: {
         report: true,
-        shop: true
+        shop: { include: { fiscalConfig: true } }
       }
     });
 
-    console.log(`Found ${dueTasks.length} due tasks to process`);
+    console.log(`Tâches planifiées à traiter : ${dueTasks.length}`);
 
     for (const task of dueTasks) {
       let taskExecution;
       try {
-        // Create a new task execution record
+        // 2. Créer un enregistrement d'exécution de tâche
         taskExecution = await prisma.task.create({
           data: {
             scheduledTaskId: task.id,
@@ -39,27 +46,24 @@ export async function processScheduledTasks() {
           }
         });
 
-        console.log(`Processing task ${task.id} with execution ${taskExecution.id}`);
+        // 3. Générer le rapport si nécessaire
+        const filePaths = await generateAndSaveReport(task);
 
-        // Generate the report
-        const reportContent = await generateReport(task);
-        
-        // Send the email
+        // 4. Envoyer l'email avec le rapport en pièce jointe
         const emailConfig = JSON.parse(task.emailConfig);
-        await sendEmail({
-          to: emailConfig.to,
-          cc: emailConfig.cc,
-          bcc: emailConfig.bcc,
-          replyTo: emailConfig.replyTo,
-          subject: `Rapport planifié: ${task.report.fileName}`,
-          text: `Veuillez trouver ci-joint votre rapport planifié.`,
-          attachments: [{
-            filename: task.report.fileName,
-            content: reportContent
-          }]
-        });
+        const attachments = await Promise.all(filePaths.map(async (filePath: string) => ({
+          filename: filePath.split("/").pop(),
+          content: await readFile(filePath)
+        })));
+        const mail: EmailConfig = {
+          ...emailConfig,
+          subject: emailConfig.subject || `Rapport planifié : ${task.report.fileName}`,
+          text: emailConfig.text || `Veuillez trouver ci-joint votre rapport planifié.`,
+          attachments
+        };
+        await sendEmail(mail);
 
-        // Update task execution record
+        // 5. Mettre à jour l'exécution de la tâche
         await prisma.task.update({
           where: { id: taskExecution.id },
           data: {
@@ -68,13 +72,12 @@ export async function processScheduledTasks() {
           }
         });
 
-        // Update scheduled task with next run time
+        // 6. Mettre à jour la tâche planifiée avec la prochaine exécution
         const nextRun = calculateNextRun(
           task.frequency,
           task.executionDay,
           task.executionTime
         );
-
         await prisma.scheduledTask.update({
           where: { id: task.id },
           data: {
@@ -82,14 +85,10 @@ export async function processScheduledTasks() {
             nextRun
           }
         });
-
-        console.log(`Successfully processed task ${task.id}`);
-
+        console.log(`Tâche ${task.id} traitée avec succès.`);
       } catch (error) {
-        console.error(`Error processing scheduled task ${task.id}:`, error);
-        
+        console.error(`Erreur lors du traitement de la tâche planifiée ${task.id} :`, error);
         if (taskExecution) {
-          // Update task execution record with error
           await prisma.task.update({
             where: { id: taskExecution.id },
             data: {
@@ -101,29 +100,116 @@ export async function processScheduledTasks() {
       }
     }
   } catch (error) {
-    console.error('Error in processScheduledTasks:', error);
+    console.error('Erreur dans processScheduledTasks :', error);
   }
 }
 
-// Helper function to generate report
-async function generateReport(task: any) {
-  // Read the report file
-  const filePath = task.report.filePath;
-  if (!filePath) {
-    throw new Error('Report file path not found');
+// Génère et sauvegarde le rapport si besoin, retourne les chemins des fichiers générés
+async function generateAndSaveReport(task: any): Promise<string[]> {
+  const report = task.report;
+  const shop = task.shop;
+  const fiscalConfig = shop.fiscalConfig;
+  const startDate = report.startDate;
+  const endDate = report.endDate;
+  const dataTypes = report.dataType.split(',');
+  const fileFormat = report.format;
+  const exportDir = join(process.cwd(), 'exports', shop.id);
+  await mkdir(exportDir, { recursive: true });
+
+  // Si le rapport existe déjà, retourner les fichiers
+  if (report.filePath) {
+    return report.filePath.split(',');
   }
 
-  return await readFile(filePath);
+  // Créer l'API client Shopify pour cette boutique
+  const shopify = shopifyApi({
+    apiKey: process.env.SHOPIFY_API_KEY!,
+    apiSecretKey: process.env.SHOPIFY_API_SECRET!,
+    scopes: process.env.SCOPES?.split(",") || [],
+    hostName: process.env.SHOPIFY_APP_URL?.replace(/https?:\/\//, '') || '',
+    apiVersion: LATEST_API_VERSION,
+    isEmbeddedApp: true,
+    sessionStorage: sessionStorage,
+  });
+
+  // Charger la session de la boutique
+  const session = await sessionStorage.loadSession(shop.shopifyDomain);
+  if (!session) {
+    throw new Error(`Session non trouvée pour la boutique ${shop.shopifyDomain}`);
+  }
+
+  // Créer le client admin
+  const admin = new shopify.clients.Graphql({
+    session: session,
+  });
+
+  let filePaths: string[] = [];
+  for (const dataType of dataTypes) {
+    let data = null;
+    switch (dataType) {
+      case 'ventes':
+        data = await ShopifyOrderService.getOrders(admin, startDate.toISOString(), endDate.toISOString());
+        break;
+      case 'clients':
+        data = await ShopifyCustomerService.getCustomers(admin, startDate.toISOString(), endDate.toISOString());
+        break;
+      case 'remboursements':
+        data = await ShopifyRefundService.getRefunds(admin, startDate.toISOString(), endDate.toISOString());
+        break;
+      case 'taxes':
+        data = await ShopifyTaxService.getTaxes(admin, startDate.toISOString(), endDate.toISOString());
+        break;
+    }
+    if (!data) continue;
+    const reportContent = ReportService.generateReport(
+      data,
+      fiscalConfig.code,
+      fileFormat,
+      dataType,
+      fiscalConfig.separator
+    );
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const formattedStartDate = formatDate(new Date(startDate));
+    const formattedEndDate = formatDate(new Date(endDate));
+    const fileName = `ledgerxport-${fiscalConfig.code}-${dataType}-${formattedStartDate}-${formattedEndDate}-${timestamp}.${fileFormat.toLowerCase()}`;
+    const filePath = join(exportDir, fileName);
+    await writeFile(filePath, reportContent);
+    filePaths.push(filePath);
+  }
+
+  // Mise à jour du rapport avec les chemins des fichiers générés
+  await prisma.report.update({
+    where: { id: report.id },
+    data: {
+      filePath: filePaths.join(','),
+      fileSize: filePaths.reduce((total, filePath) => {
+        try {
+          const stats = require('fs').statSync(filePath);
+          return total + stats.size;
+        } catch {
+          return total;
+        }
+      }, 0),
+      status: 'COMPLETED',
+    },
+  });
+  return filePaths;
 }
 
-// Helper function to calculate next run time
+// Formate une date en AAAAMMJJ
+function formatDate(date: Date) {
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  return `${year}${month}${day}`;
+}
+
+// Calcule la prochaine exécution
 function calculateNextRun(frequency: string, executionDay: number, executionTime: string): Date {
   const now = new Date();
   const [hours, minutes] = executionTime.split(':').map(Number);
-  
   let nextRun = new Date(now);
   nextRun.setHours(hours, minutes, 0, 0);
-
   switch (frequency) {
     case "daily":
       nextRun.setDate(nextRun.getDate() + 1);
@@ -134,10 +220,9 @@ function calculateNextRun(frequency: string, executionDay: number, executionTime
       break;
     case "yearly":
       nextRun.setDate(executionDay);
-      nextRun.setMonth(0); // January
+      nextRun.setMonth(0);
       nextRun.setFullYear(nextRun.getFullYear() + 1);
       break;
   }
-
   return nextRun;
 } 
