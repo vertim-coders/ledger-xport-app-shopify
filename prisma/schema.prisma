@@ -103,8 +103,8 @@ model Report {
   dataType      String   // orders, customers, refunds, taxes
   status        ReportStatus
   format        ExportFormat
-  startDate     DateTime
-  endDate       DateTime
+  startDate     DateTime?
+  endDate       DateTime?
   shopId        String
   fileSize      Int
   fileName      String

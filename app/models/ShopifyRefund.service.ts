@@ -6,8 +6,8 @@ export class ShopifyRefundService {
             const formattedEndDate = new Date(endDate).toISOString();
 
             const query = `
-                query GetRefunds {
-                    orders(first: 250) {
+                query GetRefunds($query: String!) {
+                    orders(first: 250, query: $query) {
                         edges {
                             node {
                                 id
@@ -81,12 +81,16 @@ export class ShopifyRefundService {
                 }
             `;
 
+            const variables = {
+              query: `updated_at:>=${formattedStartDate} AND updated_at:<=${formattedEndDate}`
+            };
+
             let data;
             if (typeof admin.graphql === "function") {
-                const response = await admin.graphql(query);
+                const response = await admin.graphql(query, { variables });
                 data = await response.json();
             } else if (typeof admin.request === "function") {
-                data = await admin.request(query);
+                data = await admin.request(query, { variables });
             } else {
                 throw new Error("No valid Shopify GraphQL client found");
             }
@@ -147,8 +151,14 @@ export class ShopifyRefundService {
                 }))
             ) || [];
 
-            console.log("Fetched Shopify Refunds:", refunds);
-            return refunds;
+            // Manually filter refunds by date since GraphQL doesn't support it on the refunds object directly
+            const filteredRefunds = refunds.filter((refund: any) => {
+                const refundDate = new Date(refund.created_at);
+                return refundDate >= new Date(formattedStartDate) && refundDate <= new Date(formattedEndDate);
+            });
+
+            console.log("Fetched Shopify Refunds:", filteredRefunds);
+            return filteredRefunds;
         } catch (error) {
             console.log("Error fetching refunds:", error);
             return null;

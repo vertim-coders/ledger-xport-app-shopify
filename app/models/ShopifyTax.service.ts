@@ -6,8 +6,8 @@ export class ShopifyTaxService {
             const formattedEndDate = new Date(endDate).toISOString();
 
             const query = `
-                query GetTaxes {
-                    orders(first: 250) {
+                query GetTaxes($query: String!) {
+                    orders(first: 250, query: $query) {
                         edges {
                             node {
                                 id
@@ -47,12 +47,16 @@ export class ShopifyTaxService {
                 }
             `;
 
+            const variables = {
+              query: `created_at:>=${formattedStartDate} AND created_at:<=${formattedEndDate}`
+            };
+
             let data;
             if (typeof admin.graphql === "function") {
-                const response = await admin.graphql(query);
+                const response = await admin.graphql(query, { variables });
                 data = await response.json();
             } else if (typeof admin.request === "function") {
-                data = await admin.request(query);
+                data = await admin.request(query, { variables });
             } else {
                 throw new Error("No valid Shopify GraphQL client found");
             }

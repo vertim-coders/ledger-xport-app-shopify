@@ -236,8 +236,10 @@ export default function ReportView() {
               </Text>
               <InlineStack gap="400">
                 <Text as="p" variant="bodyMd">
-                  Période: {formatDate(report.startDate)} au{" "}
-                  {formatDate(report.endDate)}
+                  Période: {report.startDate && report.endDate 
+                    ? `${formatDate(report.startDate)} au ${formatDate(report.endDate)}`
+                    : "Calculé automatiquement selon la fréquence"
+                  }
                 </Text>
               </InlineStack>
             </BlockStack>

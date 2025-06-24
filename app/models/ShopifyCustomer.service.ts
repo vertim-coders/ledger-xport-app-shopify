@@ -6,8 +6,8 @@ export class ShopifyCustomerService {
             const formattedEndDate = new Date(endDate).toISOString();
 
             const query = `
-                query GetCustomers {
-                    customers(first: 250) {
+                query GetCustomers($query: String!) {
+                    customers(first: 250, query: $query) {
                         edges {
                             node {
                                 id
@@ -54,12 +54,16 @@ export class ShopifyCustomerService {
                 }
             `;
 
+            const variables = {
+              query: `created_at:>=${formattedStartDate} AND created_at:<=${formattedEndDate}`
+            };
+
             let data;
             if (typeof admin.graphql === "function") {
-                const response = await admin.graphql(query);
+                const response = await admin.graphql(query, { variables });
                 data = await response.json();
             } else if (typeof admin.request === "function") {
-                data = await admin.request(query);
+                data = await admin.request(query, { variables });
             } else {
                 throw new Error("No valid Shopify GraphQL client found");
             }

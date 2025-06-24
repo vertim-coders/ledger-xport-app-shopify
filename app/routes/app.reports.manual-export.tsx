@@ -226,6 +226,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   console.log("Found fiscal regime:", fiscalRegime.code);
 
+  const shop = await prisma.shop.findUnique({
+    where: { shopifyDomain: session.shop },
+  });
+
+  if (!shop) {
+    return json({ error: "Shop not found" }, { status: 404 });
+  }
+
   // Create export directory if it doesn't exist
   const exportDir = join(process.cwd(), "reports");
   await fs.mkdir(exportDir, { recursive: true });
@@ -235,10 +243,25 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   let hasEmptyData = false;
 
   // Process each selected data type
+  const createdReports = [];
   for (const [dataType, isSelected] of Object.entries(dataTypes)) {
     if (!isSelected) continue;
 
     console.log(`Fetching data for type: ${dataType} from ${startDate} to ${endDate}`);
+
+    const report = await prisma.report.create({
+      data: {
+        type: "manual",
+        dataType: dataType,
+        status: ReportStatus.PROCESSING,
+        format: format,
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+        shopId: shop.id,
+        fileName: fileNames[dataType] || `${dataType}-report`,
+        fileSize: 0,
+      },
+    });
 
     let reportContent: string | Buffer | null = null;
     let data: any[] | null = null;
@@ -263,29 +286,58 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       }
 
       if (!data || data.length === 0) {
-        console.log(`No data found for ${dataType} in the selected date range`);
         hasEmptyData = true;
+        await prisma.report.update({
+          where: { id: report.id },
+          data: { status: ReportStatus.COMPLETED_WITH_EMPTY_DATA },
+        });
+        console.log(`No data for ${dataType}, marking as COMPLETED_WITH_EMPTY_DATA.`);
         continue;
       }
 
-      reportContent = ReportService.generateReport(data, fiscalRegime.code, format, dataType, fiscalRegime.separator);
+      reportContent = ReportService.generateReport(
+        data,
+        fiscalRegime.code,
+        format,
+        dataType,
+        fiscalRegime.separator,
+      );
 
       if (!reportContent) {
-        console.log(`No content generated for ${dataType}`);
-        hasEmptyData = true;
+        await prisma.report.update({
+          where: { id: report.id },
+          data: { status: ReportStatus.COMPLETED_WITH_EMPTY_DATA },
+        });
+        console.log(`Empty report content for ${dataType}, marking as COMPLETED_WITH_EMPTY_DATA.`);
         continue;
       }
 
-      // Save the report to a file
-      const fileName = fileNames[dataType];
-      const filePath = join(exportDir, fileName);
+      const filePath = join(exportDir, report.fileName);
       await fs.writeFile(filePath, reportContent);
+
+      await prisma.report.update({
+        where: { id: report.id },
+        data: {
+          status: ReportStatus.COMPLETED,
+          filePath: filePath,
+          fileSize: Buffer.byteLength(reportContent),
+        },
+      });
+
       savedFilePaths.push(filePath);
-      console.log(`Successfully saved ${dataType} report to ${filePath}`);
+      createdReports.push(report);
+      console.log(`Successfully generated report for ${dataType}: ${report.fileName}`);
+
     } catch (error) {
-      console.error(`Error processing ${dataType}:`, error);
-      hasEmptyData = true;
-      continue;
+      console.error(`Error processing data type ${dataType}:`, error);
+      hasEmptyData = true; // Consider it as an empty/failed case for UI feedback
+      await prisma.report.update({
+        where: { id: report.id },
+        data: {
+          status: ReportStatus.ERROR,
+          errorMessage: error instanceof Error ? error.message : String(error),
+        },
+      });
     }
   }
 

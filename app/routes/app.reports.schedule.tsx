@@ -257,13 +257,20 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
       console.log(`Form field: ${key} = ${value}`);
     }
 
-    const startDate = new Date(formData.get("startDate") as string);
-    const endDate = new Date(formData.get("endDate") as string);
     const dataTypes = JSON.parse(formData.get("dataTypes") as string);
     const fileFormat = formData.get("fileFormat") as string;
     const actionType = formData.get("actionType") as string;
     const schedulingType = formData.get("schedulingType") as string;
     const reportNames = JSON.parse(formData.get("reportNames") as string);
+
+    // For generate action, we need start/end dates
+    let startDate: Date | null = null;
+    let endDate: Date | null = null;
+    
+    if (actionType === "generate") {
+      startDate = new Date(formData.get("startDate") as string);
+      endDate = new Date(formData.get("endDate") as string);
+    }
 
     // Validate required scheduling fields if scheduling
     if (actionType === "schedule") {
@@ -293,6 +300,7 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
 
     if (actionType === "schedule") {
       // Create a report record with status PENDING (no file yet)
+      // For scheduled reports, we don't save startDate/endDate as they'll be calculated dynamically
       const report = await prisma.report.create({
         data: {
           type: "scheduled",
@@ -302,8 +310,8 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
             .join(','),
           status: ReportStatus.PENDING,
           format: fileFormat as ExportFormat,
-          startDate,
-          endDate,
+          startDate: null, // Will be calculated dynamically by worker
+          endDate: null,   // Will be calculated dynamically by worker
           shopId: shop.id,
           fileSize: 0,
           fileName: (Object.values(reportNames).find(name => !!name) as string) || "export",
@@ -331,6 +339,11 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
         });
       }
       return json({ success: true });
+    }
+
+    // For generate action, we need start/end dates
+    if (!startDate || !endDate) {
+      return json({ error: "Start date and end date are required for immediate generation" }, { status: 400 });
     }
 
     // Helper to fetch data with compatibility for both admin clients
@@ -415,8 +428,8 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
           .join(','),
         status: ReportStatus.PROCESSING,
         format: fileFormat as ExportFormat,
-        startDate,
-        endDate,
+        startDate, // Save the actual dates for immediate generation
+        endDate,   // Save the actual dates for immediate generation
         shopId: shop.id,
         fileSize: 0,
         fileName: savedFiles[0].fileName, // Use the actual generated file name
@@ -729,6 +742,9 @@ export default function ScheduleReport() {
   const [executionDay, setExecutionDay] = useState("1");
   const [executionTime, setExecutionTime] = useState("09:00");
 
+  // Action type state to track whether user is generating or scheduling
+  const [actionType, setActionType] = useState<'generate' | 'schedule'>('generate');
+
   // Update report names when file format changes
   useEffect(() => {
     setReportNames(prev => {
@@ -754,12 +770,30 @@ export default function ScheduleReport() {
       const newReportNames = { ...prev };
       Object.entries(dataTypes).forEach(([key, isSelected]) => {
         if (isSelected) {
+          // For now, we'll use the generate format as default
+          // The actual format will be determined when the user clicks Generate or Schedule
           newReportNames[key] = `ledgerxport-${fiscalCode}-${key}-${formattedStartDate}-${formattedEndDate}-${timestamp}.${fileFormat.toLowerCase()}`;
         }
       });
       return newReportNames;
     });
   }, [selectedDates, dataTypes, shop?.fiscalConfig?.code, fileFormat]);
+
+  // Function to generate report name based on action type
+  const generateReportName = (dataType: string, actionType: 'generate' | 'schedule'): string => {
+    const fiscalCode = shop?.fiscalConfig?.code || 'EXPORT';
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    
+    if (actionType === 'generate') {
+      // For Generate: include period dates
+      const formattedStartDate = formatDate(selectedDates.start);
+      const formattedEndDate = formatDate(selectedDates.end);
+      return `ledgerxport-${fiscalCode}-${dataType}-${formattedStartDate}-${formattedEndDate}-${timestamp}.${fileFormat.toLowerCase()}`;
+    } else {
+      // For Schedule: include frequency instead of dates
+      return `ledgerxport-${fiscalCode}-${dataType}-${frequency}.${fileFormat.toLowerCase()}`;
+    }
+  };
 
   const handleDateSelection = useCallback(
     ({ start, end }: { start: Date; end: Date }) => {
@@ -821,13 +855,22 @@ export default function ScheduleReport() {
 
   const handleGenerateAndDownload = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    
+    // Generate report names with the correct format for immediate generation
+    const generateReportNames: { [key: string]: string } = {};
+    Object.entries(dataTypes).forEach(([key, isSelected]) => {
+      if (isSelected) {
+        generateReportNames[key] = generateReportName(key, 'generate');
+      }
+    });
+    
     const formData = new FormData();
     formData.append("startDate", selectedDates.start.toISOString());
     formData.append("endDate", selectedDates.end.toISOString());
     formData.append("dataTypes", JSON.stringify(dataTypes));
     formData.append("fileFormat", fileFormat);
     formData.append("actionType", "generate");
-    formData.append("reportNames", JSON.stringify(reportNames));
+    formData.append("reportNames", JSON.stringify(generateReportNames));
 
     try {
       setToastMessage("Génération du rapport en cours...");
@@ -871,10 +914,17 @@ export default function ScheduleReport() {
       return;
     }
 
+    // Generate report names with the correct format for scheduling
+    const scheduleReportNames: { [key: string]: string } = {};
+    Object.entries(dataTypes).forEach(([key, isSelected]) => {
+      if (isSelected) {
+        scheduleReportNames[key] = generateReportName(key, 'schedule');
+      }
+    });
+
     const formData = new FormData();
-    formData.append("reportNames", JSON.stringify(reportNames));
-    formData.append("startDate", selectedDates.start.toISOString());
-    formData.append("endDate", selectedDates.end.toISOString());
+    formData.append("reportNames", JSON.stringify(scheduleReportNames));
+    // For scheduled reports, we don't send start/end dates as they will be calculated dynamically
     formData.append("dataTypes", JSON.stringify(dataTypes));
     formData.append("fileFormat", fileFormat);
     formData.append("actionType", "schedule");
@@ -938,15 +988,27 @@ export default function ScheduleReport() {
                   {/* Date Range */}
                   <div>
                     <Text variant="headingMd" as="h2">Période du rapport</Text>
+                    <div style={{ marginBottom: '8px' }}>
+                      <Text variant="bodyMd" as="p">
+                        {actionType === 'generate' 
+                          ? "Sélectionnez la période pour la génération immédiate du rapport"
+                          : "La période sera calculée automatiquement selon la fréquence sélectionnée"
+                        }
+                      </Text>
+                    </div>
                     <div style={{ position: 'relative' }}>
                       <Button
                         onClick={() => setShowDatePicker(!showDatePicker)}
                         fullWidth
+                        disabled={actionType === 'schedule'}
                       >
-                        {`Du ${selectedDates.start.toLocaleDateString()} au ${selectedDates.end.toLocaleDateString()}`}
+                        {actionType === 'schedule' 
+                          ? "Période calculée automatiquement"
+                          : `Du ${selectedDates.start.toLocaleDateString()} au ${selectedDates.end.toLocaleDateString()}`
+                        }
                       </Button>
 
-                      {showDatePicker && (
+                      {showDatePicker && actionType !== 'schedule' && (
                         <div style={{
                           position: 'absolute',
                           top: '100%',
@@ -1177,13 +1239,19 @@ export default function ScheduleReport() {
                       </Button>
                       <LegacyStack spacing="tight">
                         <Button
-                          onClick={() => handleGenerateAndDownload(new Event('submit') as any)}
+                          onClick={() => {
+                            setActionType('generate');
+                            handleGenerateAndDownload(new Event('submit') as any);
+                          }}
                           variant="primary"
                         >
                           Générer et télécharger
                         </Button>
                         <Button
-                          onClick={() => handleSchedule(new Event('submit') as any)}
+                          onClick={() => {
+                            setActionType('schedule');
+                            handleSchedule(new Event('submit') as any);
+                          }}
                           variant="primary"
                         >
                           Planifier automatiquement

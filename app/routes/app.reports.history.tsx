@@ -26,8 +26,8 @@ import { promises as fs } from "fs";
 
 type LoaderData = {
   reports: Array<Omit<Report, "startDate" | "endDate" | "createdAt" | "updatedAt"> & {
-    startDate: string;
-    endDate: string;
+    startDate: string | null;
+    endDate: string | null;
     createdAt: string;
     updatedAt: string;
   }>;
@@ -104,8 +104,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   // Serialize dates to strings for JSON
   const serializedReports = reports.map(report => ({
     ...report,
-    startDate: report.startDate.toISOString(),
-    endDate: report.endDate.toISOString(),
+    startDate: report.startDate?.toISOString() || null,
+    endDate: report.endDate?.toISOString() || null,
     createdAt: report.createdAt.toISOString(),
     updatedAt: report.updatedAt.toISOString(),
   }));
@@ -225,7 +225,9 @@ export default function ExportHistory() {
       >
         {new Date(report.createdAt).toLocaleDateString("fr-FR")}
       </div>,
-      `${new Date(report.startDate).toLocaleDateString("fr-FR")} → ${new Date(report.endDate).toLocaleDateString("fr-FR")}`,
+      report.startDate && report.endDate 
+        ? `${new Date(report.startDate).toLocaleDateString("fr-FR")} → ${new Date(report.endDate).toLocaleDateString("fr-FR")}`
+        : "Calculé automatiquement",
       report.type === "manual" ? "Manuel" : "Auto",
       report.format.toUpperCase(),
       <Badge tone={statusBadge.tone}>{statusBadge.content}</Badge>,

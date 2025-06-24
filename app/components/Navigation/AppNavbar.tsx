@@ -1,11 +1,9 @@
-import { Navigation, TopBar, Button } from "@shopify/polaris";
 import { useLocation, useNavigate } from "@remix-run/react";
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
 
 export function AppNavbar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   const navigationItems = [
     {
@@ -49,20 +47,6 @@ export function AppNavbar() {
     navigate(url);
   }, [navigate]);
 
-  const userMenuMarkup = (
-    <TopBar.UserMenu
-      actions={[
-        {
-          items: [{ content: "Paramètres", onAction: () => navigate("/app/settings/company-fiscal-regime") }],
-        },
-      ]}
-      name="Admin"
-      initials="A"
-      open={isUserMenuOpen}
-      onToggle={() => setIsUserMenuOpen(!isUserMenuOpen)}
-    />
-  );
-
   return (
     <div style={{ 
       backgroundColor: '#0066FF',
@@ -71,10 +55,6 @@ export function AppNavbar() {
       top: 0,
       zIndex: 1000
     }}>
-      <TopBar
-        showNavigationToggle
-        userMenu={userMenuMarkup}
-      />
       <div style={{ 
         padding: '0 24px',
         borderBottom: '1px solid rgba(255, 255, 255, 0.2)'
