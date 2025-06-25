@@ -212,13 +212,14 @@ export default function CompanyAndFiscalRegimeSettings() {
   const [selectedRegime, setSelectedRegime] = useState(settings?.code || "OHADA");
   const [toastActive, setToastActive] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  const [toastError, setToastError] = useState(false);
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
 
   const handleCompanyChange = (field: string, value: string) => {
     setCompanyFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleCompanySubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleCompanySubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData();
     Object.entries(companyFormData).forEach(([key, value]) => {
@@ -226,28 +227,43 @@ export default function CompanyAndFiscalRegimeSettings() {
     });
     data.append("actionType", "company");
     data.append("fiscalRegime", selectedRegime);
-    submit(data, { method: "post" });
-    setToastMessage("Paramètres de l'entreprise enregistrés avec succès");
-    setToastActive(true);
-    setTimeout(() => {
-      navigate("/app/dashboard");
-    }, 1000);
+    try {
+      await submit(data, { method: "post" });
+      setToastMessage("Paramètres de l'entreprise enregistrés avec succès");
+      setToastError(false);
+      setToastActive(true);
+      setTimeout(() => {
+        navigate("/app/dashboard");
+      }, 1000);
+    } catch (error) {
+      setToastMessage("Erreur lors de l'enregistrement des paramètres de l'entreprise");
+      setToastError(true);
+      setToastActive(true);
+    }
   };
 
-  const handleFiscalSubmit = () => {
+  const handleFiscalSubmit = async () => {
     const data = new FormData();
     data.append("fiscalRegime", selectedRegime);
     data.append("actionType", "fiscal");
     data.append("currency", companyFormData.currency);
-    submit(data, { method: "post" });
-    setToastMessage("Régime fiscal enregistré avec succès");
-    setToastActive(true);
+    try {
+      await submit(data, { method: "post" });
+      setToastMessage("Régime fiscal enregistré avec succès");
+      setToastError(false);
+      setToastActive(true);
+    } catch (error) {
+      setToastMessage("Erreur lors de l'enregistrement du régime fiscal");
+      setToastError(true);
+      setToastActive(true);
+    }
   };
 
   const toastMarkup = toastActive ? (
     <Toast
       content={toastMessage}
       onDismiss={() => setToastActive(false)}
+      error={toastError}
     />
   ) : null;
 

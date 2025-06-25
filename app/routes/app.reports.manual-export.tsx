@@ -18,6 +18,7 @@ import {
   Modal,
   Banner,
   type BadgeProps,
+  Toast,
 } from "@shopify/polaris";
 import { useState, useCallback, useEffect } from "react";
 import { authenticate } from "../shopify.server";
@@ -188,253 +189,62 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
   const formData = await request.formData();
   
-  console.log("Server received formData:", Object.fromEntries(formData.entries()));
-
   const startDate = formData.get("startDate") as string;
   const endDate = formData.get("endDate") as string;
-  const fiscalRegimeId = formData.get("fiscalRegimeId") as string;
+  const fiscalRegimeId = formData.get("fiscalRegimeId") as string; // Keep for validation if needed, though unused in the new flow
   const dataTypes = JSON.parse(formData.get("dataTypes") as string);
   const format = formData.get("format") as ExportFormat;
-  const software = formData.get("software") as string;
   const fileNames = JSON.parse(formData.get("fileNames") as string);
 
-  console.log("Parsed dataTypes:", Object.entries(dataTypes)
-    .filter(([_, selected]) => selected)
-    .map(([type]) => type));
-
-  // Validation
   if (!startDate || !endDate || !fiscalRegimeId || !format) {
     return json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  console.log("Validation check:", {
-          startDate,
-          endDate,
-    fiscalRegimeId,
-    format,
-    dataTypesLength: Object.values(dataTypes).filter(Boolean).length
-  });
-
-  // Get fiscal regime
-  const fiscalRegime = await prisma.fiscalConfiguration.findUnique({
-    where: { id: fiscalRegimeId },
-  });
-
-  if (!fiscalRegime) {
-    return json({ error: "Fiscal regime not found" }, { status: 404 });
-  }
-
-  console.log("Found fiscal regime:", fiscalRegime.code);
-
   const shop = await prisma.shop.findUnique({
     where: { shopifyDomain: session.shop },
+    include: { fiscalConfig: true }
   });
 
-  if (!shop) {
-    return json({ error: "Shop not found" }, { status: 404 });
+  if (!shop || !shop.fiscalConfig) {
+    return json({ error: "Shop or fiscal configuration not found" }, { status: 404 });
   }
 
-  // Create export directory if it doesn't exist
-  const exportDir = join(process.cwd(), "reports");
-  await fs.mkdir(exportDir, { recursive: true });
+  const reportService = new ReportService(admin);
 
-  // Save reports to files
-  const savedFilePaths: string[] = [];
-  let hasEmptyData = false;
+  const results = [];
+  const selectedDataTypes = Object.entries(dataTypes)
+        .filter(([_, selected]) => selected)
+    .map(([type]) => type);
 
-  // Process each selected data type
-  const createdReports = [];
-  for (const [dataType, isSelected] of Object.entries(dataTypes)) {
-    if (!isSelected) continue;
-
-    console.log(`Fetching data for type: ${dataType} from ${startDate} to ${endDate}`);
-
-    const report = await prisma.report.create({
-      data: {
-        type: "manual",
-        dataType: dataType,
-        status: ReportStatus.PROCESSING,
-        format: format,
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
-        shopId: shop.id,
-        fileName: fileNames[dataType] || `${dataType}-report`,
-        fileSize: 0,
-      },
-    });
-
-    let reportContent: string | Buffer | null = null;
-    let data: any[] | null = null;
-
+  for (const dataType of selectedDataTypes) {
     try {
-      switch (dataType) {
-        case "ventes":
-          data = await ShopifyOrderService.getOrders(admin, startDate, endDate);
-          break;
-
-        case "clients":
-          data = await ShopifyCustomerService.getCustomers(admin, startDate, endDate);
-          break;
-
-        case "remboursements":
-          data = await ShopifyRefundService.getRefunds(admin, startDate, endDate);
-          break;
-
-        case "taxes":
-          data = await ShopifyTaxService.getTaxes(admin, startDate, endDate);
-          break;
-      }
-
-      if (!data || data.length === 0) {
-        hasEmptyData = true;
-        await prisma.report.update({
-          where: { id: report.id },
-          data: { status: ReportStatus.COMPLETED_WITH_EMPTY_DATA },
-        });
-        console.log(`No data for ${dataType}, marking as COMPLETED_WITH_EMPTY_DATA.`);
-        continue;
-      }
-
-      reportContent = ReportService.generateReport(
-        data,
-        fiscalRegime.code,
-        format,
+      const report = await reportService.generateAndSaveReport({
+        shop,
         dataType,
-        fiscalRegime.separator,
-      );
-
-      if (!reportContent) {
-        await prisma.report.update({
-          where: { id: report.id },
-          data: { status: ReportStatus.COMPLETED_WITH_EMPTY_DATA },
-        });
-        console.log(`Empty report content for ${dataType}, marking as COMPLETED_WITH_EMPTY_DATA.`);
-        continue;
-      }
-
-      const filePath = join(exportDir, report.fileName);
-      await fs.writeFile(filePath, reportContent);
-
-      await prisma.report.update({
-        where: { id: report.id },
-        data: {
-          status: ReportStatus.COMPLETED,
-          filePath: filePath,
-          fileSize: Buffer.byteLength(reportContent),
-        },
+        format,
+        startDate,
+        endDate,
+        fileName: fileNames[dataType],
+        type: 'manual'
       });
-
-      savedFilePaths.push(filePath);
-      createdReports.push(report);
-      console.log(`Successfully generated report for ${dataType}: ${report.fileName}`);
-
-    } catch (error) {
-      console.error(`Error processing data type ${dataType}:`, error);
-      hasEmptyData = true; // Consider it as an empty/failed case for UI feedback
-      await prisma.report.update({
-        where: { id: report.id },
-        data: {
-          status: ReportStatus.ERROR,
-          errorMessage: error instanceof Error ? error.message : String(error),
-        },
+      results.push({
+        status: 'success',
+        dataType,
+        reportId: report.id,
+        fileName: report.fileName,
+        reportStatus: report.status,
+      });
+    } catch (error: any) {
+      console.error(`Failed to generate report for ${dataType}:`, error);
+      results.push({
+        status: 'error',
+        dataType,
+        message: error.message || 'An unknown error occurred'
       });
     }
   }
 
-  // Create report record in database
-  const report = await prisma.report.create({
-    data: {
-      type: "manual",
-      dataType: Object.entries(dataTypes)
-        .filter(([_, selected]) => selected)
-        .map(([type]) => type)
-        .join(","),
-      shopId: session.shop,
-      startDate: new Date(startDate),
-      endDate: new Date(endDate),
-      format: format,
-      status: hasEmptyData ? ReportStatus.COMPLETED_WITH_EMPTY_DATA : ReportStatus.COMPLETED,
-      fileSize: 0,
-      fileName: Object.entries(dataTypes)
-        .filter(([_, selected]) => selected)
-        .map(([type]) => fileNames[type])
-        .join(","),
-      filePath: savedFilePaths.join(","),
-      errorMessage: hasEmptyData ? "Some selected data types had no data in the selected date range" : null
-    },
-  });
-
-  try {
-    // If we have no saved files but have empty data, return a message
-    if (savedFilePaths.length === 0 && hasEmptyData) {
-      return json({
-        message: "No data found for the selected date range",
-        status: "EMPTY_DATA"
-      }, { status: 200 });
-    }
-
-    // If we have no saved files and no empty data flag, something went wrong
-    if (savedFilePaths.length === 0) {
-      throw new Error('No reports were generated successfully');
-    }
-
-    // If only one file, return the file name for download
-    if (savedFilePaths.length === 1) {
-      const filePath = savedFilePaths[0];
-      const fileName = Object.values(fileNames).find(name => !!name) || "export";
-      // File is already saved, just return the file name for frontend to trigger download
-      return json({ fileName });
-    }
-
-    // Otherwise, zip as before
-    const zipFileName = `ledgerxport-${fiscalRegime.code}-${new Date().toISOString().replace(/[:.]/g, "-")}.zip`;
-    const zipFilePath = join(exportDir, zipFileName);
-
-    const zip = new JSZip();
-    for (let i = 0; i < savedFilePaths.length; i++) {
-      const filePath = savedFilePaths[i];
-      const fileName = fileNames[Object.keys(dataTypes)[i]];
-      const content = await fs.readFile(filePath);
-      zip.file(fileName, content);
-    }
-    const zipContent = await zip.generateAsync({ type: "nodebuffer" });
-    await fs.writeFile(zipFilePath, zipContent);
-
-    const totalFileSize = await Promise.all(savedFilePaths.map(async (filePath) => {
-      try {
-        const stats = await fs.stat(filePath);
-        return stats.size;
-      } catch (error) {
-        console.error(`Error getting file size for ${filePath}:`, error);
-        return 0;
-      }
-    })).then(sizes => sizes.reduce((total, size) => total + size, 0));
-
-    await prisma.report.update({
-      where: { id: report.id },
-      data: {
-        status: hasEmptyData ? ReportStatus.COMPLETED_WITH_EMPTY_DATA : ReportStatus.COMPLETED,
-        fileSize: totalFileSize
-      }
-    });
-
-    return new Response(zipContent, {
-      headers: {
-        "Content-Type": "application/zip",
-        "Content-Disposition": `attachment; filename="${zipFileName}"`,
-      },
-    });
-  } catch (error) {
-    console.error('Error creating zip file:', error);
-    await prisma.report.update({
-      where: { id: report.id },
-      data: {
-        status: ReportStatus.ERROR,
-        errorMessage: error instanceof Error ? error.message : "Unknown error occurred"
-      }
-    });
-    return json({ error: "Failed to generate reports" }, { status: 500 });
-  }
+  return json({ results });
 };
 
 export default function ManualExportPage() {
@@ -466,6 +276,10 @@ export default function ManualExportPage() {
     remboursements: "",
     taxes: "",
   });
+
+  const [toastActive, setToastActive] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastError, setToastError] = useState(false);
 
   // Update filename when data type is selected/deselected
   const handleDataTypeChange = useCallback((key: keyof typeof dataTypes) => {
@@ -585,37 +399,30 @@ export default function ManualExportPage() {
       console.log("Response status:", response.status);
       console.log("Response headers:", Object.fromEntries(response.headers.entries()));
 
-      // Check if the response is JSON (error or empty data message)
-      const contentType = response.headers.get('content-type');
-      console.log("Response content type:", contentType);
+      // if (!response.ok) {
+      //   setToastMessage("Erreur lors de la génération du rapport");
+      //   setToastError(true);
+      //   setToastActive(true);
+      //   return;
+      // }
 
-      // Add check for HTML error responses
-      if (contentType && (contentType.includes('application/json') || contentType.includes('text/html'))) {
-        const data = await response.text();
-        alert("Error: " + data);
-        return;
-      }
-
-      if (!response.ok) {
-        throw new Error('Failed to generate report');
-      }
-
-      // Get the blob from the response
       const data = await response.json();
-      if (data.fileName) {
-        // Use a dynamic <a> to trigger the download natively
-        const downloadUrl = `/api/reports/${encodeURIComponent(data.fileName)}/download`;
-        const a = document.createElement('a');
-        a.href = downloadUrl;
-        a.setAttribute('download', data.fileName); // optional, helps with some browsers
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        return;
+      if (data.results && data.results.length > 0) {
+        const successResult = data.results.find((r: any) => r.status === 'success');
+        if (successResult && successResult.reportId && successResult.fileName) {
+          setToastMessage("Rapport généré avec succès");
+          setToastError(false);
+          setToastActive(true);
+          return;
+        }
       }
+      setToastMessage("Aucun rapport généré");
+      setToastError(true);
+      setToastActive(true);
     } catch (error) {
-      console.error('Error downloading report:', error);
-      alert(error instanceof Error ? error.message : 'An error occurred while generating the report');
+      setToastMessage("Erreur lors de la génération du rapport");
+      setToastError(true);
+      setToastActive(true);
     }
   };
 
@@ -717,6 +524,13 @@ export default function ManualExportPage() {
           </Card>
         </Layout.Section>
       </Layout>
+      {toastActive && (
+        <Toast
+          content={toastMessage}
+          onDismiss={() => setToastActive(false)}
+          error={toastError}
+        />
+      )}
     </Page>
   );
 }

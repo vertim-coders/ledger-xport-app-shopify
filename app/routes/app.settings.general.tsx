@@ -192,27 +192,36 @@ export default function GeneralSettings() {
   const [selectedRegime, setSelectedRegime] = useState(settings?.code || "OHADA");
   const [toastActive, setToastActive] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  const [toastError, setToastError] = useState(false);
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData();
     Object.entries(formData).forEach(([key, value]) => {
       data.append(key, value);
     });
     data.append("fiscalRegime", selectedRegime);
-    submit(data, { method: "post" });
-    setToastMessage("Paramètres enregistrés avec succès");
-    setToastActive(true);
+    try {
+      await submit(data, { method: "post" });
+      setToastMessage("Paramètres enregistrés avec succès");
+      setToastError(false);
+      setToastActive(true);
+    } catch (error) {
+      setToastMessage("Erreur lors de l'enregistrement des paramètres");
+      setToastError(true);
+      setToastActive(true);
+    }
   };
 
   const toastMarkup = toastActive ? (
     <Toast
       content={toastMessage}
       onDismiss={() => setToastActive(false)}
+      error={toastError}
     />
   ) : null;
 

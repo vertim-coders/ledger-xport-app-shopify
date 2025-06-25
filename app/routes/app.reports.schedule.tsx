@@ -482,8 +482,8 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
 
       // If this is a generate and download action, return the file
       if (actionType === "generate") {
-        // Instead of download logic, just return the file name for the client to handle download
-        return json({ fileName: savedFiles[0].fileName });
+        // Instead of download logic, just return the file name and report ID for the client to handle download
+        return json({ fileName: savedFiles[0].fileName, reportId: report.id });
       }
 
       // If this is a schedule action, create a scheduled task
@@ -684,6 +684,7 @@ export default function ScheduleReport() {
   const navigate = useNavigate();
   const [toastActive, setToastActive] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  const [toastError, setToastError] = useState(false);
 
   useEffect(() => {
     console.log("All data from services:", data);
@@ -882,24 +883,25 @@ export default function ScheduleReport() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to generate report');
-      }
-
-      const data = await response.json();
-      if (data.fileName) {
-        const downloadUrl = `/api/reports/${encodeURIComponent(data.fileName)}/download`;
-        const a = document.createElement('a');
-        a.href = downloadUrl;
-        a.setAttribute('download', data.fileName);
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        setToastMessage("Erreur lors de la génération du rapport");
+        setToastError(true);
+        setToastActive(true);
         return;
       }
+      const data = await response.json();
+      if (data.fileName && data.reportId) {
+        setToastMessage("Rapport généré avec succès");
+        setToastError(false);
+        setToastActive(true);
+        return;
+      }
+      setToastMessage("Aucun rapport généré");
+      setToastError(true);
+      setToastActive(true);
     } catch (error) {
       console.error('Error downloading report:', error);
       setToastMessage("Erreur lors de la génération du rapport");
+      setToastError(true);
       setToastActive(true);
     }
   };
@@ -965,6 +967,7 @@ export default function ScheduleReport() {
     <Toast
       content={toastMessage}
       onDismiss={() => setToastActive(false)}
+      error={toastError}
     />
   ) : null;
 

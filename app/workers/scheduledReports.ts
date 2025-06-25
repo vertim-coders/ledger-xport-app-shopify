@@ -156,6 +156,7 @@ async function generateAndSaveReport(
   },
   shopifyInstance: any,
 ): Promise<string[]> {
+  // Récupère le rapport et la configuration fiscale liés à la tâche
   const report = task.report;
   const shop = task.shop;
   const fiscalConfig = shop.fiscalConfig;
@@ -164,21 +165,21 @@ async function generateAndSaveReport(
   const exportDir = join(process.cwd(), "exports", shop.id);
   await mkdir(exportDir, { recursive: true });
 
-  // Si le rapport existe déjà, retourner les fichiers
+  // Si le rapport existe déjà (filePath non vide), retourne les fichiers existants
   if (report.filePath) {
     return report.filePath.split(",");
   }
 
-  // Calculate start and end dates dynamically based on frequency
+  // Calcule dynamiquement les dates de début et de fin selon la fréquence de la tâche
   let startDate: Date;
   let endDate: Date;
 
   if (report.startDate && report.endDate) {
-    // Use fixed dates if they exist (for immediate generation)
+    // Utilise les dates fixes si elles existent (génération immédiate)
     startDate = report.startDate;
     endDate = report.endDate;
   } else {
-    // Calculate dates dynamically based on frequency (for scheduled reports)
+    // Sinon, calcule la période à exporter selon la fréquence (planification)
     const { startDate: start, endDate: end } = getPeriodForFrequency(
       task.frequency as Frequency,
     );
@@ -186,7 +187,7 @@ async function generateAndSaveReport(
     endDate = end;
   }
 
-  // Get the session from the database
+  // Récupère la session Shopify pour le shop
   const dbSession = await prisma.session.findFirst({
     where: { shop: shop.shopifyDomain },
   });
@@ -197,18 +198,20 @@ async function generateAndSaveReport(
     );
   }
 
-  // Create a session with the access token
+  // Crée une session Shopify avec le bon accessToken
   const session = shopifyInstance.session.customAppSession(shop.shopifyDomain);
   session.accessToken = dbSession.accessToken;
 
-  // Créer le client admin
+  // Crée le client admin Shopify
   const admin = new shopifyInstance.clients.Graphql({
     session: session,
   });
 
   let filePaths: string[] = [];
+  // Pour chaque type de données à exporter (ventes, clients, etc.)
   for (const dataType of dataTypes) {
     let data = null;
+    // Récupère les données Shopify selon le type
     switch (dataType) {
       case "ventes":
         data = await ShopifyOrderService.getOrders(
@@ -240,6 +243,7 @@ async function generateAndSaveReport(
         break;
     }
     if (!data) continue;
+    // Génère le contenu du rapport (CSV, XLSX, etc.)
     const reportContent = ReportService.generateReport(
       data,
       fiscalConfig.code,
@@ -247,6 +251,7 @@ async function generateAndSaveReport(
       dataType,
       fiscalConfig.separator,
     );
+    // Génère le nom et le chemin du fichier à sauvegarder
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const formattedStartDate = formatDate(startDate);
     const formattedEndDate = formatDate(endDate);
@@ -254,11 +259,12 @@ async function generateAndSaveReport(
       fiscalConfig.code
     }-${dataType}-${formattedStartDate}-${formattedEndDate}-${timestamp}.${fileFormat.toLowerCase()}`;
     const filePath = join(exportDir, fileName);
+    // Sauvegarde le fichier sur le disque
     await writeFile(filePath, reportContent);
     filePaths.push(filePath);
   }
 
-  // Mise à jour du rapport avec les chemins des fichiers générés
+  // Met à jour le rapport en base avec les chemins des fichiers générés et leur taille totale
   await prisma.report.update({
     where: { id: report.id },
     data: {
@@ -274,6 +280,8 @@ async function generateAndSaveReport(
       status: "COMPLETED",
     },
   });
+
+  // Retourne la liste des fichiers générés
   return filePaths;
 }
 

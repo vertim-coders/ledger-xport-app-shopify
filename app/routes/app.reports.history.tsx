@@ -21,7 +21,7 @@ import { useState, useCallback } from "react";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
 import { ReportStatus, ExportFormat, type Report } from "@prisma/client";
-import { ArrowDownIcon, RefreshIcon, EmailIcon } from "@shopify/polaris-icons";
+import { ArrowDownIcon, RefreshIcon, EmailIcon, SearchIcon } from "@shopify/polaris-icons";
 import { promises as fs } from "fs";
 
 type LoaderData = {
@@ -78,7 +78,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   }
 
   if (type !== "all") {
-    where.dataType = type;
+    where.type = type;
   }
 
   if (status !== "all") {
@@ -256,6 +256,12 @@ export default function ExportHistory() {
     ];
   });
 
+  const typeOptions = [
+    { label: "Tous", value: "all" },
+    { label: "Manuel", value: "manual" },
+    { label: "Auto", value: "scheduled" },
+  ];
+
   return (
     <Page
       title="Historique des exports"
@@ -265,49 +271,44 @@ export default function ExportHistory() {
         <Layout.Section>
           <Card>
             <LegacyStack distribution="equalSpacing" alignment="center">
-              <LegacyStack spacing="loose">
+              <LegacyStack spacing="tight">
                 <Select
                   label="Période"
                   options={[
-                    { label: "Toutes les dates", value: "all" },
+                    { label: "Toutes", value: "all" },
                     { label: "Aujourd'hui", value: "today" },
-                    { label: "7 derniers jours", value: "week" },
-                    { label: "30 derniers jours", value: "month" },
+                    { label: "Cette semaine", value: "week" },
+                    { label: "Ce mois-ci", value: "month" },
                   ]}
-                  onChange={handlePeriodChange}
                   value={selectedPeriod}
+                  onChange={handlePeriodChange}
                 />
                 <Select
                   label="Type de rapport"
-                  options={[
-                    { label: "Tous", value: "all" },
-                    { label: "Commandes", value: "orders" },
-                    { label: "Clients", value: "customers" },
-                    { label: "Remboursements", value: "refunds" },
-                    { label: "Taxes", value: "taxes" },
-                  ]}
-                  onChange={handleTypeChange}
+                  options={typeOptions}
                   value={selectedType}
+                  onChange={handleTypeChange}
                 />
                 <Select
                   label="Statut"
                   options={[
                     { label: "Tous", value: "all" },
-                    { label: "Succès", value: "COMPLETED" },
-                    { label: "En cours", value: "PROCESSING" },
-                    { label: "Échec", value: "ERROR" },
-                    { label: "En attente", value: "PENDING" },
+                    { label: "Succès", value: ReportStatus.COMPLETED },
+                    { label: "Données vides", value: ReportStatus.COMPLETED_WITH_EMPTY_DATA },
+                    { label: "En cours", value: ReportStatus.PROCESSING },
+                    { label: "Erreur", value: ReportStatus.ERROR },
+                    { label: "En attente", value: ReportStatus.PENDING },
                   ]}
-                  onChange={handleStatusChange}
                   value={selectedStatus}
+                  onChange={handleStatusChange}
                 />
               </LegacyStack>
               <TextField
-                label="Rechercher"
+                label="Recherche"
                 value={searchValue}
                 onChange={handleSearchChange}
                 autoComplete="off"
-                placeholder="Rechercher un export..."
+                prefix={<Icon source={SearchIcon} />}
               />
             </LegacyStack>
           </Card>

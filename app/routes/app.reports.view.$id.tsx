@@ -11,6 +11,7 @@ import {
   BlockStack,
   InlineStack,
   Box,
+  Toast,
 } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
@@ -20,6 +21,7 @@ import { parse } from "csv-parse/sync";
 import { XMLParser } from "fast-xml-parser";
 import * as XLSX from "xlsx";
 import { ReportStatus } from "@prisma/client";
+import { useState } from "react";
 
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
@@ -69,7 +71,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
         reportData = parse(fileContent, {
           columns: true,
           skip_empty_lines: true,
-          delimiter: ','
+          delimiter: report.shop.fiscalConfig?.separator || ','
         });
         if (reportData.length > 0) {
           headings = Object.keys(reportData[0]);
@@ -174,30 +176,43 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
 export default function ReportView() {
   const { report, reportData, headings } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
+  const [toastActive, setToastActive] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastError, setToastError] = useState(false);
 
   const handleDownload = async () => {
-    const response = await fetch(`/api/reports/${report.id}/download`);
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${report.fileName}.${report.format}`;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
+    // Désactivé : aucune action de téléchargement
+    return;
   };
 
   const handleRegenerate = () => {
-    navigate(`/app/reports/manual-export?reportId=${report.id}`);
+    try {
+      navigate(`/app/reports/manual-export?reportId=${report.id}`);
+      setToastMessage("Régénération du rapport en cours...");
+      setToastError(false);
+      setToastActive(true);
+    } catch (error) {
+      setToastMessage("Erreur lors de la régénération du rapport");
+      setToastError(true);
+      setToastActive(true);
+    }
   };
 
   const handleDelete = async () => {
     if (confirm("Are you sure you want to delete this report?")) {
-      await fetch(`/api/reports/${report.id}`, {
-        method: "DELETE",
-      });
-      navigate("/app/reports/history");
+      try {
+        await fetch(`/api/reports/${report.id}`, {
+          method: "DELETE",
+        });
+        setToastMessage("Rapport supprimé avec succès");
+        setToastError(false);
+        setToastActive(true);
+        navigate("/app/reports/history");
+      } catch (error) {
+        setToastMessage("Erreur lors de la suppression du rapport");
+        setToastError(true);
+        setToastActive(true);
+      }
     }
   };
 
@@ -277,6 +292,13 @@ export default function ReportView() {
           </Card>
         </Layout.Section>
       </Layout>
+      {toastActive && (
+        <Toast
+          content={toastMessage}
+          onDismiss={() => setToastActive(false)}
+          error={toastError}
+        />
+      )}
     </Page>
   );
 } 

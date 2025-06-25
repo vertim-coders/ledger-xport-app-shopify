@@ -45,8 +45,6 @@ model User {
 model Shop {
   id              String                @id @default(cuid())
   shopifyDomain   String                @unique
-  name            String
-  domain          String
   accessToken     String
   userId          String
   user            User                  @relation(fields: [userId], references: [id])
@@ -55,9 +53,8 @@ model Shop {
   generalSettings GeneralSettings?
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
-  scheduledTasks  ScheduledTask[]
-  tasks           Task[]
-
+  scheduledTasks  ScheduledTask[]     @relation("ShopToScheduledTask")
+  tasks           Task[]              @relation("ShopToTask")
   @@index([userId])
 }
 
@@ -112,11 +109,9 @@ model Report {
   errorMessage  String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-
-  shop          Shop          @relation(fields: [shopId], references: [id])
-  scheduledTasks ScheduledTask[]
-  tasks         Task[]
-
+  shop          Shop     @relation(fields: [shopId], references: [id])
+  scheduledTasks ScheduledTask[] @relation("ReportToScheduledTask")
+  tasks         Task[]           @relation("ReportToTask")
   @@index([shopId])
 }
 
@@ -148,11 +143,9 @@ model ScheduledTask {
   status        String   // ACTIVE, PAUSED, COMPLETED
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-
-  report        Report   @relation(fields: [reportId], references: [id])
-  shop          Shop     @relation(fields: [shopId], references: [id])
-  tasks         Task[]
-
+  report        Report   @relation("ReportToScheduledTask", fields: [reportId], references: [id])
+  shop          Shop     @relation("ShopToScheduledTask", fields: [shopId], references: [id])
+  tasks         Task[]   @relation("ScheduledTaskToTask")
   @@index([shopId])
   @@index([reportId])
 }
@@ -170,11 +163,9 @@ model Task {
   errorMessage    String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-
-  scheduledTask   ScheduledTask @relation(fields: [scheduledTaskId], references: [id])
-  shop            Shop          @relation(fields: [shopId], references: [id])
-  report          Report        @relation(fields: [reportId], references: [id])
-
+  scheduledTask   ScheduledTask @relation("ScheduledTaskToTask", fields: [scheduledTaskId], references: [id])
+  shop            Shop          @relation("ShopToTask", fields: [shopId], references: [id])
+  report          Report        @relation("ReportToTask", fields: [reportId], references: [id])
   @@index([scheduledTaskId])
   @@index([shopId])
   @@index([reportId])
