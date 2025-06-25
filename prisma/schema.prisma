@@ -31,23 +31,10 @@ model Session {
   emailVerified Boolean?  @default(false)
 }
 
-model User {
-  id            String    @id @default(uuid())
-  email         String    @unique
-  firstName     String?
-  lastName      String?
-  role          UserRole  @default(USER)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  shops         Shop[]
-}
-
 model Shop {
   id              String                @id @default(cuid())
   shopifyDomain   String                @unique
   accessToken     String
-  userId          String
-  user            User                  @relation(fields: [userId], references: [id])
   fiscalConfig    FiscalConfiguration?
   reports         Report[]
   generalSettings GeneralSettings?
@@ -55,7 +42,6 @@ model Shop {
   updatedAt       DateTime            @updatedAt
   scheduledTasks  ScheduledTask[]     @relation("ShopToScheduledTask")
   tasks           Task[]              @relation("ShopToTask")
-  @@index([userId])
 }
 
 model FiscalConfiguration {

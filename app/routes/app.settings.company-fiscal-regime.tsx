@@ -72,31 +72,12 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
   });
   
   if (!shop) {
-    // First create or find a default user
-    let user = await prisma.user.findFirst({
-      where: { email: 'default@example.com' }
-    });
-
-    if (!user) {
-      user = await prisma.user.create({
-        data: {
-          email: 'default@example.com',
-          firstName: 'Default',
-          lastName: 'User',
-          role: 'USER'
-        }
-      });
-    }
-
-    // Now create the shop with the user
+    // Crée le shop sans référence à un user
     shop = await prisma.shop.create({
       data: {
         id: session.shop,
         shopifyDomain: session.shop,
-        name: session.shop,
-        domain: session.shop,
         accessToken: session.accessToken || '',
-        userId: user.id
       }
     });
   }
