@@ -1,5 +1,5 @@
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
-import { useLoaderData, useSubmit, useNavigate } from "@remix-run/react";
+import { useLoaderData, useSubmit, useNavigate, useActionData } from "@remix-run/react";
 import {
   Page,
   Layout,
@@ -33,6 +33,7 @@ import { MappingService } from "../services/mapping.service";
 import { ReportService } from "../services/report.service";
 import type { ColumnMapping } from "../types/ColumnMappingType";
 import type { ReportMapping } from "../types/ReportMappingType";
+import { getMimeType, downloadFilesFromResults } from "../utils/download";
 
 // Default mappings for different data types
 const defaultMappings: Record<string, Record<string, string>> = {
@@ -333,43 +334,52 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
         }
       });
 
-      // If only one file, return it directly
-      if (savedFiles.length === 1) {
-        const { fileName, content } = savedFiles[0];
-        let contentType = "application/octet-stream";
-        if (fileName.endsWith(".csv")) contentType = "text/csv";
-        else if (fileName.endsWith(".xlsx")) contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-        else if (fileName.endsWith(".json")) contentType = "application/json";
-        else if (fileName.endsWith(".txt")) contentType = "text/plain";
-        return new Response(content, {
-          headers: {
-            "Content-Type": contentType,
-            "Content-Disposition": `attachment; filename=\"${fileName}\"`,
-          },
-        });
-      }
-
-      // If multiple files, zip them
-      if (savedFiles.length > 1) {
-        const JSZip = (await import('jszip')).default;
-        const zip = new JSZip();
-        for (const { fileName, content } of savedFiles) {
-          zip.file(fileName, content);
-        }
-        const zipContent = await zip.generateAsync({ type: "nodebuffer" });
-        const zipFileName = `ledgerxport-schedule-${new Date().toISOString().replace(/[:.]/g, "-")}.zip`;
-        return new Response(zipContent, {
-          headers: {
-            "Content-Type": "application/zip",
-            "Content-Disposition": `attachment; filename=\"${zipFileName}\"`,
-          },
-        });
-      }
-
-      // If this is a generate and download action, return the file
+      // If this is a generate and download action, return JSON with file content
       if (actionType === "generate") {
-        // Instead of download logic, just return the file name and report ID for the client to handle download
-        return json({ fileName: savedFiles[0].fileName, reportId: report.id });
+        const results = [];
+        
+        for (const savedFile of savedFiles) {
+          const { fileName, content, filePath } = savedFile;
+          const mimeType = getMimeType(fileFormat as ExportFormat);
+          
+          console.log(`Processing file: ${fileName}`);
+          console.log(`Content type: ${typeof content}`);
+          console.log(`Content length: ${content.length || 'N/A'}`);
+          console.log(`Is Buffer: ${Buffer.isBuffer(content)}`);
+          
+          // Ensure content is properly converted to base64
+          let base64Content: string;
+          try {
+            if (Buffer.isBuffer(content)) {
+              base64Content = content.toString('base64');
+            } else if (typeof content === 'string') {
+              base64Content = Buffer.from(content, 'utf8').toString('base64');
+            } else {
+              base64Content = Buffer.from(String(content), 'utf8').toString('base64');
+            }
+          } catch (error) {
+            console.error(`Error encoding content for ${fileName}, trying to read from file:`, error);
+            // Fallback: read the file from disk
+            const fs = await import('fs/promises');
+            const fileContent = await fs.readFile(filePath);
+            base64Content = fileContent.toString('base64');
+          }
+          
+          console.log(`Base64 content length: ${base64Content.length}`);
+          console.log(`Base64 content preview: ${base64Content.substring(0, 50)}...`);
+          
+          results.push({
+            status: 'success',
+            dataType: 'generated',
+            reportId: report.id,
+            fileName: fileName,
+            reportStatus: ReportStatus.COMPLETED,
+            fileContent: base64Content,
+            mimeType: mimeType
+          });
+        }
+        
+        return json({ results });
       }
 
       // If this is a schedule action, create a scheduled task
@@ -488,6 +498,7 @@ async function scheduleImmediateTask(taskId: string, shopId: string, reportId: s
 
 export default function ScheduleReport() {
   const { shop, data } = useLoaderData<typeof loader>();
+  const actionData = useActionData<typeof action>();
   const submit = useSubmit();
   const navigate = useNavigate();
   const [toastActive, setToastActive] = useState(false);
@@ -501,6 +512,46 @@ export default function ScheduleReport() {
     console.log("Refunds:", data.refunds);
     console.log("Taxes:", data.taxes);
   }, [data]);
+
+  // Handle action response and trigger downloads
+  useEffect(() => {
+    if (actionData) {
+      console.log("Action data received:", actionData);
+      
+      // Check if it's an error response
+      if ('error' in actionData) {
+        setToastMessage(`Erreur: ${actionData.error}`);
+        setToastError(true);
+        setToastActive(true);
+        return;
+      }
+
+      // Check if it's a success response with results
+      if ('results' in actionData && actionData.results && actionData.results.length > 0) {
+        const downloadedCount = downloadFilesFromResults(actionData.results);
+        
+        if (downloadedCount > 0) {
+          setToastMessage(`Rapport(s) généré(s) et téléchargé(s) avec succès (${downloadedCount} fichier(s))`);
+          setToastError(false);
+          setToastActive(true);
+        } else {
+          setToastMessage("Aucun rapport généré");
+          setToastError(true);
+          setToastActive(true);
+        }
+      } else if ('success' in actionData) {
+        // This is a schedule success response
+        setToastMessage("Rapport planifié avec succès");
+        setToastError(false);
+        setToastActive(true);
+        navigate("/app/dashboard");
+      } else {
+        setToastMessage("Aucun rapport généré");
+        setToastError(true);
+        setToastActive(true);
+      }
+    }
+  }, [actionData, navigate]);
 
   // Report name state
   const [reportNames, setReportNames] = useState<{ [key: string]: string }>({
@@ -681,37 +732,17 @@ export default function ScheduleReport() {
     formData.append("actionType", "generate");
     formData.append("reportNames", JSON.stringify(generateReportNames));
 
-    try {
-      setToastMessage("Génération du rapport en cours...");
-      setToastActive(true);
+    console.log("Submitting form data for generation:", {
+      startDate: selectedDates.start.toISOString(),
+      endDate: selectedDates.end.toISOString(),
+      dataTypes,
+      fileFormat,
+      actionType: "generate",
+      reportNames: generateReportNames
+    });
 
-      const response = await fetch('/app/reports/schedule', {
-        method: 'POST',
-        body: formData
-      });
-
-      if (!response.ok) {
-        setToastMessage("Erreur lors de la génération du rapport");
-        setToastError(true);
-        setToastActive(true);
-        return;
-      }
-      const data = await response.json();
-      if (data.fileName && data.reportId) {
-        setToastMessage("Rapport généré avec succès");
-        setToastError(false);
-        setToastActive(true);
-        return;
-      }
-      setToastMessage("Aucun rapport généré");
-      setToastError(true);
-      setToastActive(true);
-    } catch (error) {
-      console.error('Error downloading report:', error);
-      setToastMessage("Erreur lors de la génération du rapport");
-      setToastError(true);
-      setToastActive(true);
-    }
+    // Use Remix's useSubmit instead of fetch
+    submit(formData, { method: "post" });
   };
 
   const handleSchedule = async (event: React.FormEvent<HTMLFormElement> | React.MouseEvent<HTMLButtonElement>) => {
@@ -746,29 +777,16 @@ export default function ScheduleReport() {
       formData.append("executionTime", executionTime);
     }
 
-    try {
-      setToastMessage("Planification du rapport en cours...");
-      setToastActive(true);
+    console.log("Submitting form data for scheduling:", {
+      dataTypes,
+      fileFormat,
+      actionType: "schedule",
+      schedulingType,
+      reportNames: scheduleReportNames
+    });
 
-      const response = await fetch('/app/reports/schedule', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include' // This ensures cookies are sent with the request
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to schedule report');
-      }
-
-      setToastMessage("Rapport planifié avec succès");
-      setToastActive(true);
-      navigate("/app/dashboard");
-    } catch (error) {
-      console.error('Error scheduling report:', error);
-      setToastMessage("Erreur lors de la planification du rapport");
-      setToastActive(true);
-    }
+    // Use Remix's useSubmit instead of fetch
+    submit(formData, { method: "post" });
   };
 
   const toastMarkup = toastActive ? (

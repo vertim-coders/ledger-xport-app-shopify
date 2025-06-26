@@ -29,6 +29,16 @@ export function downloadFileFromBase64(
   mimeType: string
 ): void {
   try {
+    // Validate base64 content
+    if (!fileContent || typeof fileContent !== 'string') {
+      throw new Error(`Invalid file content for ${fileName}: content is not a string`);
+    }
+    
+    // Check if the string looks like valid base64
+    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(fileContent)) {
+      throw new Error(`Invalid base64 content for ${fileName}: content is not properly base64 encoded`);
+    }
+    
     // Decode base64 content
     const binaryString = atob(fileContent);
     const bytes = new Uint8Array(binaryString.length);
