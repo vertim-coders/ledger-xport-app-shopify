@@ -1,5 +1,5 @@
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
-import { useLoaderData, useSubmit, useNavigate } from "@remix-run/react";
+import { useLoaderData, useSubmit, useNavigate, useActionData } from "@remix-run/react";
 import {
   Page,
   Layout,
@@ -43,6 +43,7 @@ import type { FiscalRegimesData } from "../types/FiscalRegimesDataType";
 import type { CombinedFiscalRegime } from "../types/CombinedFiscalRegimeType";
 import type { ColumnMapping } from "../types/ColumnMappingType";
 import type { ReportMapping } from "../types/ReportMappingType";
+import { getMimeType, downloadFilesFromResults } from "../utils/download";
 
 // Frontend helper functions for display purposes (mirroring backend logic)
 const defaultMappingsFrontend: Record<string, Record<string, string>> = {
@@ -186,69 +187,90 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const { admin, session } = await authenticate.admin(request);
-  const formData = await request.formData();
-  
-  const startDate = formData.get("startDate") as string;
-  const endDate = formData.get("endDate") as string;
-  const fiscalRegimeId = formData.get("fiscalRegimeId") as string; // Keep for validation if needed, though unused in the new flow
-  const dataTypes = JSON.parse(formData.get("dataTypes") as string);
-  const format = formData.get("format") as ExportFormat;
-  const fileNames = JSON.parse(formData.get("fileNames") as string);
+  try {
+    const { admin, session } = await authenticate.admin(request);
+    const formData = await request.formData();
+    
+    const startDate = formData.get("startDate") as string;
+    const endDate = formData.get("endDate") as string;
+    const fiscalRegimeId = formData.get("fiscalRegimeId") as string; // Keep for validation if needed, though unused in the new flow
+    const dataTypes = JSON.parse(formData.get("dataTypes") as string);
+    const format = formData.get("format") as ExportFormat;
+    const fileNames = JSON.parse(formData.get("fileNames") as string);
 
-  if (!startDate || !endDate || !fiscalRegimeId || !format) {
-    return json({ error: "Missing required fields" }, { status: 400 });
-  }
-
-  const shop = await prisma.shop.findUnique({
-    where: { shopifyDomain: session.shop },
-    include: { fiscalConfig: true }
-  });
-
-  if (!shop || !shop.fiscalConfig) {
-    return json({ error: "Shop or fiscal configuration not found" }, { status: 404 });
-  }
-
-  const reportService = new ReportService(admin);
-
-  const results = [];
-  const selectedDataTypes = Object.entries(dataTypes)
-        .filter(([_, selected]) => selected)
-    .map(([type]) => type);
-
-  for (const dataType of selectedDataTypes) {
-    try {
-      const report = await reportService.generateAndSaveReport({
-        shop,
-        dataType,
-        format,
-        startDate,
-        endDate,
-        fileName: fileNames[dataType],
-        type: 'manual'
-      });
-      results.push({
-        status: 'success',
-        dataType,
-        reportId: report.id,
-        fileName: report.fileName,
-        reportStatus: report.status,
-      });
-    } catch (error: any) {
-      console.error(`Failed to generate report for ${dataType}:`, error);
-      results.push({
-        status: 'error',
-        dataType,
-        message: error.message || 'An unknown error occurred'
-      });
+    if (!startDate || !endDate || !fiscalRegimeId || !format) {
+      return json({ error: "Missing required fields" }, { status: 400 });
     }
-  }
 
-  return json({ results });
+    const shop = await prisma.shop.findUnique({
+      where: { shopifyDomain: session.shop },
+      include: { fiscalConfig: true }
+    });
+
+    if (!shop || !shop.fiscalConfig) {
+      return json({ error: "Shop or fiscal configuration not found" }, { status: 404 });
+    }
+
+    const reportService = new ReportService(admin);
+
+    const results = [];
+    const selectedDataTypes = Object.entries(dataTypes)
+          .filter(([_, selected]) => selected)
+      .map(([type]) => type);
+
+    for (const dataType of selectedDataTypes) {
+      try {
+        const report = await reportService.generateAndSaveReport({
+          shop,
+          dataType,
+          format,
+          startDate,
+          endDate,
+          fileName: fileNames[dataType],
+          type: 'manual'
+        });
+        
+        // Read the generated file content
+        let fileContent: string | Buffer;
+        if (report.filePath) {
+          fileContent = await fs.readFile(report.filePath);
+        } else {
+          throw new Error('File was not generated');
+        }
+
+        results.push({
+          status: 'success',
+          dataType,
+          reportId: report.id,
+          fileName: report.fileName,
+          reportStatus: report.status,
+          fileContent: fileContent.toString('base64'), // Encode file content as base64
+          mimeType: getMimeType(format)
+        });
+      } catch (error: any) {
+        console.error(`Failed to generate report for ${dataType}:`, error);
+        results.push({
+          status: 'error',
+          dataType,
+          message: error.message || 'An unknown error occurred'
+        });
+      }
+    }
+
+    return json({ results });
+  } catch (error: any) {
+    console.error('Action error:', error);
+    return json({ 
+      error: "Internal server error", 
+      message: error.message || 'An unknown error occurred',
+      results: []
+    }, { status: 500 });
+  }
 };
 
 export default function ManualExportPage() {
   const { fiscalRegime } = useLoaderData<typeof loader>();
+  const actionData = useActionData<typeof action>();
 
   const [selectedDates, setSelectedDates] = useState<DateRange>(() => {
     const today = new Date();
@@ -321,6 +343,40 @@ export default function ManualExportPage() {
     setCurrentYear(selectedDates.start.getFullYear());
   }, [selectedDates.start]); // Only re-run when selectedDates.start changes
 
+  // Handle action response and trigger downloads
+  useEffect(() => {
+    if (actionData) {
+      console.log("Action data received:", actionData);
+      
+      // Check if it's an error response
+      if ('error' in actionData) {
+        setToastMessage(`Erreur: ${actionData.error}`);
+        setToastError(true);
+        setToastActive(true);
+        return;
+      }
+
+      // Check if it's a success response with results
+      if ('results' in actionData && actionData.results && actionData.results.length > 0) {
+        const downloadedCount = downloadFilesFromResults(actionData.results);
+        
+        if (downloadedCount > 0) {
+          setToastMessage(`Rapport(s) généré(s) et téléchargé(s) avec succès (${downloadedCount} fichier(s))`);
+          setToastError(false);
+          setToastActive(true);
+        } else {
+          setToastMessage("Aucun rapport généré");
+          setToastError(true);
+          setToastActive(true);
+        }
+      } else {
+        setToastMessage("Aucun rapport généré");
+        setToastError(true);
+        setToastActive(true);
+      }
+    }
+  }, [actionData]);
+
   useEffect(() => {
     // For each selected data type, generate a filename with the current format
     setFileNames(prev => {
@@ -381,49 +437,17 @@ export default function ManualExportPage() {
     formData.append("software", selectedSoftware);
     formData.append("fileNames", JSON.stringify(fileNames));
 
-    try {
-      console.log("Submitting form data:", {
-        startDate: selectedDates.start.toISOString(),
-        endDate: selectedDates.end.toISOString(),
-        dataTypes,
-        format,
-        software: selectedSoftware,
-        fileNames
-      });
+    console.log("Submitting form data:", {
+      startDate: selectedDates.start.toISOString(),
+      endDate: selectedDates.end.toISOString(),
+      dataTypes,
+      format,
+      software: selectedSoftware,
+      fileNames
+    });
 
-      const response = await fetch('/app/reports/manual-export', {
-        method: 'POST',
-        body: formData
-      });
-
-      console.log("Response status:", response.status);
-      console.log("Response headers:", Object.fromEntries(response.headers.entries()));
-
-      // if (!response.ok) {
-      //   setToastMessage("Erreur lors de la génération du rapport");
-      //   setToastError(true);
-      //   setToastActive(true);
-      //   return;
-      // }
-
-      const data = await response.json();
-      if (data.results && data.results.length > 0) {
-        const successResult = data.results.find((r: any) => r.status === 'success');
-        if (successResult && successResult.reportId && successResult.fileName) {
-          setToastMessage("Rapport généré avec succès");
-          setToastError(false);
-          setToastActive(true);
-          return;
-        }
-      }
-      setToastMessage("Aucun rapport généré");
-      setToastError(true);
-      setToastActive(true);
-    } catch (error) {
-      setToastMessage("Erreur lors de la génération du rapport");
-      setToastError(true);
-      setToastActive(true);
-    }
+    // Use Remix's useSubmit instead of fetch
+    submit(formData, { method: "post" });
   };
 
   // Determine the selected data type for dynamic column display
