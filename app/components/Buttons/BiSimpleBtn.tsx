@@ -1,7 +1,8 @@
 import { Box, InlineStack } from "@shopify/polaris";
 import { PlusIcon } from "@shopify/polaris-icons";
+import React from "react";
 
-export const BiSimpleBtn = ({ title, onClick }: { title: string; onClick?: () => void }) => {
+export const BiSimpleBtn = ({ title, onClick, style }: { title: string; onClick?: () => void; style?: React.CSSProperties }) => {
     return (
         <button 
             onClick={onClick}
@@ -16,7 +17,8 @@ export const BiSimpleBtn = ({ title, onClick }: { title: string; onClick?: () =>
                 width: 'auto',
                 margin: '0 auto',
                 display: 'inline-block',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                ...style
             }}
         >
             <Box paddingInline="400">

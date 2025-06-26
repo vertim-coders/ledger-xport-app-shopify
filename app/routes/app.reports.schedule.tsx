@@ -16,11 +16,16 @@ import {
   InlineStack,
   Toast,
   Frame,
+  Popover,
+  Icon,
+  Button as PolarisButton,
+  Text as PolarisText,
 } from "@shopify/polaris";
 import { useState, useCallback, useEffect } from "react";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
 import { BiSaveBtn } from "../components/Buttons/BiSaveBtn";
+import { BiSimpleBtn } from "../components/Buttons/BiSimpleBtn";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import * as XLSX from 'xlsx';
@@ -98,6 +103,48 @@ function formatDate(date: Date): string {
   const day = date.getDate().toString().padStart(2, '0');
   return `${year}${month}${day}`;
 }
+
+// Composant utilitaire pour l'icône d'aide
+import React from 'react';
+const HelpIcon = ({ description }: { description: string }) => {
+  const [active, setActive] = React.useState(false);
+  return (
+    <Popover
+      active={active}
+      activator={
+        <span
+          style={{
+            marginLeft: 6,
+            cursor: 'pointer',
+            color: '#0670fa',
+            fontWeight: 'bold',
+            fontSize: 14,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 16,
+            height: 16,
+            textAlign: 'center',
+            borderRadius: '50%',
+            border: '1px solid #0670fa',
+            background: '#f4f8ff',
+            lineHeight: '16px',
+          }}
+          onClick={() => setActive((a) => !a)}
+          title="Aide"
+        >
+          ?
+        </span>
+      }
+      onClose={() => setActive(false)}
+      preferredAlignment="left"
+    >
+      <div style={{ maxWidth: 320, padding: 12 }}>
+        <PolarisText as="span" variant="bodyMd">{description}</PolarisText>
+      </div>
+    </Popover>
+  );
+};
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
@@ -504,6 +551,7 @@ export default function ScheduleReport() {
   const [toastActive, setToastActive] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [toastError, setToastError] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
     console.log("All data from services:", data);
@@ -516,6 +564,7 @@ export default function ScheduleReport() {
   // Handle action response and trigger downloads
   useEffect(() => {
     if (actionData) {
+      setIsGenerating(false);
       console.log("Action data received:", actionData);
       
       // Check if it's an error response
@@ -560,6 +609,20 @@ export default function ScheduleReport() {
     remboursements: "",
     taxes: "",
   });
+  // Report name state for schedule
+  const [reportNamesSchedule, setReportNamesSchedule] = useState<{ [key: string]: string }>({
+    ventes: "",
+    clients: "",
+    remboursements: "",
+    taxes: "",
+  });
+  // Touched state for schedule names
+  const [reportNamesScheduleTouched, setReportNamesScheduleTouched] = useState<{ [key: string]: boolean }>({
+    ventes: false,
+    clients: false,
+    remboursements: false,
+    taxes: false,
+  });
 
   // Date range states
   const [selectedDates, setSelectedDates] = useState({
@@ -596,6 +659,10 @@ export default function ScheduleReport() {
     bcc: "",
     replyTo: "",
   });
+
+  // States for month/year of the date picker
+  const [datePickerMonth, setDatePickerMonth] = useState(new Date().getMonth());
+  const [datePickerYear, setDatePickerYear] = useState(new Date().getFullYear());
 
   // Frequency states
   const [frequency, setFrequency] = useState("daily");
@@ -639,6 +706,20 @@ export default function ScheduleReport() {
     });
   }, [selectedDates, dataTypes, shop?.fiscalConfig?.code, fileFormat]);
 
+  // Mettre à jour le nom de planification si format, fréquence ou régime change et que le champ n'a pas été touché
+  useEffect(() => {
+    Object.entries(dataTypes).forEach(([key, isSelected]) => {
+      if (isSelected && !reportNamesScheduleTouched[key]) {
+        const fiscalCode = shop?.fiscalConfig?.code || 'EXPORT';
+        setReportNamesSchedule(prev => ({
+          ...prev,
+          [key]: `ledgerxport-${fiscalCode}-${key}-${frequency}.${fileFormat.toLowerCase()}`
+        }));
+      }
+    });
+    // eslint-disable-next-line
+  }, [fileFormat, frequency, shop?.fiscalConfig?.code]);
+
   // Function to generate report name based on action type
   const generateReportName = (dataType: string, actionType: 'generate' | 'schedule'): string => {
     const fiscalCode = shop?.fiscalConfig?.code || 'EXPORT';
@@ -655,14 +736,6 @@ export default function ScheduleReport() {
     }
   };
 
-  const handleDateSelection = useCallback(
-    ({ start, end }: { start: Date; end: Date }) => {
-      setSelectedDates({ start, end });
-      setShowDatePicker(false);
-    },
-    []
-  );
-
   const handleDataTypeChange = (key: string, checked: boolean) => {
     setDataTypes(prev => ({ ...prev, [key]: checked }));
     
@@ -676,9 +749,33 @@ export default function ScheduleReport() {
         ...prev,
         [key]: `ledgerxport-${fiscalCode}-${key}-${formattedStartDate}-${formattedEndDate}-${timestamp}.${fileFormat.toLowerCase()}`
       }));
+      setReportNamesSchedule(prev => {
+        if (!reportNamesScheduleTouched[key] && !prev[key]) {
+          return {
+            ...prev,
+            [key]: `ledgerxport-${fiscalCode}-${key}-${frequency}.${fileFormat.toLowerCase()}`
+          };
+        }
+        return prev;
+      });
     } else {
       setReportNames(prev => ({ ...prev, [key]: "" }));
+      setReportNamesSchedule(prev => ({ ...prev, [key]: "" }));
+      setReportNamesScheduleTouched(prev => ({ ...prev, [key]: false }));
     }
+  };
+
+  const handleMonthChange = useCallback(
+    (month: number, year: number) => {
+      setDatePickerMonth(month);
+      setDatePickerYear(year);
+    },
+    [],
+  );
+
+  const handleDateSelection = ({start, end}: {start: Date, end: Date}) => {
+    setSelectedDates({start, end});
+    setShowDatePicker(false);
   };
 
   // Email validation function
@@ -715,12 +812,13 @@ export default function ScheduleReport() {
 
   const handleGenerateAndDownload = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setIsGenerating(true);
     
     // Generate report names with the correct format for immediate generation
     const generateReportNames: { [key: string]: string } = {};
     Object.entries(dataTypes).forEach(([key, isSelected]) => {
       if (isSelected) {
-        generateReportNames[key] = generateReportName(key, 'generate');
+        generateReportNames[key] = reportNames[key] || generateReportName(key, 'generate');
       }
     });
     
@@ -759,7 +857,7 @@ export default function ScheduleReport() {
     const scheduleReportNames: { [key: string]: string } = {};
     Object.entries(dataTypes).forEach(([key, isSelected]) => {
       if (isSelected) {
-        scheduleReportNames[key] = generateReportName(key, 'schedule');
+        scheduleReportNames[key] = reportNamesSchedule[key] || generateReportName(key, 'schedule');
       }
     });
 
@@ -806,6 +904,16 @@ export default function ScheduleReport() {
     ];
   }).flat();
 
+  const Separator = ({ title }: { title: string }) => (
+    <div style={{ display: 'flex', alignItems: 'center', margin: '32px 0' }}>
+      <div style={{ flexGrow: 1, height: '1px', backgroundColor: '#c9ccce' }} />
+      <span style={{ padding: '0 16px', color: '#637381', fontWeight: 'bold', textTransform: 'uppercase' }}>
+        {title}
+      </span>
+      <div style={{ flexGrow: 1, height: '1px', backgroundColor: '#c9ccce' }} />
+    </div>
+  );
+
   return (
     <Frame>
       <Page title="Planifier un rapport">
@@ -816,8 +924,11 @@ export default function ScheduleReport() {
                 <FormLayout>
                   {/* Date Range */}
                   <div>
-                    <Text variant="headingMd" as="h2">Période du rapport</Text>
-                    <div style={{ marginBottom: '8px' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <Text variant="headingMd" as="h1">Période du rapport</Text>
+                      <HelpIcon description="Choisissez la période sur laquelle vous souhaitez générer ou planifier un rapport. Les dates futures ne sont pas autorisées." />
+                    </span>
+                    <div style={{ marginBottom: '18px' }}>
                       <Text variant="bodyMd" as="p">
                         {actionType === 'generate' 
                           ? "Sélectionnez la période pour la génération immédiate du rapport"
@@ -842,28 +953,35 @@ export default function ScheduleReport() {
                           position: 'absolute',
                           top: '100%',
                           left: 0,
-                          zIndex: 10,
+                          zIndex: 100,
                           backgroundColor: 'white',
                           boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
                           borderRadius: '4px',
                           marginTop: '8px'
                         }}>
                           <DatePicker
-                            month={selectedDates.start.getMonth()}
-                            year={selectedDates.start.getFullYear()}
+                            month={datePickerMonth}
+                            year={datePickerYear}
                             selected={{ start: selectedDates.start, end: selectedDates.end }}
+                            onMonthChange={handleMonthChange}
                             onChange={handleDateSelection}
                             allowRange
                             multiMonth={false}
+                            disableDatesAfter={new Date()}
                           />
                         </div>
                       )}
                     </div>
                   </div>
 
+                  <Separator title="Contenu du rapport" />
+
                   {/* Data Types */}
                   <div>
-                    <Text variant="headingMd" as="h2">Types de données</Text>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: '8px' }}>
+                      <Text variant="headingMd" as="h1">Types de données</Text>
+                      <HelpIcon description="Sélectionnez les types de données à exporter : ventes, clients, remboursements ou taxes. Vous pouvez en choisir plusieurs." />
+                    </span>
                     <LegacyStack vertical spacing="tight">
                       {Object.entries(dataTypes).map(([key, value]) => (
                         <LegacyStack key={key} spacing="tight">
@@ -873,12 +991,27 @@ export default function ScheduleReport() {
                             onChange={(checked) => handleDataTypeChange(key, checked)}
                           />
                           {value && (
-                            <TextField
-                              label="Nom du rapport"
-                              value={reportNames[key as keyof typeof reportNames]}
-                              onChange={(val) => setReportNames(prev => ({ ...prev, [key]: val }))}
-                              autoComplete="off"
-                            />
+                            <div style={{ display: 'flex', gap: 16, marginLeft: 32, alignItems: 'center' }}>
+                              <div style={{ minWidth: 320 }}>
+                                <TextField
+                                  label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>Nom du rapport (génération)<HelpIcon description="Nom du fichier généré lors d'une exportation immédiate. Vous pouvez le personnaliser." /></span>}
+                                  value={reportNames[key as keyof typeof reportNames]}
+                                  onChange={(val) => setReportNames(prev => ({ ...prev, [key]: val }))}
+                                  autoComplete="off"
+                                />
+                              </div>
+                              <div style={{ minWidth: 320 }}>
+                                <TextField
+                                  label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>Nom du rapport (planification)<HelpIcon description="Nom du fichier généré lors d'une exportation planifiée. Vous pouvez le personnaliser." /></span>}
+                                  value={reportNamesSchedule[key as keyof typeof reportNamesSchedule]}
+                                  onChange={(val) => {
+                                    setReportNamesSchedule(prev => ({ ...prev, [key]: val }));
+                                    setReportNamesScheduleTouched(prev => ({ ...prev, [key]: true }));
+                                  }}
+                                  autoComplete="off"
+                                />
+                              </div>
+                            </div>
                           )}
                         </LegacyStack>
                       ))}
@@ -887,7 +1020,7 @@ export default function ScheduleReport() {
 
                   {/* File Format */}
                   <Select
-                    label="Format du fichier"
+                    label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Text variant="headingMd" as="h1">Format du fichier</Text><HelpIcon description="Choisissez le format de fichier pour l'exportation : CSV, Excel, JSON ou XML." /></span>}
                     options={[
                       { label: 'CSV', value: 'CSV' },
                       { label: 'Excel (XLSX)', value: 'XLSX' },
@@ -898,9 +1031,11 @@ export default function ScheduleReport() {
                     onChange={setFileFormat}
                   />
 
+                  <Separator title="Planification" />
+
                   {/* Scheduling Type */}
                   <Select
-                    label="Type de réception"
+                    label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Text variant="headingMd" as="h1">Type de réception</Text><HelpIcon description="Choisissez comment vous souhaitez recevoir le rapport planifié : par email, FTP, Google Drive ou Google Sheet." /></span>}
                     options={[
                       { label: 'Email', value: 'email' },
                       { label: 'FTP', value: 'ftp' },
@@ -914,7 +1049,10 @@ export default function ScheduleReport() {
                   {/* Email Configuration */}
                   {schedulingType === "email" && (
                     <div>
-                      <Text variant="headingMd" as="h2">Configuration Email</Text>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: '8px' }}>
+                        <Text variant="headingMd" as="h1">Configuration Email</Text>
+                        <HelpIcon description="Configurez les destinataires et options d'envoi pour recevoir automatiquement les rapports par email." />
+                      </span>
                       <LegacyStack vertical spacing="loose">
                         <div>
                           <Text variant="bodyMd" as="p" fontWeight="bold">
@@ -1021,9 +1159,14 @@ export default function ScheduleReport() {
                     </div>
                   )}
 
+                  {schedulingType === 'email' && <Separator title="Fréquence" />}
+
                   {/* Right Column - Frequency Settings */}
                   <div>
-                    <Text variant="headingMd" as="h2">Fréquence</Text>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <Text variant="headingMd" as="h2">Fréquence</Text>
+                      <HelpIcon description="Définissez la fréquence d'envoi du rapport planifié : quotidien, mensuel ou annuel, ainsi que le jour et l'heure d'exécution." />
+                    </span>
                     <LegacyStack vertical spacing="loose">
                       <Select
                         label="Fréquence"
@@ -1067,24 +1210,30 @@ export default function ScheduleReport() {
                         Annuler
                       </Button>
                       <LegacyStack spacing="tight">
-                        <Button
-                          onClick={() => {
-                            setActionType('generate');
-                            handleGenerateAndDownload(new Event('submit') as any);
-                          }}
-                          variant="primary"
-                        >
-                          Générer et télécharger
-                        </Button>
-                        <Button
-                          onClick={() => {
-                            setActionType('schedule');
-                            handleSchedule(new Event('submit') as any);
-                          }}
-                          variant="primary"
-                        >
-                          Planifier automatiquement
-                        </Button>
+                        <div style={{ minWidth: 160 }}>
+                          <BiSaveBtn
+                            title="Générer et télécharger"
+                            isLoading={isGenerating}
+                          />
+                        </div>
+                        <div style={{ minWidth: 160 }}>
+                          <BiSimpleBtn
+                            title="Planifier automatiquement"
+                            onClick={() => {
+                              setActionType('schedule');
+                              handleSchedule(new Event('submit') as any);
+                            }}
+                            style={{
+                              width: '100%',
+                              maxWidth: '400px',
+                              margin: '0 auto',
+                              display: 'block',
+                              padding: '5px 4px',
+                              fontSize: '16px',
+                              borderRadius: '12px'
+                            }}
+                          />
+                        </div>
                       </LegacyStack>
                     </LegacyStack>
                   </div>

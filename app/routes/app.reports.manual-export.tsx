@@ -11,7 +11,8 @@ import {
   Button,
   Text,
   Checkbox,
-  LegacyStack,
+  BlockStack,
+  InlineStack,
   Badge,
   Icon,
   Thumbnail,
@@ -44,6 +45,7 @@ import type { CombinedFiscalRegime } from "../types/CombinedFiscalRegimeType";
 import type { ColumnMapping } from "../types/ColumnMappingType";
 import type { ReportMapping } from "../types/ReportMappingType";
 import { getMimeType, downloadFilesFromResults } from "../utils/download";
+import React from 'react';
 
 // Frontend helper functions for display purposes (mirroring backend logic)
 const defaultMappingsFrontend: Record<string, Record<string, string>> = {
@@ -116,6 +118,72 @@ function generateMappingsFrontend(fiscalRegime: any, dataType: string): ColumnMa
   });
   return columns;
 }
+
+// Composant utilitaire pour l'icône d'aide (version unicode)
+const HelpIcon = ({ description }: { description: string }) => {
+  const [active, setActive] = React.useState(false);
+  return (
+    <span style={{ position: 'relative', display: 'inline-block' }}>
+      <span
+        style={{
+          marginLeft: 6,
+          cursor: 'pointer',
+          color: '#0670fa',
+          fontWeight: 'bold',
+          fontSize: 14,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 16,
+          height: 16,
+          textAlign: 'center',
+          borderRadius: '50%',
+          border: '1px solid #0670fa',
+          background: '#f4f8ff',
+          lineHeight: '16px',
+        }}
+        onClick={() => setActive((a) => !a)}
+        title="Aide"
+      >
+        ?
+      </span>
+      {active && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 22,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'white',
+            border: '1px solid #e3e3e3',
+            borderRadius: 6,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+            padding: 12,
+            zIndex: 100,
+            minWidth: 180,
+            maxWidth: 320,
+            fontSize: 13,
+          }}
+          onClick={e => e.stopPropagation()}
+        >
+          <span>{description}</span>
+          <span
+            style={{
+              position: 'absolute',
+              top: 4,
+              right: 8,
+              cursor: 'pointer',
+              color: '#0670fa',
+              fontWeight: 'bold',
+              fontSize: 13,
+            }}
+            onClick={() => setActive(false)}
+          >×</span>
+        </div>
+      )}
+    </span>
+  );
+};
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -303,6 +371,8 @@ export default function ManualExportPage() {
   const [toastMessage, setToastMessage] = useState("");
   const [toastError, setToastError] = useState(false);
 
+  const [isGenerating, setIsGenerating] = useState(false);
+
   // Update filename when data type is selected/deselected
   const handleDataTypeChange = useCallback((key: keyof typeof dataTypes) => {
     setDataTypes(prev => {
@@ -346,6 +416,7 @@ export default function ManualExportPage() {
   // Handle action response and trigger downloads
   useEffect(() => {
     if (actionData) {
+      setIsGenerating(false);
       console.log("Action data received:", actionData);
       
       // Check if it's an error response
@@ -405,10 +476,11 @@ export default function ManualExportPage() {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
+    setIsGenerating(true);
     // Validate that at least one data type is selected
     if (!Object.values(dataTypes).some(value => value === true)) {
       alert('Please select at least one data type');
+      setIsGenerating(false);
       return;
     }
 
@@ -420,6 +492,7 @@ export default function ManualExportPage() {
     for (const type of selectedTypes) {
       if (!fileNames[type as keyof typeof fileNames]) {
         alert(`Please wait for the filename to be generated for ${type}`);
+        setIsGenerating(false);
         return;
       }
     }
@@ -466,10 +539,11 @@ export default function ManualExportPage() {
           <Card>
             <form onSubmit={handleSubmit}>
               <div className="p-4">
-                <LegacyStack vertical spacing="loose">
-                  <Text variant="headingMd" as="h2">
-                    Période d'export
-                  </Text>
+                <BlockStack gap="400">
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Text variant="headingMd" as="h1"> Période d'export </Text>
+                    <HelpIcon description="Choisissez la période sur laquelle vous souhaitez générer un export. Les dates futures ne sont pas autorisées." />
+                  </span>
                       <DatePicker
                     month={currentMonth}
                     year={currentYear}
@@ -481,46 +555,50 @@ export default function ManualExportPage() {
                         onMonthChange={handleMonthChange}
                     selected={{ start: selectedDates.start, end: selectedDates.end }}
                     disableDatesBefore={new Date(2023, 0, 1)}
+                    disableDatesAfter={new Date()}
                         allowRange
                       />
-                </LegacyStack>
+                </BlockStack>
                 </div>
 
               <div className="p-4">
-                <LegacyStack vertical spacing="loose">
-                  <Text variant="headingMd" as="h2">
-                    Types de données
-                  </Text>
-                <LegacyStack vertical spacing="tight">
+                <BlockStack gap="400">
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: '10px' }}>
+                    <Text variant="headingMd" as="h1">Types de données</Text>
+                    <HelpIcon description="Sélectionnez les types de données à exporter : ventes, clients, remboursements ou taxes. Vous pouvez en choisir plusieurs." />
+                  </span>
+                <BlockStack gap="200">
                     {Object.entries(dataTypes).map(([key, value]) => (
-                      <LegacyStack key={key} spacing="tight">
+                      <InlineStack key={key} gap="200">
                   <Checkbox
                           label={key.charAt(0).toUpperCase() + key.slice(1)}
                           checked={value}
                           onChange={() => handleDataTypeChange(key as keyof typeof dataTypes)}
                         />
                         {value && (
-                          <TextField
-                            label="Nom du fichier"
-                            value={fileNames[key as keyof typeof fileNames]}
-                            onChange={(value) => setFileNames(prev => ({ ...prev, [key]: value }))}
-                            autoComplete="off"
-                          />
+                          <div style={{ marginLeft: 32, minWidth: 320 }}>
+                            <TextField
+                              label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>Nom du fichier<HelpIcon description="Nom du fichier généré pour ce type de données. Vous pouvez le personnaliser." /></span>}
+                              value={fileNames[key as keyof typeof fileNames]}
+                              onChange={(value) => setFileNames(prev => ({ ...prev, [key]: value }))}
+                              autoComplete="off"
+                            />
+                          </div>
                         )}
-                </LegacyStack>
+                </InlineStack>
                     ))}
-                  </LegacyStack>
-                </LegacyStack>
+                  </BlockStack>
+                </BlockStack>
               </div>
 
               {fiscalRegime && (
                 <div className="p-4">
-                  <Text as="h3" variant="headingMd">
-                    Configuration fiscale
-                  </Text>
-                  <LegacyStack vertical spacing="tight">
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: '10px', marginBottom: '8px' }}>
+                    <Text variant="headingMd" as="h1">Configuration fiscale</Text>
+                  </span>
+                  <BlockStack gap="200">
                 <Select
-                      label="Format d'export"
+                      label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><b>Format d'export</b><HelpIcon description="Choisissez le format de fichier pour l'exportation : CSV, Excel, JSON ou XML." /></span>}
                       options={fiscalRegime.exportFormats.map(format => ({
                         label: format.toUpperCase(),
                         value: format,
@@ -529,7 +607,7 @@ export default function ManualExportPage() {
                   value={selectedFormat}
                 />
                 <Select
-                      label="Logiciel compatible"
+                      label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: '8px' }}><b>Logiciel compatible</b><HelpIcon description="Sélectionnez le logiciel cible pour lequel l'export sera compatible (ex : Sage, Odoo, QuickBooks, etc.)." /></span>}
                       options={fiscalRegime.compatibleSoftware.map(software => ({
                         label: software,
                         value: software,
@@ -537,12 +615,12 @@ export default function ManualExportPage() {
                   onChange={setSelectedSoftware}
                   value={selectedSoftware}
                     />
-                  </LegacyStack>
+                  </BlockStack>
                 </div>
               )}
 
-              <div className="p-4">
-                  <BiSaveBtn title="Générer et télécharger l'export" />
+              <div className="p-4" style={{ marginTop: 32 }}>
+                   <BiSaveBtn title="Générer et télécharger l'export" isLoading={isGenerating} />
                 </div>
             </form>
           </Card>
