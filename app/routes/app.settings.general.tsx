@@ -1,5 +1,5 @@
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
-import { useLoaderData, useSubmit, useNavigate } from "@remix-run/react";
+import { useLoaderData, useSubmit, useNavigate, useNavigation } from "@remix-run/react";
 import {
   Page,
   Layout,
@@ -162,6 +162,8 @@ export default function GeneralSettings() {
   const { settings, generalSettings, regimes, shopDetails } = useLoaderData<typeof loader>();
   const submit = useSubmit();
   const navigate = useNavigate();
+  const navigation = useNavigation();
+  const isSaving = navigation.state === "submitting";
   const [formData, setFormData] = useState({
     companyName: settings?.companyName || "",
     country: settings?.country || "",
@@ -233,23 +235,33 @@ export default function GeneralSettings() {
               <form onSubmit={handleSubmit}>
                 <LegacyStack vertical spacing="loose">
                   <FormLayout>
-                    <TextField
-                      label="Nom de l'entreprise"
-                      name="companyName"
-                      value={formData.companyName}
-                      onChange={value => handleChange("companyName", value)}
-                      autoComplete="off"
-                    />
+                    <div>
+                      <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                        <Text variant="bodyMd" as="span">Nom de l'entreprise</Text>
+                      </div>
+                      <TextField
+                        label=""
+                        name="companyName"
+                        value={formData.companyName}
+                        onChange={value => handleChange("companyName", value)}
+                        autoComplete="off"
+                      />
+                    </div>
 
-                    <Select
-                      label="Régime Fiscal"
-                      options={regimes.map(regime => ({
-                        label: regime.name,
-                        value: regime.code,
-                      }))}
-                      value={selectedRegime}
-                      onChange={setSelectedRegime}
-                    />
+                    <div>
+                      <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                        <Text variant="bodyMd" as="span">Régime Fiscal</Text>
+                      </div>
+                      <Select
+                        label=""
+                        options={regimes.map(regime => ({
+                          label: regime.name,
+                          value: regime.code,
+                        }))}
+                        value={selectedRegime}
+                        onChange={setSelectedRegime}
+                      />
+                    </div>
                     {selectedRegime && (
                       <div style={{ marginTop: '8px', marginBottom: '16px' }}>
                         <Text variant="bodyMd" as="p">
@@ -268,37 +280,49 @@ export default function GeneralSettings() {
                     )}
 
                     <LegacyStack distribution="fill">
-                      <Select
-                        label="Devise"
-                        name="currency"
-                        options={currenciesData.currencies.map(currency => ({
-                          label: `${currency.name} (${currency.code})`,
-                          value: currency.code
-                        }))}
-                        value={formData.currency}
-                        onChange={value => handleChange("currency", value)}
-                        disabled={!selectedRegime}
-                        helpText={selectedRegime ? `Devise recommandée pour ${regimes.find(r => r.code === selectedRegime)?.name}: ${regimes.find(r => r.code === selectedRegime)?.currency}` : ''}
-                      />
-                      <TextField
-                        label="Taux de TVA (%)"
-                        name="vatRate"
-                        type="number"
-                        value={formData.vatRate}
-                        onChange={value => handleChange("vatRate", value)}
-                        autoComplete="off"
-                        min={0}
-                        max={100}
-                        step={0.1}
-                      />
+                      <div>
+                        <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                          <Text variant="bodyMd" as="span">Devise</Text>
+                        </div>
+                        <Select
+                          label=""
+                          name="currency"
+                          options={currenciesData.currencies.map(currency => ({
+                            label: `${currency.name} (${currency.code})`,
+                            value: currency.code
+                          }))}
+                          value={formData.currency}
+                          onChange={value => handleChange("currency", value)}
+                          disabled={!selectedRegime}
+                          helpText={selectedRegime ? `Devise recommandée pour ${regimes.find(r => r.code === selectedRegime)?.name}: ${regimes.find(r => r.code === selectedRegime)?.currency}` : ''}
+                        />
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                          <Text variant="bodyMd" as="span">Taux de TVA (%)</Text>
+                        </div>
+                        <TextField
+                          label=""
+                          name="vatRate"
+                          type="number"
+                          value={formData.vatRate}
+                          onChange={value => handleChange("vatRate", value)}
+                          autoComplete="off"
+                          min={0}
+                          max={100}
+                          step={0.1}
+                        />
+                      </div>
                     </LegacyStack>
 
                     <LegacyStack vertical spacing="loose">
                       <div>
-                        <Text variant="headingMd" as="h2">Compte de vente</Text>
+                        <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                          <Text variant="bodyMd" as="span">Compte de vente</Text>
+                        </div>
                         <LegacyStack vertical spacing="tight">
                           <TextField
-                            label="Compte de vente"
+                            label=""
                             value={formData.salesAccount}
                             onChange={(value) => handleChange("salesAccount", value)}
                             autoComplete="off"
@@ -339,7 +363,7 @@ export default function GeneralSettings() {
                     </LegacyStack>
 
                     <div style={{ marginTop: '32px', textAlign: 'center' }}>
-                      <BiSaveBtn title="Enregistrer les paramètres" />
+                      <BiSaveBtn title="Enregistrer les paramètres" isLoading={isSaving} />
                     </div>
                   </FormLayout>
                 </LegacyStack>

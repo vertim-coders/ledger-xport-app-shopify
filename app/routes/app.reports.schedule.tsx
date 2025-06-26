@@ -907,7 +907,7 @@ export default function ScheduleReport() {
   const Separator = ({ title }: { title: string }) => (
     <div style={{ display: 'flex', alignItems: 'center', margin: '32px 0' }}>
       <div style={{ flexGrow: 1, height: '1px', backgroundColor: '#c9ccce' }} />
-      <span style={{ padding: '0 16px', color: '#637381', fontWeight: 'bold', textTransform: 'uppercase' }}>
+      <span style={{ padding: '0 16px', color: '#007ace', fontWeight: 'bold', textTransform: 'uppercase' }}>
         {title}
       </span>
       <div style={{ flexGrow: 1, height: '1px', backgroundColor: '#c9ccce' }} />
