@@ -577,12 +577,12 @@ export default function ManualExportPage() {
                         />
                         {value && (
                           <div style={{ marginLeft: 32, minWidth: 320 }}>
-                            <TextField
+                          <TextField
                               label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>Nom du fichier<HelpIcon description="Nom du fichier généré pour ce type de données. Vous pouvez le personnaliser." /></span>}
-                              value={fileNames[key as keyof typeof fileNames]}
-                              onChange={(value) => setFileNames(prev => ({ ...prev, [key]: value }))}
-                              autoComplete="off"
-                            />
+                            value={fileNames[key as keyof typeof fileNames]}
+                            onChange={(value) => setFileNames(prev => ({ ...prev, [key]: value }))}
+                            autoComplete="off"
+                          />
                           </div>
                         )}
                 </InlineStack>

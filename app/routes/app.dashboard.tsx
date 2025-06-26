@@ -17,6 +17,25 @@ import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
 import { ReportStatus } from "@prisma/client";
 import { BiSimpleBtn } from "../components/Buttons/BiSimpleBtn";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+import { Bar } from 'react-chartjs-2';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -60,16 +79,50 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     }
   });
 
+  // Get exports statistics for the last 6 months
+  const currentDate = new Date();
+  const sixMonthsAgo = new Date(currentDate.getFullYear(), currentDate.getMonth() - 5, 1); // 6 months ago
+
+  const monthNames = [
+    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+  ];
+
+  // Initialize monthly data array for the last 6 months
+  const monthlyData = [];
+  
+  for (let i = 5; i >= 0; i--) {
+    const targetDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+    const monthStart = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
+    const monthEnd = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0); // Last day of the month
+
+    const monthExports = await prisma.report.count({
+      where: {
+        shopId: shop?.id,
+        createdAt: {
+          gte: monthStart,
+          lte: monthEnd
+        }
+      }
+    });
+
+    monthlyData.push({
+      month: monthNames[targetDate.getMonth()],
+      exports: Number(monthExports) || 0
+    });
+  }
+
   return json({
     successfulExports,
     failedExports,
     recentReports: shop?.reports || [],
-    upcomingExports: shop?.scheduledTasks || []
+    upcomingExports: shop?.scheduledTasks || [],
+    monthlyData
   });
 };
 
 export default function Dashboard() {
-  const { successfulExports, failedExports, recentReports, upcomingExports } = useLoaderData<typeof loader>();
+  const { successfulExports, failedExports, recentReports, upcomingExports, monthlyData } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
 
   const handleNewReport = () => {
@@ -123,12 +176,16 @@ export default function Dashboard() {
           <Card>
             <LegacyStack distribution="fill">
               <div style={{ textAlign: 'center', padding: '20px' }}>
-                <Text variant="headingLg" as="h2">Exports réussis</Text>
-                <Text variant="heading2xl" as="p">{successfulExports}</Text>
+                <Text variant="headingLg" as="h1">Exports réussis</Text>
+                <div style={{ color: '#007ace' }}>
+                  <Text variant="heading2xl" as="p">{successfulExports}</Text>
+                </div>
               </div>
               <div style={{ textAlign: 'center', padding: '20px' }}>
-                <Text variant="headingLg" as="h2">Exports échoués</Text>
-                <Text variant="heading2xl" as="p">{failedExports}</Text>
+                <Text variant="headingLg" as="h1">Exports échoués</Text>
+                <div style={{ color: '#007ace' }}>
+                  <Text variant="heading2xl" as="p">{failedExports}</Text>
+                </div>
               </div>
             </LegacyStack>
           </Card>
@@ -145,11 +202,111 @@ export default function Dashboard() {
           </div>
         </Layout.Section>
 
+        {/* Export Statistics Chart */}
+        <Layout.Section>
+          <Card>
+            <div style={{ padding: '20px' }}>
+              <Text variant="headingMd" as="h1">Statistiques des exports</Text>
+              
+              <div style={{ height: '400px', marginTop: '20px' }}>
+                {monthlyData && monthlyData.length > 0 ? (
+                  <Bar
+                    data={{
+                      labels: monthlyData.map(item => item.month),
+                      datasets: [
+                        {
+                          label: 'Nombre d\'exports',
+                          data: monthlyData.map(item => item.exports),
+                          backgroundColor: '#007ace',
+                          borderColor: '#007ace',
+                          borderWidth: 1,
+                          borderRadius: 4,
+                          borderSkipped: false,
+                        },
+                      ],
+                    }}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: {
+                        legend: {
+                          display: false,
+                        },
+                        title: {
+                          display: false,
+                        },
+                        tooltip: {
+                          backgroundColor: '#fff',
+                          titleColor: '#637381',
+                          bodyColor: '#637381',
+                          borderColor: '#c9cccf',
+                          borderWidth: 1,
+                          cornerRadius: 8,
+                          displayColors: false,
+                          callbacks: {
+                            title: function(context) {
+                              return `Mois: ${context[0].label}`;
+                            },
+                            label: function(context) {
+                              return `Exports: ${context.parsed.y}`;
+                            },
+                          },
+                        },
+                      },
+                      scales: {
+                        y: {
+                          beginAtZero: true,
+                          grid: {
+                            color: '#e1e3e5',
+                          },
+                          ticks: {
+                            color: '#637381',
+                            font: {
+                              size: 12,
+                            },
+                          },
+                          border: {
+                            color: '#c9cccf',
+                          },
+                        },
+                        x: {
+                          grid: {
+                            display: false,
+                          },
+                          ticks: {
+                            color: '#637381',
+                            font: {
+                              size: 12,
+                            },
+                          },
+                          border: {
+                            color: '#c9cccf',
+                          },
+                        },
+                      },
+                    }}
+                  />
+                ) : (
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    height: '100%',
+                    color: '#637381'
+                  }}>
+                    <Text variant="bodyMd" as="p">Aucune donnée d'export disponible</Text>
+                  </div>
+                )}
+              </div>
+            </div>
+          </Card>
+        </Layout.Section>
+
         {/* Recent Exports */}
         <Layout.Section>
           <Card>
             <div style={{ padding: '20px' }}>
-              <Text variant="headingMd" as="h2">Exports récemment générés</Text>
+              <Text variant="headingMd" as="h1">Exports récemment générés</Text>
               <DataTable
                 columnContentTypes={[
                   'text',
@@ -179,48 +336,58 @@ export default function Dashboard() {
             {/* Recent Failures */}
             <div style={{ flex: 1, minWidth: 0 }}>
               <Card>
-                <div style={{ 
-                  padding: '20px',
-                  height: '400px',
-                  overflowY: 'auto',
-                  overflowX: 'auto'
-                }}>
-                  <div style={{ minWidth: '600px' }}>
-                    <Text variant="headingMd" as="h2">Échecs récents</Text>
-                    {recentReports && recentReports.filter(report => report.status === ReportStatus.ERROR).length > 0 ? (
-                      <DataTable
-                        columnContentTypes={[
-                          'text',
-                          'text',
-                          'text',
-                          'text',
-                        ]}
-                        headings={[
-                          'Nom du rapport',
-                          'Type de rapport',
-                          'Date d\'échec',
-                          'Actions',
-                        ]}
-                        rows={recentReports
-                          .filter(report => report.status === ReportStatus.ERROR)
-                          .map(report => [
-                            report.fileName,
-                            report.type,
-                            new Date(report.updatedAt).toLocaleDateString(),
-                            <Button onClick={() => {/* TODO: Implement retry */}}>
-                              Corriger
-                            </Button>
-                          ])}
-                      />
-                    ) : (
+                <div style={{ padding: '20px' }}>
+                  <div style={{ marginBottom: '16px' }}>
+                    <Text variant="headingMd" as="h1">Échecs récents</Text>
+                  </div>
+                  {recentReports && recentReports.filter(report => report.status === ReportStatus.ERROR).length > 0 ? (
+                    <div style={{ 
+                      height: '300px',
+                      overflowY: 'auto',
+                      overflowX: 'auto'
+                    }}>
+                      <div style={{ minWidth: '600px' }}>
+                        <DataTable
+                          columnContentTypes={[
+                            'text',
+                            'text',
+                            'text',
+                            'text',
+                          ]}
+                          headings={[
+                            'Nom du rapport',
+                            'Type de rapport',
+                            'Date d\'échec',
+                            'Actions',
+                          ]}
+                          rows={recentReports
+                            .filter(report => report.status === ReportStatus.ERROR)
+                            .map(report => [
+                              report.fileName,
+                              report.type,
+                              new Date(report.updatedAt).toLocaleDateString(),
+                              <Button onClick={() => {/* TODO: Implement retry */}}>
+                                Corriger
+                              </Button>
+                            ])}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      height: '300px'
+                    }}>
                       <EmptyState
                         heading="Aucun échec récent"
-                        image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
+                        image="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwIDNDMTEuNzE2IDMgNSA5LjcxNiA1IDE4QzUgMjYuMjg0IDExLjcxNiAzMyAyMCAzM0MyOC4yODQgMzMgMzUgMjYuMjg0IDM1IDE4QzM1IDkuNzE2IDI4LjI4NCAzIDIwIDNaTTIyIDI1SDJWMjNIMjJWMjVaTTIyIDIxSDJWMThIMjJWMjFaIiBmaWxsPSIjRjU1NTU1Ii8+Cjwvc3ZnPgo="
                       >
                         <p>Tous vos exports ont réussi.</p>
                       </EmptyState>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </Card>
             </div>
@@ -228,55 +395,65 @@ export default function Dashboard() {
             {/* Upcoming Exports */}
             <div style={{ flex: 1, minWidth: 0 }}>
               <Card>
-                <div style={{ 
-                  padding: '20px',
-                  height: '400px',
-                  overflowY: 'auto',
-                  overflowX: 'auto'
-                }}>
-                  <div style={{ minWidth: '600px' }}>
-                    <Text variant="headingMd" as="h2">Les prochains exports</Text>
-                    {upcomingExports && upcomingExports.length > 0 ? (
-                      <DataTable
-                        columnContentTypes={[
-                          'text',
-                          'text',
-                          'text',
-                          'text',
-                          'text',
-                        ]}
-                        headings={[
-                          'Nom du rapport',
-                          'Date',
-                          'Heure',
-                          'Fréquence',
-                          'Actions',
-                        ]}
-                        rows={upcomingExports.map(task => {
-                          const { date, time } = formatDateTime(task.nextRun);
-                          return [
-                            task.report.fileName,
-                            date,
-                            time,
-                            getFrequencyLabel(task.frequency),
-                            <Button onClick={() => navigate(`/app/reports/schedule?id=${task.id}`)}>
-                              Modifier
-                            </Button>
-                          ];
-                        })}
-                      />
-                    ) : (
+                <div style={{ padding: '20px' }}>
+                  <div style={{ marginBottom: '16px' }}>
+                    <Text variant="headingMd" as="h1">Les prochains exports</Text>
+                  </div>
+                  {upcomingExports && upcomingExports.length > 0 ? (
+                    <div style={{ 
+                      height: '300px',
+                      overflowY: 'auto',
+                      overflowX: 'auto'
+                    }}>
+                      <div style={{ minWidth: '600px' }}>
+                        <DataTable
+                          columnContentTypes={[
+                            'text',
+                            'text',
+                            'text',
+                            'text',
+                            'text',
+                          ]}
+                          headings={[
+                            'Nom du rapport',
+                            'Date',
+                            'Heure',
+                            'Fréquence',
+                            'Actions',
+                          ]}
+                          rows={upcomingExports.map(task => {
+                            const { date, time } = formatDateTime(task.nextRun);
+                            return [
+                              task.report.fileName,
+                              date,
+                              time,
+                              getFrequencyLabel(task.frequency),
+                              <Button onClick={() => navigate(`/app/reports/schedule?id=${task.id}`)}>
+                                Modifier
+                              </Button>
+                            ];
+                          })}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      height: '300px'
+                    }}>
                       <EmptyState
                         heading="Aucun export planifié"
-                        image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
+                        image="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwIDNDMTEuNzE2IDMgNSA5LjcxNiA1IDE4QzUgMjYuMjg0IDExLjcxNiAzMyAyMCAzM0MyOC4yODQgMzMgMzUgMjYuMjg0IDM1IDE4QzM1IDkuNzE2IDI4LjI4NCAzIDIwIDNaTTIyIDI1SDJWMjNIMjJWMjVaTTIyIDIxSDJWMThIMjJWMjFaIiBmaWxsPSIjMDA3YWNlIi8+Cjwvc3ZnPgo="
                       >
                         <p>Les exports planifiés apparaîtront ici.</p>
                         <Button onClick={() => navigate("/app/reports/schedule")}>
                           Planifier un export
                         </Button>
                       </EmptyState>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </Card>
             </div>
@@ -287,12 +464,12 @@ export default function Dashboard() {
         <Layout.Section>
           <Card>
             <div style={{ padding: '20px' }}>
-              <Text variant="headingMd" as="h2">Rapports populaires</Text>
+              <Text variant="headingMd" as="h1">Rapports populaires</Text>
               <LegacyStack distribution="fill">
                 <Card>
                   <div style={{ padding: '16px' }}>
                     <LegacyStack alignment="center">
-                      <Thumbnail source="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png" alt="Ventes" />
+                      <Thumbnail source="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEwIDVIMzBWMzVIMFY1Wk0xMiA3VjMzSDI4VjdIMTJaIiBmaWxsPSIjMDA3YWNlIi8+CjxwYXRoIGQ9Ik0xNSAxMEgyNVYxMkgxNVYxMFpNMTUgMTVIMjVWMTdIMTVWMTVaTTE1IDIwSDI1VjIySDE1VjIwWk0xNSAyNUgyNVYyN0gxNVYyNVoiIGZpbGw9IiMwMDdhY2UiLz4KPC9zdmc+Cg==" alt="Ventes" />
                       <div>
                         <Text variant="headingMd" as="h3">Ventes</Text>
                         <Text variant="bodyMd" as="p">Exports des transactions</Text>
@@ -303,7 +480,7 @@ export default function Dashboard() {
                 <Card>
                   <div style={{ padding: '16px' }}>
                     <LegacyStack alignment="center">
-                      <Thumbnail source="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png" alt="Taxes" />
+                      <Thumbnail source="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwIDNDMTEuNzE2IDMgNSA5LjcxNiA1IDE4QzUgMjYuMjg0IDExLjcxNiAzMyAyMCAzM0MyOC4yODQgMzMgMzUgMjYuMjg0IDM1IDE4QzM1IDkuNzE2IDI4LjI4NCAzIDIwIDNaTTIyIDI1SDJWMjNIMjJWMjVaTTIyIDIxSDJWMThIMjJWMjFaIiBmaWxsPSIjRjU1NTU1Ii8+Cjwvc3ZnPgo=" alt="Taxes" />
                       <div>
                         <Text variant="headingMd" as="h3">Taxes</Text>
                         <Text variant="bodyMd" as="p">Déclarations fiscales</Text>
@@ -314,7 +491,7 @@ export default function Dashboard() {
                 <Card>
                   <div style={{ padding: '16px' }}>
                     <LegacyStack alignment="center">
-                      <Thumbnail source="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png" alt="Clients" />
+                      <Thumbnail source="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwIDNDMTEuNzE2IDMgNSA5LjcxNiA1IDE4QzUgMjYuMjg0IDExLjcxNiAzMyAyMCAzM0MyOC4yODQgMzMgMzUgMjYuMjg0IDM1IDE4QzM1IDkuNzE2IDI4LjI4NCAzIDIwIDNaTTIyIDI1SDJWMjNIMjJWMjVaTTIyIDIxSDJWMThIMjJWMjFaIiBmaWxsPSIjMDA3YWNlIi8+Cjwvc3ZnPgo=" alt="Clients" />
                       <div>
                         <Text variant="headingMd" as="h3">Clients</Text>
                         <Text variant="bodyMd" as="p">Base clients</Text>
