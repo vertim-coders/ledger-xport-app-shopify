@@ -1,5 +1,5 @@
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
-import { useLoaderData, useSubmit, useNavigate } from "@remix-run/react";
+import { useLoaderData, useSubmit, useNavigate, useNavigation } from "@remix-run/react";
 import {
   Page,
   Layout,
@@ -181,6 +181,7 @@ export default function CompanyAndFiscalRegimeSettings() {
   const { settings, regimes } = useLoaderData<typeof loader>();
   const submit = useSubmit();
   const navigate = useNavigate();
+  const navigation = useNavigation();
   const [selectedTab, setSelectedTab] = useState(0);
   const [companyFormData, setCompanyFormData] = useState({
     companyName: settings?.companyName || "",
@@ -195,6 +196,7 @@ export default function CompanyAndFiscalRegimeSettings() {
   const [toastMessage, setToastMessage] = useState("");
   const [toastError, setToastError] = useState(false);
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
+  const isSaving = navigation.state === "submitting";
 
   const handleCompanyChange = (field: string, value: string) => {
     setCompanyFormData(prev => ({ ...prev, [field]: value }));
@@ -361,7 +363,7 @@ export default function CompanyAndFiscalRegimeSettings() {
                     </LegacyStack>
 
                     <div style={{ marginTop: '32px', textAlign: 'center' }}>
-                      <BiSaveBtn title="Sauvegarder cette configuration fiscale" />
+                      <BiSaveBtn title="Sauvegarder cette configuration fiscale" isLoading={isSaving} />
                     </div>
                   </FormLayout>
                 </LegacyStack>

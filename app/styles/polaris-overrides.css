@@ -1,0 +1,9 @@
+/* Override Polaris DatePicker selected day color to app blue */
+.Polaris-DatePicker__Day--selected {
+  background-color: #0670fa !important;
+  color: #fff !important;
+}
+.Polaris-DatePicker__Day--selected:active,
+.Polaris-DatePicker__Day--selected:focus {
+  background-color: #0056c7 !important;
+} 

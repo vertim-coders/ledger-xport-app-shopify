@@ -545,18 +545,18 @@ export default function ManualExportPage() {
                     <HelpIcon description="Choisissez la période sur laquelle vous souhaitez générer un export. Les dates futures ne sont pas autorisées." />
                   </span>
                       <DatePicker
-                    month={currentMonth}
-                    year={currentYear}
-                    onChange={newRange => {
-                      if (newRange.start && newRange.end) {
-                        setSelectedDates({ start: newRange.start, end: newRange.end });
-                      }
-                    }}
-                        onMonthChange={handleMonthChange}
-                    selected={{ start: selectedDates.start, end: selectedDates.end }}
-                    disableDatesBefore={new Date(2023, 0, 1)}
-                    disableDatesAfter={new Date()}
-                        allowRange
+                        month={currentMonth}
+                        year={currentYear}
+                        onChange={newRange => {
+                          if (newRange.start && newRange.end) {
+                            setSelectedDates({ start: newRange.start, end: newRange.end });
+                          }
+                        }}
+                            onMonthChange={handleMonthChange}
+                        selected={{ start: selectedDates.start, end: selectedDates.end }}
+                        disableDatesBefore={new Date(2023, 0, 1)}
+                        disableDatesAfter={new Date()}
+                            allowRange
                       />
                 </BlockStack>
                 </div>
