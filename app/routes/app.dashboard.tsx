@@ -12,11 +12,13 @@ import {
   Icon,
   Thumbnail,
   EmptyState,
+  Toast,
 } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
 import { ReportStatus } from "@prisma/client";
 import { BiSimpleBtn } from "../components/Buttons/BiSimpleBtn";
+import { downloadFileFromUrl } from "../utils/download";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -27,6 +29,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
+import { useState } from "react";
 
 ChartJS.register(
   CategoryScale,
@@ -124,9 +127,60 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 export default function Dashboard() {
   const { successfulExports, failedExports, recentReports, upcomingExports, monthlyData } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
+  const [isDownloading, setIsDownloading] = useState<string | null>(null);
+  const [toastActive, setToastActive] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastError, setToastError] = useState(false);
 
   const handleNewReport = () => {
     navigate("/app/reports/manual-export");
+  };
+
+  const handleDownload = async (reportId: string, fileName: string) => {
+    if (isDownloading === reportId) return; // Prevent multiple clicks
+    
+    setIsDownloading(reportId);
+    try {
+      const downloadUrl = `/api/reports/${reportId}`;
+      await downloadFileFromUrl(downloadUrl, fileName);
+      setToastMessage("Fichier téléchargé avec succès");
+      setToastError(false);
+      setToastActive(true);
+    } catch (error) {
+      console.error('Download error:', error);
+      setToastMessage("Erreur lors du téléchargement");
+      setToastError(true);
+      setToastActive(true);
+    } finally {
+      setIsDownloading(null);
+    }
+  };
+
+  const handleRetry = async (reportId: string) => {
+    try {
+      const response = await fetch(`/api/reports/${reportId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: "action=retry",
+      });
+
+      if (response.ok) {
+        setToastMessage("Rapport en cours de régénération");
+        setToastError(false);
+        setToastActive(true);
+        // Refresh the page to show updated status
+        window.location.reload();
+      } else {
+        throw new Error("Failed to retry report");
+      }
+    } catch (error) {
+      console.error('Retry error:', error);
+      setToastMessage("Erreur lors de la régénération");
+      setToastError(true);
+      setToastActive(true);
+    }
   };
 
   const rows = recentReports.map(report => [
@@ -141,9 +195,10 @@ export default function Dashboard() {
     new Date(report.updatedAt).toLocaleDateString(),
     report.status === ReportStatus.ERROR ? 'Échec' : 'Manuel',
     <Button
-      onClick={() => {/* TODO: Implement download */}}
-      disabled={report.status !== ReportStatus.COMPLETED}
+      onClick={() => handleDownload(report.id, report.fileName)}
+      disabled={report.status !== ReportStatus.COMPLETED || isDownloading === report.id}
       icon="download"
+      loading={isDownloading === report.id}
     >
       Télécharger
     </Button>
@@ -366,7 +421,7 @@ export default function Dashboard() {
                               report.fileName,
                               report.type,
                               new Date(report.updatedAt).toLocaleDateString(),
-                              <Button onClick={() => {/* TODO: Implement retry */}}>
+                              <Button onClick={() => handleRetry(report.id)}>
                                 Corriger
                               </Button>
                             ])}
@@ -504,6 +559,13 @@ export default function Dashboard() {
           </Card>
         </Layout.Section>
       </Layout>
+      {toastActive && (
+        <Toast
+          content={toastMessage}
+          onDismiss={() => setToastActive(false)}
+          error={toastError}
+        />
+      )}
     </Page>
   );
 } 

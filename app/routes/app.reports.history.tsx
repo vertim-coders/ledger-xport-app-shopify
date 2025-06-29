@@ -16,6 +16,7 @@ import {
   Modal,
   Banner,
   type BadgeProps,
+  Toast,
 } from "@shopify/polaris";
 import { useState, useCallback } from "react";
 import { authenticate } from "../shopify.server";
@@ -23,6 +24,7 @@ import { prisma } from "../db.server";
 import { ReportStatus, ExportFormat, type Report } from "@prisma/client";
 import { ArrowDownIcon, RefreshIcon, EmailIcon, SearchIcon } from "@shopify/polaris-icons";
 import { promises as fs } from "fs";
+import { downloadFileFromUrl } from "../utils/download";
 
 type LoaderData = {
   reports: Array<Omit<Report, "startDate" | "endDate" | "createdAt" | "updatedAt"> & {
@@ -155,7 +157,10 @@ export default function ExportHistory() {
   const [selectedType, setSelectedType] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [searchValue, setSearchValue] = useState("");
-  const [isDownloading, setIsDownloading] = useState(false);
+  const [isDownloading, setIsDownloading] = useState<string | null>(null);
+  const [toastActive, setToastActive] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastError, setToastError] = useState(false);
 
   const handlePeriodChange = useCallback((value: string) => {
     setSelectedPeriod(value);
@@ -189,21 +194,52 @@ export default function ExportHistory() {
     );
   }, [selectedPeriod, selectedType, selectedStatus, submit]);
 
-  const handleDownload = useCallback((reportId: string) => {
-    setIsDownloading(true);
-    submit(
-      { action: "download", reportId },
-      { method: "post" }
-    );
-    setIsDownloading(false);
-  }, [submit]);
+  const handleDownload = useCallback(async (reportId: string, fileName: string) => {
+    if (isDownloading === reportId) return; // Prevent multiple clicks
+    
+    setIsDownloading(reportId);
+    try {
+      const downloadUrl = `/api/reports/${reportId}`;
+      await downloadFileFromUrl(downloadUrl, fileName);
+      setToastMessage("Fichier téléchargé avec succès");
+      setToastError(false);
+      setToastActive(true);
+    } catch (error) {
+      console.error('Download error:', error);
+      setToastMessage("Erreur lors du téléchargement");
+      setToastError(true);
+      setToastActive(true);
+    } finally {
+      setIsDownloading(null);
+    }
+  }, [isDownloading]);
 
-  const handleRetry = useCallback((reportId: string) => {
-    submit(
-      { action: "retry", reportId },
-      { method: "post" }
-    );
-  }, [submit]);
+  const handleRetry = useCallback(async (reportId: string) => {
+    try {
+      const response = await fetch(`/api/reports/${reportId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: "action=retry",
+      });
+
+      if (response.ok) {
+        setToastMessage("Rapport en cours de régénération");
+        setToastError(false);
+        setToastActive(true);
+        // Refresh the page to show updated status
+        window.location.reload();
+      } else {
+        throw new Error("Failed to retry report");
+      }
+    } catch (error) {
+      console.error('Retry error:', error);
+      setToastMessage("Erreur lors de la régénération");
+      setToastError(true);
+      setToastActive(true);
+    }
+  }, []);
 
   const rows = reports.map((report) => {
     console.log('Processing report:', { id: report.id, status: report.status });
@@ -236,13 +272,19 @@ export default function ExportHistory() {
         {(report.status === ReportStatus.COMPLETED || report.status === ReportStatus.COMPLETED_WITH_EMPTY_DATA) && (
           <Button
             icon={ArrowDownIcon}
-            onClick={() => handleDownload(report.id)}
-            disabled={isDownloading}
+            onClick={() => handleDownload(report.id, report.fileName)}
+            disabled={isDownloading === report.id}
+            loading={isDownloading === report.id}
           />
         )}
         {report.status === ReportStatus.PENDING && (
           <>
-            <Button icon={ArrowDownIcon} onClick={() => handleDownload(report.id)} />
+            <Button 
+              icon={ArrowDownIcon} 
+              onClick={() => handleDownload(report.id, report.fileName)}
+              disabled={isDownloading === report.id}
+              loading={isDownloading === report.id}
+            />
             <Button icon={EmailIcon} />
           </>
         )}
@@ -340,6 +382,13 @@ export default function ExportHistory() {
           </Card>
         </Layout.Section>
       </Layout>
+      {toastActive && (
+        <Toast
+          content={toastMessage}
+          onDismiss={() => setToastActive(false)}
+          error={toastError}
+        />
+      )}
     </Page>
   );
 } 

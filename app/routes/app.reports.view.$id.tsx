@@ -22,6 +22,7 @@ import { XMLParser } from "fast-xml-parser";
 import * as XLSX from "xlsx";
 import { ReportStatus } from "@prisma/client";
 import { useState } from "react";
+import { downloadFileFromUrl } from "../utils/download";
 
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
@@ -179,10 +180,26 @@ export default function ReportView() {
   const [toastActive, setToastActive] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [toastError, setToastError] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const handleDownload = async () => {
-    // Désactivé : aucune action de téléchargement
-    return;
+    if (isDownloading) return; // Prevent multiple clicks
+    
+    setIsDownloading(true);
+    try {
+      const downloadUrl = `/api/reports/${report.id}`;
+      await downloadFileFromUrl(downloadUrl, report.fileName);
+      setToastMessage("Fichier téléchargé avec succès");
+      setToastError(false);
+      setToastActive(true);
+    } catch (error) {
+      console.error('Download error:', error);
+      setToastMessage("Erreur lors du téléchargement");
+      setToastError(true);
+      setToastActive(true);
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   const handleRegenerate = () => {
@@ -269,7 +286,13 @@ export default function ReportView() {
                   Rapport de données
                 </Text>
                 <InlineStack gap="200">
-                  <Button onClick={handleDownload}>Télécharger</Button>
+                  <Button 
+                    onClick={handleDownload}
+                    disabled={report.status !== ReportStatus.COMPLETED || isDownloading}
+                    loading={isDownloading}
+                  >
+                    Télécharger
+                  </Button>
                   <Button onClick={handleRegenerate}>Re-générer</Button>
                   <Button tone="critical" onClick={handleDelete}>
                     Supprimer
