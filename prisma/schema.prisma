@@ -38,6 +38,7 @@ model Shop {
   fiscalConfig    FiscalConfiguration?
   reports         Report[]
   generalSettings GeneralSettings?
+  ftpConfig       FtpConfig?
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
   scheduledTasks  ScheduledTask[]     @relation("ShopToScheduledTask")
@@ -80,6 +81,17 @@ enum ReportStatus {
   ERROR
 }
 
+enum Protocol {
+  FTP
+  SFTP
+}
+
+enum FtpDeliveryStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
 model Report {
   id            String   @id @default(cuid())
   type          String   // manual, scheduled
@@ -93,6 +105,8 @@ model Report {
   fileName      String
   filePath      String?
   errorMessage  String?
+  deliveryMethod String   @default("EMAIL") // EMAIL or FTP
+  ftpDeliveryStatus FtpDeliveryStatus?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   shop          Shop     @relation(fields: [shopId], references: [id])
@@ -167,5 +181,24 @@ model GeneralSettings {
   updatedAt    DateTime @updatedAt
   shop         Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
 
+  @@index([shopId])
+}
+
+model FtpConfig {
+  id            String   @id @default(cuid())
+  shopId        String   @unique
+  host          String
+  port          Int      @default(21)
+  protocol      Protocol @default(SFTP)
+  username      String
+  password      String
+  directory     String   @default("/")
+  passiveMode   Boolean  @default(false)
+  retryDelay    Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  shop          Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@map("ftp_configs")
   @@index([shopId])
 }

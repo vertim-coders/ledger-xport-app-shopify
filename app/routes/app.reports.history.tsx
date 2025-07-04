@@ -241,6 +241,16 @@ export default function ExportHistory() {
     }
   }, []);
 
+  // Truncate file name if too long
+  const getTruncatedFileName = (fileName: string) => {
+    if (!fileName) return "—";
+    if (fileName.length <= 37) return fileName;
+    // Try to preserve the extension
+    const extMatch = fileName.match(/\.[a-zA-Z0-9]+$/);
+    const ext = extMatch ? extMatch[0] : '';
+    return fileName.slice(0, 37) + '...'+ (ext ? ext : '');
+  };
+
   const rows = reports.map((report) => {
     console.log('Processing report:', { id: report.id, status: report.status });
     
@@ -254,20 +264,41 @@ export default function ExportHistory() {
 
     console.log('Status badge:', statusBadge);
 
-    return [
+    // Helper to make a cell clickable, with error handling for certain statuses
+    const clickableCell = (content: React.ReactNode, report: any) => (
       <div 
-        style={{ cursor: 'pointer' }} 
-        onClick={() => navigate(`/app/reports/view/${report.id}`)}
+        style={{ cursor: 'pointer', width: '100%', height: '100%' }}
+        onClick={() => {
+          if (report.status === ReportStatus.PENDING) {
+            setToastMessage("Ce rapport est encore en attente de génération.");
+            setToastError(true);
+            setToastActive(true);
+          } else if (report.status === ReportStatus.COMPLETED_WITH_EMPTY_DATA) {
+            setToastMessage("Ce rapport a été généré sans données. Il n'y a rien à afficher.");
+            setToastError(true);
+            setToastActive(true);
+          } else if (report.status === ReportStatus.ERROR) {
+            setToastMessage("Ce rapport a échoué. Impossible d'afficher la vue.");
+            setToastError(true);
+            setToastActive(true);
+          } else {
+            navigate(`/app/reports/view/${report.id}`);
+          }
+        }}
       >
-        {new Date(report.createdAt).toLocaleDateString("fr-FR")}
-      </div>,
-      report.startDate && report.endDate 
+        {content}
+      </div>
+    );
+
+    return [
+      clickableCell(new Date(report.createdAt).toLocaleDateString("fr-FR"), report),
+      clickableCell(report.startDate && report.endDate 
         ? `${new Date(report.startDate).toLocaleDateString("fr-FR")} → ${new Date(report.endDate).toLocaleDateString("fr-FR")}`
-        : "Calculé automatiquement",
-      report.type === "manual" ? "Manuel" : "Auto",
-      report.format.toUpperCase(),
-      <Badge tone={statusBadge.tone}>{statusBadge.content}</Badge>,
-      report.fileName || "—",
+        : "Calculé automatiquement", report),
+      clickableCell(report.type === "manual" ? "Manuel" : "Auto", report),
+      clickableCell(report.format.toUpperCase(), report),
+      clickableCell(<Badge tone={statusBadge.tone}>{statusBadge.content}</Badge>, report),
+      clickableCell(getTruncatedFileName(report.fileName), report),
       <LegacyStack spacing="tight">
         {(report.status === ReportStatus.COMPLETED || report.status === ReportStatus.COMPLETED_WITH_EMPTY_DATA) && (
           <Button
@@ -358,6 +389,7 @@ export default function ExportHistory() {
 
         <Layout.Section>
           <Card>
+            <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
             <DataTable
               columnContentTypes={[
                 "text",
@@ -379,6 +411,7 @@ export default function ExportHistory() {
               ]}
               rows={rows}
             />
+            </div>
           </Card>
         </Layout.Section>
       </Layout>

@@ -20,6 +20,7 @@ import {
   Icon,
   Button as PolarisButton,
   Text as PolarisText,
+  Banner,
 } from "@shopify/polaris";
 import { useState, useCallback, useEffect } from "react";
 import { authenticate } from "../shopify.server";
@@ -38,7 +39,9 @@ import { MappingService } from "../services/mapping.service";
 import { ReportService } from "../services/report.service";
 import type { ColumnMapping } from "../types/ColumnMappingType";
 import type { ReportMapping } from "../types/ReportMappingType";
-import { getMimeType, downloadFilesFromResults } from "../utils/download";
+import { getMimeType, downloadFilesFromResults, downloadZipFromResults } from "../utils/download";
+import { BluePolarisCheckbox } from "../components/Buttons/BluePolarisCheckbox";
+import { BiBtn } from "../components/Buttons/BiBtn";
 
 // Default mappings for different data types
 const defaultMappings: Record<string, Record<string, string>> = {
@@ -153,6 +156,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     include: { fiscalConfig: true },
   });
 
+  const ftpConfig = await prisma.ftpConfig.findUnique({
+    where: { shopId: session.shop }
+  });
+
   // Get current date and date 30 days ago for the date range
   const endDate = new Date();
   const startDate = new Date();
@@ -172,6 +179,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   return json({
     shop,
+    ftpConfig,
     data: {
       customers,
       orders,
@@ -196,6 +204,10 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
     const actionType = formData.get("actionType") as string;
     const schedulingType = formData.get("schedulingType") as string;
     const reportNames = JSON.parse(formData.get("reportNames") as string);
+
+    // DEBUG: Log the received dataTypes and reportNames
+    console.log('dataTypes:', dataTypes);
+    console.log('reportNames:', reportNames);
 
     // For generate action, we need start/end dates
     let startDate: Date | null = null;
@@ -233,6 +245,12 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
     }
 
     if (actionType === "schedule") {
+      // Vérifier qu'un seul type de données est sélectionné
+      const selectedTypes = Object.entries(dataTypes).filter(([_, isSelected]) => isSelected);
+      if (selectedTypes.length !== 1) {
+        return json({ error: "Vous ne pouvez planifier qu'un seul type de données à la fois. Veuillez en sélectionner un seul." }, { status: 400 });
+      }
+
       // Create a report record with status PENDING (no file yet)
       // For scheduled reports, we don't save startDate/endDate as they'll be calculated dynamically
       const report = await prisma.report.create({
@@ -249,12 +267,21 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
           shopId: shop.id,
           fileSize: 0,
           fileName: (Object.values(reportNames).find(name => !!name) as string) || "export",
+          deliveryMethod: formData.get("schedulingType") as string, // Sauvegarde de la méthode de livraison
         }
       });
 
-      // Create the scheduled task
-      if (schedulingType === "email") {
-        const emailConfig = formData.get("emailConfig") as string;
+      // Create the scheduled task for both email and ftp
+      if (schedulingType === "email" || schedulingType === "ftp") {
+        // For FTP, we need to ensure the config exists
+        if (schedulingType === "ftp") {
+          const ftpConfig = await prisma.ftpConfig.findUnique({ where: { shopId: shop.id } });
+          if (!ftpConfig) {
+            // Remove the report if scheduling fails
+            await prisma.report.delete({ where: { id: report.id } });
+            return json({ error: "Configuration FTP manquante. Veuillez configurer le FTP dans les paramètres." }, { status: 400 });
+          }
+        }
         const frequency = formData.get("frequency") as string;
         const executionDay = parseInt(formData.get("executionDay") as string);
         const executionTime = formData.get("executionTime") as string;
@@ -265,7 +292,7 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
             frequency,
             executionDay,
             executionTime,
-            emailConfig,
+            emailConfig: schedulingType === "email" ? (formData.get("emailConfig") as string) : "",
             lastRun: null,
             nextRun: calculateNextRun(frequency, executionDay, executionTime),
             status: "ACTIVE"
@@ -285,18 +312,7 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
       return await serviceFn(admin, ...args);
     }
 
-    // Fetch data from all services using the compatibility helper
-    const customers = await fetchShopifyData(ShopifyCustomerService.getCustomers, startDate.toISOString(), endDate.toISOString());
-    const orders = await fetchShopifyData(ShopifyOrderService.getOrders, startDate.toISOString(), endDate.toISOString());
-    const refunds = await fetchShopifyData(ShopifyRefundService.getRefunds, startDate.toISOString(), endDate.toISOString());
-    const taxes = await fetchShopifyData(ShopifyTaxService.getTaxes, startDate.toISOString(), endDate.toISOString());
-
-    // Log the data to console
-    console.log("Customers data:", customers);
-    console.log("Orders data:", orders);
-    console.log("Refunds data:", refunds);
-    console.log("Taxes data:", taxes);
-
+    // Correction : Générer un fichier pour CHAQUE type sélectionné
     const savedFiles: { filePath: string; fileName: string; content: Buffer | string }[] = [];
     let hasEmptyData = false;
 
@@ -337,7 +353,7 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
         continue;
       }
 
-      // Use the report name from the form if available, otherwise use default format
+      // Correction : Utiliser le bon nom pour chaque type
       const fileName = reportNames[dataType] || `${dataType}_${startDate.toISOString()}_${endDate.toISOString()}.${fileFormat.toLowerCase()}`;
       // Save to 'reports-schedule' directory
       const exportDir = join(process.cwd(), 'reports-schedule');
@@ -347,9 +363,40 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
       savedFiles.push({ filePath, fileName, content: reportContent });
     }
 
-    // If no data was found for any type
+    // Si aucun fichier généré
     if (savedFiles.length === 0) {
       return json({ error: "No data found for the selected types" }, { status: 400 });
+    }
+
+    // Correction : Retourner TOUS les fichiers générés dans results
+    if (actionType === "generate") {
+      const results = [];
+      for (const savedFile of savedFiles) {
+        const { fileName, content, filePath } = savedFile;
+        const mimeType = getMimeType(fileFormat as ExportFormat);
+        let base64Content: string;
+        try {
+          if (Buffer.isBuffer(content)) {
+            base64Content = content.toString('base64');
+          } else if (typeof content === 'string') {
+            base64Content = Buffer.from(content, 'utf8').toString('base64');
+          } else {
+            base64Content = Buffer.from(String(content), 'utf8').toString('base64');
+          }
+        } catch (error) {
+          const fs = await import('fs/promises');
+          const fileContent = await fs.readFile(filePath);
+          base64Content = fileContent.toString('base64');
+        }
+        results.push({
+          status: 'success',
+          dataType: 'generated',
+          fileName: fileName,
+          fileContent: base64Content,
+          mimeType: mimeType
+        });
+      }
+      return json({ results });
     }
 
     // Create report record in database
@@ -486,18 +533,24 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
 function calculateNextRun(frequency: string, executionDay: number, executionTime: string): Date {
   const now = new Date();
   const [hours, minutes] = executionTime.split(':').map(Number);
-  
   let nextRun = new Date(now);
-  nextRun.setHours(hours, minutes, 0, 0);
-
+  nextRun.setSeconds(0, 0);
   switch (frequency) {
+    case "hourly":
+      nextRun.setHours(now.getHours(), minutes, 0, 0);
+      if (nextRun <= now) {
+        nextRun.setHours(nextRun.getHours() + 1);
+      }
+      break;
     case "daily":
+      nextRun.setHours(hours, minutes, 0, 0);
       if (nextRun <= now) {
         nextRun.setDate(nextRun.getDate() + 1);
       }
       break;
     case "monthly":
       nextRun.setDate(executionDay);
+      nextRun.setHours(hours, minutes, 0, 0);
       if (nextRun <= now) {
         nextRun.setMonth(nextRun.getMonth() + 1);
       }
@@ -505,12 +558,12 @@ function calculateNextRun(frequency: string, executionDay: number, executionTime
     case "yearly":
       nextRun.setDate(executionDay);
       nextRun.setMonth(0); // January
+      nextRun.setHours(hours, minutes, 0, 0);
       if (nextRun <= now) {
         nextRun.setFullYear(nextRun.getFullYear() + 1);
       }
       break;
   }
-
   return nextRun;
 }
 
@@ -544,7 +597,7 @@ async function scheduleImmediateTask(taskId: string, shopId: string, reportId: s
 }
 
 export default function ScheduleReport() {
-  const { shop, data } = useLoaderData<typeof loader>();
+  const { shop, data, ftpConfig } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const submit = useSubmit();
   const navigate = useNavigate();
@@ -552,6 +605,11 @@ export default function ScheduleReport() {
   const [toastMessage, setToastMessage] = useState("");
   const [toastError, setToastError] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState("");
+  const [deliveryMethod, setDeliveryMethod] = useState("EMAIL");
+
+  // Action type state to track whether user is generating or scheduling
+  const [actionType, setActionType] = useState<'generate' | 'schedule'>('generate');
 
   useEffect(() => {
     console.log("All data from services:", data);
@@ -563,22 +621,29 @@ export default function ScheduleReport() {
 
   // Handle action response and trigger downloads
   useEffect(() => {
-    if (actionData) {
+    if (!actionData) return;
       setIsGenerating(false);
       console.log("Action data received:", actionData);
       
-      // Check if it's an error response
-      if ('error' in actionData) {
+    // Erreur générique
+    if ('error' in actionData && actionData.error) {
         setToastMessage(`Erreur: ${actionData.error}`);
         setToastError(true);
         setToastActive(true);
         return;
       }
 
-      // Check if it's a success response with results
-      if ('results' in actionData && actionData.results && actionData.results.length > 0) {
-        const downloadedCount = downloadFilesFromResults(actionData.results);
-        
+    // Génération immédiate : gestion des résultats
+    if (actionType === 'generate' && 'results' in actionData) {
+      const results = (actionData as any).results;
+      if (Array.isArray(results) && results.length > 0) {
+        if (results.length > 1) {
+          downloadZipFromResults(results, "export-rapports.zip");
+          setToastMessage(`Rapport(s) généré(s) et téléchargé(s) avec succès (${results.length} fichiers dans un ZIP)`);
+          setToastError(false);
+          setToastActive(true);
+        } else {
+          const downloadedCount = downloadFilesFromResults(results);
         if (downloadedCount > 0) {
           setToastMessage(`Rapport(s) généré(s) et téléchargé(s) avec succès (${downloadedCount} fichier(s))`);
           setToastError(false);
@@ -588,19 +653,23 @@ export default function ScheduleReport() {
           setToastError(true);
           setToastActive(true);
         }
-      } else if ('success' in actionData) {
-        // This is a schedule success response
-        setToastMessage("Rapport planifié avec succès");
-        setToastError(false);
-        setToastActive(true);
-        navigate("/app/dashboard");
+        }
       } else {
         setToastMessage("Aucun rapport généré");
         setToastError(true);
         setToastActive(true);
       }
     }
-  }, [actionData, navigate]);
+    // Planification : toast succès uniquement si success === true
+    if (actionType === 'schedule' && 'success' in actionData && actionData.success === true) {
+      setToastMessage("Planification enregistrée avec succès");
+      setToastError(false);
+      setToastActive(true);
+      setTimeout(() => {
+        navigate('/app/dashboard');
+      }, 1000);
+    }
+  }, [actionData, actionType, navigate]);
 
   // Report name state
   const [reportNames, setReportNames] = useState<{ [key: string]: string }>({
@@ -668,9 +737,6 @@ export default function ScheduleReport() {
   const [frequency, setFrequency] = useState("daily");
   const [executionDay, setExecutionDay] = useState("1");
   const [executionTime, setExecutionTime] = useState("09:00");
-
-  // Action type state to track whether user is generating or scheduling
-  const [actionType, setActionType] = useState<'generate' | 'schedule'>('generate');
 
   // Update report names when file format changes
   useEffect(() => {
@@ -846,6 +912,16 @@ export default function ScheduleReport() {
   const handleSchedule = async (event: React.FormEvent<HTMLFormElement> | React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
 
+    // Vérifier qu'un seul type de données est sélectionné
+    const selectedTypes = Object.entries(dataTypes).filter(([_, isSelected]) => isSelected);
+    if (selectedTypes.length !== 1) {
+      setToastMessage("Vous ne pouvez planifier qu'un seul type de données à la fois. Veuillez en sélectionner un seul.");
+      setToastError(true);
+      setToastActive(true);
+      setActionType('generate'); // S'assurer que le mode repasse en génération immédiate
+      return;
+    }
+
     // Validate required To recipients
     if (schedulingType === 'email' && emailConfig.to.length === 0) {
       setToastMessage("Au moins un destinataire (To) est requis");
@@ -868,11 +944,18 @@ export default function ScheduleReport() {
     formData.append("fileFormat", fileFormat);
     formData.append("actionType", "schedule");
     formData.append("schedulingType", schedulingType);
-    if (schedulingType === "email") {
-      formData.append("emailConfig", JSON.stringify(emailConfig));
+    // Always send frequency, executionDay, executionTime for both email and ftp
       formData.append("frequency", frequency);
       formData.append("executionDay", executionDay);
-      formData.append("executionTime", executionTime);
+    let actualExecutionTime = executionTime;
+    if (frequency === 'hourly') {
+      const now = new Date();
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      actualExecutionTime = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    }
+    formData.append("executionTime", actualExecutionTime);
+    if (schedulingType === "email") {
+      formData.append("emailConfig", JSON.stringify(emailConfig));
     }
 
     console.log("Submitting form data for scheduling:", {
@@ -914,7 +997,25 @@ export default function ScheduleReport() {
     </div>
   );
 
+  const handleSchedulingTypeChange = useCallback((value: string) => {
+    setSchedulingType(value);
+    if (value === "ftp" && !ftpConfig) {
+      setError(
+        "La configuration FTP est requise. Veuillez la configurer dans les paramètres avant de planifier.",
+      );
+    } else {
+      setError("");
+    }
+  }, [ftpConfig]);
+
   return (
+    <>
+      <style>{`
+        .Polaris-Checkbox__Input:checked + .Polaris-Checkbox__Backdrop .Polaris-Checkbox__Icon {
+          color: #0066FF !important;
+          fill: #0066FF !important;
+        }
+      `}</style>
     <Frame>
       <Page title="Planifier un rapport">
         <Layout>
@@ -985,7 +1086,7 @@ export default function ScheduleReport() {
                     <LegacyStack vertical spacing="tight">
                       {Object.entries(dataTypes).map(([key, value]) => (
                         <LegacyStack key={key} spacing="tight">
-                          <Checkbox
+                            <BluePolarisCheckbox
                             label={key.charAt(0).toUpperCase() + key.slice(1)}
                             checked={value}
                             onChange={(checked) => handleDataTypeChange(key, checked)}
@@ -1043,8 +1144,39 @@ export default function ScheduleReport() {
                       { label: 'Sheet', value: 'sheet' },
                     ]}
                     value={schedulingType}
-                    onChange={setSchedulingType}
+                    onChange={handleSchedulingTypeChange}
                   />
+
+                  {/* Affiche une bannière d'erreur si FTP n'est pas configuré */}
+                  {error && (
+                    <div style={{ marginTop: '16px' }}>
+                      <Banner
+                        title="Configuration FTP requise"
+                        tone="critical"
+                        action={{ content: 'Aller aux paramètres', url: '/app/settings/general' }}
+                        onDismiss={() => setError('')}
+                      >
+                        <p>
+                          Vous devez configurer vos paramètres FTP avant de pouvoir
+                          planifier un export par ce biais.
+                        </p>
+                      </Banner>
+                    </div>
+                  )}
+
+                  {/* Affiche une bannière de succès si FTP est configuré */}
+                  {schedulingType === "ftp" && ftpConfig && !error && (
+                    <div style={{ marginTop: '16px' }}>
+                      <Banner
+                        title="FTP configuré"
+                        tone="success"
+                      >
+                        <p>
+                          La configuration FTP est prête. Vous pouvez lancer la planification d'un export par FTP.
+                        </p>
+                      </Banner>
+                    </div>
+                  )}
 
                   {/* Email Configuration */}
                   {schedulingType === "email" && (
@@ -1171,6 +1303,7 @@ export default function ScheduleReport() {
                       <Select
                         label="Fréquence"
                         options={[
+                            { label: 'Toutes les heures', value: 'hourly' },
                           { label: 'Quotidien', value: 'daily' },
                           { label: 'Mensuel', value: 'monthly' },
                           { label: 'Annuel', value: 'yearly' },
@@ -1179,6 +1312,7 @@ export default function ScheduleReport() {
                         onChange={setFrequency}
                       />
 
+                        {frequency !== 'hourly' && (
                       <Select
                         label="Jour d'exécution"
                         options={Array.from({ length: 31 }, (_, i) => ({
@@ -1189,26 +1323,36 @@ export default function ScheduleReport() {
                         onChange={setExecutionDay}
                         disabled={frequency === 'daily'}
                       />
+                        )}
 
+                        {/* Heure d'exécution */}
+                        {frequency !== 'hourly' && (
                       <Select
                         label="Heure d'exécution"
                         options={timeOptions}
                         value={executionTime}
                         onChange={setExecutionTime}
                       />
+                        )}
                     </LegacyStack>
                   </div>
+
+                    {frequency === 'hourly' && (
+                      <Banner tone="info" title="Planification toutes les heures">
+                        <p>
+                          L'envoi du rapport sera effectué chaque heure, à la même minute que la planification initiale.<br />
+                          Exemple : si vous planifiez à 14:23, l'envoi se fera chaque heure à xx:23.
+                        </p>
+                      </Banner>
+                    )}
 
                   {/* Bottom Buttons */}
                   <div style={{ marginTop: '32px' }}>
                     <LegacyStack distribution="equalSpacing">
-                      <Button
-                        onClick={() => window.history.back()}
-                        variant="plain"
-                        tone="critical"
-                      >
-                        Annuler
-                      </Button>
+                        <BiBtn
+                          title="Annuler"
+                          onClick={() => navigate('/app/dashboard')}
+                        />
                       <LegacyStack spacing="tight">
                         <div style={{ minWidth: 160 }}>
                           <BiSaveBtn
@@ -1223,15 +1367,6 @@ export default function ScheduleReport() {
                               setActionType('schedule');
                               handleSchedule(new Event('submit') as any);
                             }}
-                            style={{
-                              width: '100%',
-                              maxWidth: '400px',
-                              margin: '0 auto',
-                              display: 'block',
-                              padding: '5px 4px',
-                              fontSize: '16px',
-                              borderRadius: '12px'
-                            }}
                           />
                         </div>
                       </LegacyStack>
@@ -1245,5 +1380,6 @@ export default function ScheduleReport() {
       </Page>
       {toastMarkup}
     </Frame>
+    </>
   );
 } 

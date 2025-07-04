@@ -6,4 +6,11 @@
 .Polaris-DatePicker__Day--selected:active,
 .Polaris-DatePicker__Day--selected:focus {
   background-color: #0056c7 !important;
+}
+/* Points (dots) sous les jours sélectionnés en bleu */
+.Polaris-DatePicker__Day--selected .Polaris-DatePicker__DayIndicator {
+  background-color: #0670fa !important;
+}
+.Polaris-DatePicker__DayIndicator {
+  background-color: #b3d1ff !important;
 } 

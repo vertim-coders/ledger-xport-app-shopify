@@ -216,6 +216,7 @@ export default function Dashboard() {
   // Get frequency label in French
   const getFrequencyLabel = (frequency: string) => {
     switch (frequency) {
+      case 'hourly': return 'Toutes les heures';
       case 'daily': return 'Quotidien';
       case 'monthly': return 'Mensuel';
       case 'yearly': return 'Annuel';
@@ -248,12 +249,22 @@ export default function Dashboard() {
 
         {/* New Report Button */}
         <Layout.Section>
-          <div style={{ marginBottom: '0px' }}>
-            <LegacyStack distribution="fill" spacing="loose">
-              <BiSimpleBtn title="Générer un nouveau rapport" onClick={handleNewReport} />
-              <BiSimpleBtn title="Rapport personnalisé" onClick={() => navigate("/app/reports/custom")} />
-              <BiSimpleBtn title="Planifier un rapport" onClick={() => navigate("/app/reports/schedule")} />
-            </LegacyStack>
+          <div style={{ marginBottom: '0px', display: 'flex', gap: '24px', alignItems: 'flex-start', justifyContent: 'center' }}>
+            <BiSimpleBtn 
+              title="Rapport personnalisé" 
+              onClick={() => navigate("/app/reports/custom")} 
+              style={{ minWidth: 200, maxWidth: 220 }}
+            />
+            <BiSimpleBtn 
+              title="Générer un nouveau rapport" 
+              onClick={handleNewReport} 
+              style={{ minWidth: 260, maxWidth: 280 }}
+            />
+            <BiSimpleBtn
+              title="Planifier un rapport" 
+              onClick={() => navigate("/app/reports/schedule")}
+              style={{ minWidth: 200, maxWidth: 220 }}
+            />
           </div>
         </Layout.Section>
 

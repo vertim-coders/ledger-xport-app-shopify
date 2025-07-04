@@ -1,4 +1,5 @@
 import { ExportFormat } from "@prisma/client";
+import JSZip from "jszip";
 
 /**
  * Get MIME type based on export format
@@ -160,4 +161,31 @@ export function generateFileName(
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
   const extension = getFileExtension(format);
   return `${prefix}-${dataType}-${startDate}-${endDate}-${timestamp}.${extension}`;
+}
+
+/**
+ * Download a ZIP file from API response results
+ */
+export async function downloadZipFromResults(results: Array<{
+  status: string;
+  fileContent?: string;
+  fileName?: string;
+  mimeType?: string;
+}>, zipName = "export-rapports.zip") {
+  const zip = new JSZip();
+  for (const result of results) {
+    if (result.status === "success" && result.fileContent && result.fileName) {
+      // Decode base64 to Uint8Array
+      const fileData = Uint8Array.from(atob(result.fileContent), c => c.charCodeAt(0));
+      zip.file(result.fileName, fileData);
+    }
+  }
+  const blob = await zip.generateAsync({ type: "blob" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = zipName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(link.href);
 } 

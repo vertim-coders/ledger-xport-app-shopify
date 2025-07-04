@@ -1,5 +1,5 @@
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
-import { useLoaderData, useSubmit, useNavigate, useNavigation } from "@remix-run/react";
+import { useLoaderData, useSubmit, useNavigate, useNavigation, useActionData } from "@remix-run/react";
 import {
   Page,
   Layout,
@@ -14,27 +14,39 @@ import {
   Banner,
   List,
   LegacyStack,
+  Checkbox,
+  BlockStack,
 } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
-import { ExportFormat } from "@prisma/client";
+import { ExportFormat, Protocol } from "@prisma/client";
 import { useState, useEffect } from "react";
 import fiscalRegimesData from "../data/fiscal-regimes.json";
 import currenciesData from "../data/currencies.json";
 import { BiSaveBtn } from "../components/Buttons/BiSaveBtn";
+import { BiSimpleBtn } from "../components/Buttons/BiSimpleBtn";
+import { BiBtn } from "../components/Buttons/BiBtn";
 import shopify from "../shopify.server";
 import type { Settings } from "../types/SettingsType";
+import ftpService from "../services/ftp.service";
+import { encrypt, decrypt } from "../utils/crypto.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await prisma.shop.findUnique({
     where: { shopifyDomain: session.shop },
   });
+
   let fiscalConfig = null;
   let generalSettings = null;
+  let ftpConfig = null;
+
   if (shop) {
-    fiscalConfig = await prisma.fiscalConfiguration.findUnique({ where: { shopId: shop.id } });
-    generalSettings = await prisma.generalSettings.findUnique({ where: { shopId: shop.id } });
+    [fiscalConfig, generalSettings, ftpConfig] = await Promise.all([
+      prisma.fiscalConfiguration.findUnique({ where: { shopId: shop.id } }),
+      prisma.generalSettings.findUnique({ where: { shopId: shop.id } }),
+      prisma.ftpConfig.findUnique({ where: { shopId: shop.id } }),
+    ]);
   }
 
   // Fetch shop details from Shopify Admin API
@@ -48,6 +60,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   return json({
     settings: fiscalConfig || null,
     generalSettings: generalSettings || null,
+    ftpConfig: ftpConfig ? { ...ftpConfig, password: "" } : null,
     regimes: fiscalRegimesData.regimes,
     shopDetails: shopDetails.shop,
   });
@@ -56,6 +69,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 export const action = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const formData = await request.formData();
+  const actionType = formData.get("action");
   
   // First find the shop
   let shop = await prisma.shop.findUnique({
@@ -63,7 +77,6 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
   });
   
   if (!shop) {
-    // Crée le shop sans référence à un user
     shop = await prisma.shop.create({
       data: {
         id: session.shop,
@@ -73,6 +86,86 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
     });
   }
 
+  if (actionType === "save-ftp") {
+    const data = {
+      host: formData.get("host") as string,
+      port: parseInt(formData.get("port") as string),
+      protocol: formData.get("protocol") as Protocol,
+      username: formData.get("username") as string,
+      password: formData.get("password") as string,
+      directory: formData.get("directory") as string,
+      passiveMode: formData.get("passiveMode") === "on",
+      retryDelay: formData.get("retryDelay") ? parseInt(formData.get("retryDelay") as string) : null
+    };
+
+    const validation = await ftpService.validateConfig(data);
+    if (!validation.isValid) {
+      return json({ ftpErrors: validation.errors }, { status: 400 });
+    }
+
+    const existingConfig = await prisma.ftpConfig.findUnique({ where: { shopId: shop.id } });
+    
+    await prisma.ftpConfig.upsert({
+      where: { shopId: shop.id },
+      update: {
+        ...data,
+        password: data.password ? encrypt(data.password) : (existingConfig?.password || "")
+      },
+      create: {
+        ...data,
+        shopId: shop.id,
+        password: encrypt(data.password)
+      }
+    });
+    return json({ ftpSuccess: true });
+
+  } else if(actionType === 'test-ftp') {
+    const data = {
+        host: formData.get("host") as string,
+        port: parseInt(formData.get("port") as string),
+        protocol: formData.get("protocol") as Protocol,
+        username: formData.get("username") as string,
+        password: formData.get("password") as string,
+        directory: formData.get("directory") as string,
+        passiveMode: formData.get("passiveMode") === "on",
+        retryDelay: formData.get("retryDelay") ? parseInt(formData.get("retryDelay") as string) : null
+    };
+
+    const configToTest = {
+      ...data,
+      id: "",
+      shopId: shop.id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    
+    // Si l'utilisateur n'a pas tapé de nouveau mot de passe, on utilise l'ancien (déchiffré)
+    if(!configToTest.password) {
+      const existingConfig = await prisma.ftpConfig.findUnique({ where: { shopId: shop.id } });
+      if(existingConfig && existingConfig.password) {
+        try {
+          configToTest.password = decrypt(existingConfig.password);
+        } catch (e) {
+            console.error("Decryption failed:", e);
+            return json({ ftpTestResult: { success: false, error: 'Failed to decrypt password.' } });
+        }
+      } else {
+        // Pas de mot de passe existant et pas de mot de passe fourni
+        return json({ ftpTestResult: { success: false, error: 'Password is required for testing.' } });
+      }
+    }
+    // Si l'utilisateur a tapé un mot de passe, on l'utilise tel quel (en clair) pour le test.
+    // La fonction testConnection ne doit pas tenter de le déchiffrer.
+
+    try {
+        const isConnected = await ftpService.testConnection(configToTest);
+        return json({ ftpTestResult: { success: isConnected } });
+    } catch (e: any) {
+        return json({ ftpTestResult: { success: false, error: e.message } });
+    }
+  }
+
+  // Default action: save general/fiscal settings
   // Fetch shop details from Shopify Admin API
   const response = await fetch(`https://${session.shop}/admin/api/2024-01/shop.json`, {
     headers: {
@@ -135,7 +228,7 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
   });
 
   // Handle general settings
-  const generalSettings = {
+  const generalSettingsData = {
     salesAccount: formData.get("salesAccount") as string,
   };
 
@@ -144,12 +237,12 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
     where: { shopId: shop.id },
     create: {
       shopId: shop.id,
-      ...generalSettings,
+      ...generalSettingsData,
       timezone: shopDetails.shop.timezone || "UTC",
       language: shopDetails.shop.locale || "fr",
     },
     update: {
-      ...generalSettings,
+      ...generalSettingsData,
       timezone: shopDetails.shop.timezone || "UTC",
       language: shopDetails.shop.locale || "fr",
     },
@@ -159,7 +252,7 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export default function GeneralSettings() {
-  const { settings, generalSettings, regimes, shopDetails } = useLoaderData<typeof loader>();
+  const { settings, generalSettings, ftpConfig, regimes, shopDetails } = useLoaderData<typeof loader>();
   const submit = useSubmit();
   const navigate = useNavigate();
   const navigation = useNavigation();
@@ -172,10 +265,70 @@ export default function GeneralSettings() {
     defaultExportFormat: settings?.defaultFormat || "CSV",
     salesAccount: generalSettings?.salesAccount || "701",
   });
+  const [ftpFormData, setFtpFormData] = useState({
+    host: ftpConfig?.host || "",
+    port: ftpConfig?.port || 21,
+    protocol: ftpConfig?.protocol || "SFTP",
+    username: ftpConfig?.username || "",
+    password: "",
+    directory: ftpConfig?.directory || "/",
+    passiveMode: ftpConfig?.passiveMode || false,
+    retryDelay: ftpConfig?.retryDelay || "",
+  });
   const [selectedRegime, setSelectedRegime] = useState(settings?.code || "OHADA");
   const [toastActive, setToastActive] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [toastError, setToastError] = useState(false);
+  const [testStatus, setTestStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
+
+  const actionData = useActionData<typeof action>();
+
+  useEffect(() => {
+    if (actionData && 'ftpTestResult' in actionData && actionData.ftpTestResult) {
+      const { success, error } = actionData.ftpTestResult as { success: boolean; error?: string };
+      if (success) {
+        setTestStatus("success");
+        setToastMessage("Connexion FTP réussie !");
+        setToastError(false);
+        setToastActive(true);
+      } else {
+        setTestStatus("error");
+        setToastMessage(`Échec de la connexion FTP: ${error || 'Veuillez vérifier vos informations.'}`);
+        setToastError(true);
+        setToastActive(true);
+      }
+    }
+     if (actionData && 'ftpSuccess' in actionData && actionData.ftpSuccess) {
+        setToastMessage("Configuration FTP enregistrée avec succès !");
+        setToastError(false);
+        setToastActive(true);
+    }
+  }, [actionData]);
+
+  const handleFtpChange = (field: string, value: string | boolean) => {
+    setFtpFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleFtpSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    data.append("action", "save-ftp");
+    submit(data, { method: "post" });
+  };
+
+  const handleFtpTest = () => {
+    setTestStatus("testing");
+    const data = new FormData();
+    Object.entries(ftpFormData).forEach(([key, value]) => {
+      data.append(key, String(value));
+    });
+    data.append("action", "test-ftp");
+    submit(data, { 
+        method: "post",
+        encType: "application/x-www-form-urlencoded",
+        replace: true
+     });
+  };
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -368,6 +521,104 @@ export default function GeneralSettings() {
                   </FormLayout>
                 </LegacyStack>
               </form>
+            </Card>
+          </Layout.Section>
+
+          <Layout.Section>
+            <Card>
+              <BlockStack gap="400">
+                <Text variant="headingMd" as="h2">Configuration FTP</Text>
+                <form onSubmit={handleFtpSubmit} id="ftp-settings-form">
+                  <FormLayout>
+                    <TextField
+                      label="Hôte FTP"
+                      name="host"
+                      value={ftpFormData.host}
+                      onChange={(value) => handleFtpChange("host", value)}
+                      autoComplete="off"
+                    />
+                    <TextField
+                      label="Port"
+                      name="port"
+                      type="number"
+                      value={String(ftpFormData.port)}
+                      onChange={(value) => handleFtpChange("port", value)}
+                      autoComplete="off"
+                    />
+                    <Select
+                      label="Protocole"
+                      name="protocol"
+                      options={[
+                        { label: "SFTP", value: "SFTP" },
+                        { label: "FTP", value: "FTP" },
+                      ]}
+                      value={ftpFormData.protocol}
+                      onChange={(value) => handleFtpChange("protocol", value)}
+                    />
+                    <TextField
+                      label="Nom d'utilisateur"
+                      name="username"
+                      value={ftpFormData.username}
+                      onChange={(value) => handleFtpChange("username", value)}
+                      autoComplete="off"
+                    />
+                    <TextField
+                      label="Mot de passe"
+                      name="password"
+                      type="password"
+                      value={ftpFormData.password}
+                      onChange={(value) => handleFtpChange("password", value)}
+                      helpText="Laissez vide pour conserver le mot de passe actuel."
+                      autoComplete="new-password"
+                    />
+                    <TextField
+                      label="Répertoire cible"
+                      name="directory"
+                      value={ftpFormData.directory}
+                      onChange={(value) => handleFtpChange("directory", value)}
+                      autoComplete="off"
+                    />
+                    <Checkbox
+                      label="Mode passif"
+                      name="passiveMode"
+                      checked={ftpFormData.passiveMode}
+                      onChange={(checked) => handleFtpChange("passiveMode", checked)}
+                    />
+                    <TextField
+                      label="Délai de nouvelle tentative (secondes)"
+                      name="retryDelay"
+                      type="number"
+                      value={String(ftpFormData.retryDelay)}
+                      onChange={(value) => handleFtpChange("retryDelay", value)}
+                      autoComplete="off"
+                    />
+                    <LegacyStack>
+                      <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}>
+                        <BiBtn
+                          title="Tester la connexion"
+                          onClick={handleFtpTest}
+                          style={{ minWidth: 'unset', maxWidth: 'unset', margin: 0 }}
+                        />
+                      </div>
+                      <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                        <BiSaveBtn
+                          title="Enregistrer la configuration FTP"
+                          isLoading={isSaving}
+                          style={{ minWidth: 'unset', maxWidth: 'unset', margin: 0 }}
+                        />
+                      </div>
+                    </LegacyStack>
+                     {testStatus === "success" && (
+                        <Banner title="Connexion réussie" tone="success" onDismiss={() => setTestStatus('idle')} />
+                    )}
+                    {testStatus === "error" && (
+                        <Banner title="Échec de la connexion" tone="critical" onDismiss={() => setTestStatus('idle')}>
+                            <Text as="span">Veuillez vérifier vos informations et réessayer.</Text>
+                        </Banner>
+                    )}
+                  </FormLayout>
+                </form>
+              </BlockStack>
             </Card>
           </Layout.Section>
         </Layout>

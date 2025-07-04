@@ -44,8 +44,9 @@ import type { FiscalRegimesData } from "../types/FiscalRegimesDataType";
 import type { CombinedFiscalRegime } from "../types/CombinedFiscalRegimeType";
 import type { ColumnMapping } from "../types/ColumnMappingType";
 import type { ReportMapping } from "../types/ReportMappingType";
-import { getMimeType, downloadFilesFromResults } from "../utils/download";
+import { getMimeType, downloadFilesFromResults, downloadZipFromResults } from "../utils/download";
 import React from 'react';
+import { BluePolarisCheckbox } from "../components/Buttons/BluePolarisCheckbox";
 
 // Frontend helper functions for display purposes (mirroring backend logic)
 const defaultMappingsFrontend: Record<string, Record<string, string>> = {
@@ -429,8 +430,13 @@ export default function ManualExportPage() {
 
       // Check if it's a success response with results
       if ('results' in actionData && actionData.results && actionData.results.length > 0) {
+        if (actionData.results.length > 1) {
+          downloadZipFromResults(actionData.results, "export-rapports.zip");
+          setToastMessage(`Rapport(s) généré(s) et téléchargé(s) avec succès (${actionData.results.length} fichiers dans un ZIP)`);
+          setToastError(false);
+          setToastActive(true);
+        } else {
         const downloadedCount = downloadFilesFromResults(actionData.results);
-        
         if (downloadedCount > 0) {
           setToastMessage(`Rapport(s) généré(s) et téléchargé(s) avec succès (${downloadedCount} fichier(s))`);
           setToastError(false);
@@ -439,6 +445,7 @@ export default function ManualExportPage() {
           setToastMessage("Aucun rapport généré");
           setToastError(true);
           setToastActive(true);
+          }
         }
       } else {
         setToastMessage("Aucun rapport généré");
@@ -530,6 +537,13 @@ export default function ManualExportPage() {
     : [];
 
   return (
+    <>
+      <style>{`
+        .Polaris-Checkbox__Input:checked + .Polaris-Checkbox__Backdrop .Polaris-Checkbox__Icon {
+          color: #0066FF !important;
+          fill: #0066FF !important;
+        }
+      `}</style>
     <Page
       title="Export manuel"
       backAction={{ content: "Retour", url: "/app" }}
@@ -570,7 +584,7 @@ export default function ManualExportPage() {
                 <BlockStack gap="200">
                     {Object.entries(dataTypes).map(([key, value]) => (
                       <InlineStack key={key} gap="200">
-                  <Checkbox
+                    <BluePolarisCheckbox
                           label={key.charAt(0).toUpperCase() + key.slice(1)}
                           checked={value}
                           onChange={() => handleDataTypeChange(key as keyof typeof dataTypes)}
@@ -619,7 +633,7 @@ export default function ManualExportPage() {
                 </div>
               )}
 
-              <div className="p-4" style={{ marginTop: 32 }}>
+                <div className="p-4" style={{ marginTop: 32, display: 'flex', justifyContent: 'center' }}>
                    <BiSaveBtn title="Générer et télécharger l'export" isLoading={isGenerating} />
                 </div>
             </form>
@@ -634,5 +648,6 @@ export default function ManualExportPage() {
         />
       )}
     </Page>
+    </>
   );
 }

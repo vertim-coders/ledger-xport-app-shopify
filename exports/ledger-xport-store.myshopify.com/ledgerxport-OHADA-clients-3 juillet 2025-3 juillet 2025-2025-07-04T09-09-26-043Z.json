@@ -1,0 +1,32 @@
+[
+  {
+    "Date": "2025-06-16",
+    "Référence": "gid://shopify/Customer/8426470998206",
+    "Description": "az FO",
+    "Email": "adikpetobernado@gmail.com",
+    "Téléphone": "+2290143041326",
+    "Adresse": ", , United States",
+    "Tags": "",
+    "Exonéré de taxe": "Non"
+  },
+  {
+    "Date": "2025-06-16",
+    "Référence": "gid://shopify/Customer/8426849927358",
+    "Description": "Bernado ADIKPETO",
+    "Email": "bernado.adikpeto@epitech.eu",
+    "Téléphone": "+22943041326",
+    "Adresse": "Abomey Calavi, Abomey Calavi, Benin",
+    "Tags": "",
+    "Exonéré de taxe": "Non"
+  },
+  {
+    "Date": "2025-06-16",
+    "Référence": "gid://shopify/Customer/8426857889982",
+    "Description": "Client Test",
+    "Email": "test@example.com",
+    "Téléphone": "+33123456789",
+    "Adresse": ", , United States",
+    "Tags": "",
+    "Exonéré de taxe": "Non"
+  }
+]

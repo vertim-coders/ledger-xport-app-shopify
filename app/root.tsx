@@ -6,6 +6,7 @@ import {
   ScrollRestoration,
 } from "@remix-run/react";
 import "./styles/polaris-overrides.css";
+//import Footer from './components/Footer';
 
 export default function App() {
   return (
@@ -25,6 +26,7 @@ export default function App() {
         <Outlet />
         <ScrollRestoration />
         <Scripts />
+        {/* <Footer /> */}
       </body>
     </html>
   );

@@ -84,7 +84,8 @@ export async function processScheduledTasks() {
         // 3. Générer le rapport si nécessaire
         const filePaths = await generateAndSaveReport(task, shopify);
 
-        // 4. Envoyer l'email avec le rapport en pièce jointe
+        // 4. Envoyer le rapport selon la méthode de livraison
+        if (task.report.deliveryMethod === 'email') {
         const emailConfig = JSON.parse(task.emailConfig);
         const attachments = await Promise.all(
           filePaths.map(async (filePath: string) => ({
@@ -101,6 +102,10 @@ export async function processScheduledTasks() {
           attachments,
         };
         await sendEmail(mail);
+        } else if (task.report.deliveryMethod === 'ftp') {
+          // TODO: Implémenter l'envoi FTP ici
+          console.log('Envoi FTP à implémenter pour', filePaths, 'shop:', task.shopId);
+        }
 
         // 5. Mettre à jour l'exécution de la tâche
         await prisma.task.update({
@@ -292,22 +297,47 @@ function calculateNextRun(
   executionTime: string,
 ): Date {
   const now = new Date();
-  const [hours, minutes] = executionTime.split(":").map(Number);
+  let hours = 0, minutes = 0;
+  if (typeof executionTime === 'string' && /^\d{2}:\d{2}$/.test(executionTime)) {
+    [hours, minutes] = executionTime.split(":").map(Number);
+    if (isNaN(hours) || isNaN(minutes)) {
+      console.warn('calculateNextRun: executionTime parse error, fallback to now', executionTime);
+      hours = now.getHours();
+      minutes = now.getMinutes();
+    }
+  } else {
+    console.warn('calculateNextRun: invalid executionTime, fallback to now', executionTime);
+    hours = now.getHours();
+    minutes = now.getMinutes();
+  }
   let nextRun = new Date(now);
-  nextRun.setHours(hours, minutes, 0, 0);
+  nextRun.setSeconds(0, 0);
   switch (frequency) {
+    case "hourly":
+      nextRun.setHours(now.getHours(), minutes, 0, 0);
+      if (nextRun <= now) {
+        nextRun.setHours(nextRun.getHours() + 1);
+      }
+      break;
     case "daily":
+      nextRun.setHours(hours, minutes, 0, 0);
       nextRun.setDate(nextRun.getDate() + 1);
       break;
     case "monthly":
       nextRun.setDate(executionDay);
+      nextRun.setHours(hours, minutes, 0, 0);
       nextRun.setMonth(nextRun.getMonth() + 1);
       break;
     case "yearly":
       nextRun.setDate(executionDay);
       nextRun.setMonth(0);
+      nextRun.setHours(hours, minutes, 0, 0);
       nextRun.setFullYear(nextRun.getFullYear() + 1);
       break;
+  }
+  if (isNaN(nextRun.getTime())) {
+    console.error('calculateNextRun: computed Invalid Date, fallback to now + 1h', { frequency, executionDay, executionTime });
+    nextRun = new Date(now.getTime() + 60 * 60 * 1000);
   }
   return nextRun;
 } 

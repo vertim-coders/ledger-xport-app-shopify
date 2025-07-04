@@ -1,8 +1,6 @@
-import React, { useState } from "react";
-import { PlusIcon } from "@shopify/polaris-icons";
+import React from "react";
 
-export const BiSimpleBtn = ({ title, onClick, style }: { title: string; onClick?: () => void; style?: React.CSSProperties }) => {
-    const [hovered, setHovered] = useState(false);
+export const BiBtn = ({ title, onClick, style }: { title: string; onClick?: () => void; style?: React.CSSProperties }) => {
     return (
         <div
             style={{
@@ -13,23 +11,7 @@ export const BiSimpleBtn = ({ title, onClick, style }: { title: string; onClick?
                 margin: '0 8px',
                 ...style,
             }}
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => setHovered(false)}
         >
-            {/* Offset yellow background */}
-            <span
-                style={{
-                    position: 'absolute',
-                    inset: 0,
-                    background: '#0066FF',
-                    borderRadius: 8,
-                    zIndex: 0,
-                    transform: hovered ? 'translate(0,0)' : 'translate(6px,6px)',
-                    transition: 'transform 0.18s cubic-bezier(.4,0,.2,1)',
-                    pointerEvents: 'none',
-                }}
-                aria-hidden="true"
-            />
             <button
                 type="button"
                 onClick={onClick}
@@ -45,7 +27,7 @@ export const BiSimpleBtn = ({ title, onClick, style }: { title: string; onClick?
                     textTransform: 'uppercase',
                     letterSpacing: 2,
                     fontSize: 12,
-                    color: '#fff',
+                    color: '#111',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -55,7 +37,6 @@ export const BiSimpleBtn = ({ title, onClick, style }: { title: string; onClick?
                     transition: 'background 0.18s cubic-bezier(.4,0,.2,1)',
                 }}
             >
-                <PlusIcon width={18} height={18} color="#111" />
                 {title}
             </button>
         </div>

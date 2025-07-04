@@ -7,7 +7,7 @@ export function formatDate(date: string | Date): string {
   });
 }
 
-export type Frequency = "daily" | "monthly" | "yearly";
+export type Frequency = "hourly" | "daily" | "monthly" | "yearly";
 
 export function getPeriodForFrequency(frequency: Frequency): {
   startDate: Date;
@@ -18,6 +18,13 @@ export function getPeriodForFrequency(frequency: Frequency): {
   let endDate: Date;
 
   switch (frequency) {
+    case "hourly":
+      // Précédente heure complète
+      startDate = new Date(now);
+      startDate.setHours(now.getHours() - 1, 0, 0, 0);
+      endDate = new Date(now);
+      endDate.setHours(now.getHours() - 1, 59, 59, 999);
+      break;
     case "daily":
       // Previous day
       startDate = new Date(now);

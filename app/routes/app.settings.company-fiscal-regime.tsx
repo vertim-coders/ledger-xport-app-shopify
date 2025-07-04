@@ -292,15 +292,18 @@ export default function CompanyAndFiscalRegimeSettings() {
               <form onSubmit={handleCompanySubmit}>
                 <LegacyStack vertical spacing="loose">
                   <FormLayout>
-                    <Select
-                      label="Régime Fiscal"
-                      options={regimes.map(regime => ({
-                        label: regime.name,
-                        value: regime.code,
-                      }))}
-                      value={selectedRegime}
-                      onChange={setSelectedRegime}
-                    />
+                    <div style={{ width: 620 }}>
+                      <div style={{ fontWeight: 'bold', marginBottom: 4 }}>Régime Fiscal</div>
+                      <Select
+                        label=""
+                        options={regimes.map(regime => ({
+                          label: regime.name,
+                          value: regime.code,
+                        }))}
+                        value={selectedRegime}
+                        onChange={setSelectedRegime}
+                      />
+                    </div>
                     {selectedRegime && (
                       <div style={{ marginTop: '8px', marginBottom: '16px' }}>
                         <Text variant="bodyMd" as="p">
@@ -319,47 +322,59 @@ export default function CompanyAndFiscalRegimeSettings() {
                     )}
 
                     <LegacyStack distribution="fill">
-                      <TextField
-                        label="Nom de l'entreprise"
-                        name="companyName"
-                        value={companyFormData.companyName}
-                        onChange={value => handleCompanyChange("companyName", value)}
-                        autoComplete="off"
-                      />
-                      <TextField
-                        label="Taux de TVA (%)"
-                        name="vatRate"
-                        type="number"
-                        value={companyFormData.vatRate}
-                        onChange={value => handleCompanyChange("vatRate", value)}
-                        autoComplete="off"
-                        min={0}
-                        max={100}
-                        step={0.1}
-                      />
+                      <div style={{ width: 420 }}>
+                        <div style={{ fontWeight: 'bold', marginBottom: 4 }}>Nom de l'entreprise</div>
+                        <TextField
+                          label=""
+                          name="companyName"
+                          value={companyFormData.companyName}
+                          onChange={value => handleCompanyChange("companyName", value)}
+                          autoComplete="off"
+                        />
+                      </div>
+                      <div style={{ width: 420 }}>
+                        <div style={{ fontWeight: 'bold', marginBottom: 4 }}>Taux de TVA (%)</div>
+                        <TextField
+                          label=""
+                          name="vatRate"
+                          type="number"
+                          value={companyFormData.vatRate}
+                          onChange={value => handleCompanyChange("vatRate", value)}
+                          autoComplete="off"
+                          min={0}
+                          max={100}
+                          step={0.1}
+                        />
+                      </div>
                     </LegacyStack>
 
                     <LegacyStack distribution="fill">
-                      <Select
-                        label="Devise"
-                        name="currency"
-                        options={currenciesData.currencies.map(currency => ({
-                          label: `${currency.name} (${currency.code})`,
-                          value: currency.code
-                        }))}
-                        value={companyFormData.currency}
-                        onChange={value => handleCompanyChange("currency", value)}
-                        disabled={!selectedRegime}
-                        helpText={selectedRegime ? `Devise recommandée pour ${regimes.find(r => r.code === selectedRegime)?.name}: ${regimes.find(r => r.code === selectedRegime)?.currency}` : ''}
-                      />
-                      <TextField
-                        label="Compte de vente"
-                        name="salesAccount"
-                        value={companyFormData.salesAccount}
-                        onChange={value => handleCompanyChange("salesAccount", value)}
-                        autoComplete="off"
-                        helpText="Code du compte de vente dans votre plan comptable (ex: 701)"
-                      />
+                      <div style={{ width: 420 }}>
+                        <div style={{ fontWeight: 'bold', marginBottom: 4 }}>Devise</div>
+                        <Select
+                          label=""
+                          name="currency"
+                          options={currenciesData.currencies.map(currency => ({
+                            label: `${currency.name} (${currency.code})`,
+                            value: currency.code
+                          }))}
+                          value={companyFormData.currency}
+                          onChange={value => handleCompanyChange("currency", value)}
+                          disabled={!selectedRegime}
+                          helpText={selectedRegime ? `Devise recommandée pour ${regimes.find(r => r.code === selectedRegime)?.name}: ${regimes.find(r => r.code === selectedRegime)?.currency}` : ''}
+                        />
+                      </div>
+                      <div style={{ width: 420 }}>
+                        <div style={{ fontWeight: 'bold', marginBottom: 4 }}>Compte de vente</div>
+                        <TextField
+                          label=""
+                          name="salesAccount"
+                          value={companyFormData.salesAccount}
+                          onChange={value => handleCompanyChange("salesAccount", value)}
+                          autoComplete="off"
+                          helpText="Code du compte de vente dans votre plan comptable (ex: 701)"
+                        />
+                      </div>
                     </LegacyStack>
 
                     <div style={{ marginTop: '32px', textAlign: 'center' }}>

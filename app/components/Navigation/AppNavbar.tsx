@@ -32,6 +32,11 @@ export function AppNavbar() {
       url: "/app/reports/schedule",
     },
     {
+      label: "Toutes les planifications",
+      icon: "calendar",
+      url: "/app/reports/scheduled-list",
+    },
+    {
       label: "Historiques des exports",
       icon: "history",
       url: "/app/reports/history",
