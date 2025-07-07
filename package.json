@@ -17,8 +17,7 @@
     "prisma": "prisma",
     "graphql-codegen": "graphql-codegen",
     "vite": "vite",
-    "worker": "tsx scripts/run-worker.ts",
-    "postinstall": "prisma generate"
+    "worker": "tsx scripts/run-worker.ts"
   },
   "type": "module",
   "engines": {
