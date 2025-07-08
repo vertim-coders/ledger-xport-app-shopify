@@ -1,4 +1,6 @@
-import { FtpConfig, Protocol } from "@prisma/client";
+import type { FtpConfig as FtpConfigType } from "@prisma/client";
+import pkg from "@prisma/client";
+const { Protocol } = pkg;
 import * as ftp from "basic-ftp";
 import * as fs from "fs";
 import { encrypt, decrypt } from "../utils/crypto.server";
@@ -11,7 +13,7 @@ export class FtpService {
     this.client.ftp.verbose = true; // Enable verbose logging
   }
 
-  private async connect(config: FtpConfig, isPasswordEncrypted = true) {
+  private async connect(config: FtpConfigType, isPasswordEncrypted = true) {
     console.log("Attempting to connect to FTP server...");
     try {
       const password = isPasswordEncrypted ? decrypt(config.password) : config.password;
@@ -43,7 +45,7 @@ export class FtpService {
     }
   }
 
-  async testConnection(config: FtpConfig): Promise<boolean> {
+  async testConnection(config: FtpConfigType): Promise<boolean> {
     console.log("Testing FTP connection...");
     try {
       await this.connect(config, false);
@@ -60,7 +62,7 @@ export class FtpService {
     }
   }
 
-  async uploadFile(config: FtpConfig, localPath: string, remotePath: string): Promise<boolean> {
+  async uploadFile(config: FtpConfigType, localPath: string, remotePath: string): Promise<boolean> {
     try {
       await this.connect(config, true);
       
@@ -85,7 +87,7 @@ export class FtpService {
     }
   }
 
-  async validateConfig(config: Partial<FtpConfig>): Promise<{ isValid: boolean; errors: string[] }> {
+  async validateConfig(config: Partial<FtpConfigType>): Promise<{ isValid: boolean; errors: string[] }> {
     const errors: string[] = [];
 
     if (!config.host) errors.push("Host is required");

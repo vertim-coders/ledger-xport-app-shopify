@@ -25,7 +25,25 @@ import { useState, useCallback, useEffect } from "react";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
 import fiscalRegimesData from "../data/fiscal-regimes.json";
-import { FiscalConfiguration as FiscalRegimePrisma, ReportStatus, ExportFormat } from "@prisma/client";
+import type { FiscalConfiguration as FiscalRegimePrismaType, ReportStatus as ReportStatusType, ExportFormat as ExportFormatType } from "@prisma/client";
+
+// Import sécurisé de FiscalConfiguration, ReportStatus et ExportFormat
+const FiscalRegimePrisma = {};
+
+const ReportStatus = {
+  PENDING: "PENDING" as const,
+  PROCESSING: "PROCESSING" as const,
+  COMPLETED: "COMPLETED" as const,
+  COMPLETED_WITH_EMPTY_DATA: "COMPLETED_WITH_EMPTY_DATA" as const,
+  ERROR: "ERROR" as const
+};
+
+const ExportFormat = {
+  CSV: "CSV" as const,
+  XLSX: "XLSX" as const,
+  JSON: "JSON" as const,
+  XML: "XML" as const
+};
 import { promises as fs } from "fs";
 import { join } from "path";
 import * as XLSX from 'xlsx';
@@ -208,21 +226,21 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     throw new Error("Fiscal regime data not found in JSON for the shop's fiscal code.");
   }
 
-  let finalDefaultFormat: ExportFormat | undefined;
+  let finalDefaultFormat: ExportFormatType | undefined;
   if (fiscalConfig.defaultFormat) {
     finalDefaultFormat = fiscalConfig.defaultFormat;
   } else if (matchingFiscalRegimeData.fileFormat) {
-    finalDefaultFormat = matchingFiscalRegimeData.fileFormat.replace('.', '').toUpperCase() as ExportFormat;
+    finalDefaultFormat = matchingFiscalRegimeData.fileFormat.replace('.', '').toUpperCase() as ExportFormatType;
   }
 
-  let finalExportFormats: ExportFormat[];
+  let finalExportFormats: ExportFormatType[];
   if (fiscalConfig.exportFormats && fiscalConfig.exportFormats.length > 0) {
     // Map Prisma's string[] to ExportFormat[]
-    finalExportFormats = fiscalConfig.exportFormats.map((format: string) => format.toUpperCase() as ExportFormat);
+    finalExportFormats = fiscalConfig.exportFormats.map((format: string) => format.toUpperCase() as ExportFormatType);
         } else {
     // Map JSON's string[] to ExportFormat[]
     finalExportFormats = matchingFiscalRegimeData.exportFormats.map(
-      (format: string) => format.toUpperCase() as ExportFormat
+      (format: string) => format.toUpperCase() as ExportFormatType
     );
   }
 
@@ -264,7 +282,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const endDate = formData.get("endDate") as string;
     const fiscalRegimeId = formData.get("fiscalRegimeId") as string; // Keep for validation if needed, though unused in the new flow
     const dataTypes = JSON.parse(formData.get("dataTypes") as string);
-    const format = formData.get("format") as ExportFormat;
+    const format = formData.get("format") as ExportFormatType;
     const fileNames = JSON.parse(formData.get("fileNames") as string);
 
     if (!startDate || !endDate || !fiscalRegimeId || !format) {
@@ -358,7 +376,7 @@ export default function ManualExportPage() {
     taxes: false,
   });
 
-  const [selectedFormat, setSelectedFormat] = useState<ExportFormat>(fiscalRegime?.defaultFormat || ExportFormat.CSV);
+  const [selectedFormat, setSelectedFormat] = useState<ExportFormatType>(fiscalRegime?.defaultFormat || ExportFormat.CSV);
   const [selectedSoftware, setSelectedSoftware] = useState(fiscalRegime?.compatibleSoftware?.[0] || "");
 
   const [fileNames, setFileNames] = useState({
@@ -617,7 +635,7 @@ export default function ManualExportPage() {
                         label: format.toUpperCase(),
                         value: format,
                       }))}
-                      onChange={(value) => setSelectedFormat(value as ExportFormat)}
+                      onChange={(value) => setSelectedFormat(value as ExportFormatType)}
                   value={selectedFormat}
                 />
                 <Select

@@ -20,11 +20,19 @@ import {
 } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
-import { ExportFormat } from "@prisma/client";
+import type { ExportFormat as ExportFormatType } from "@prisma/client";
 import { useState, useEffect } from "react";
 import fiscalRegimesData from "../data/fiscal-regimes.json";
 import currenciesData from "../data/currencies.json";
 import { BiSaveBtn } from "../components/Buttons/BiSaveBtn";
+
+// Import sécurisé d'ExportFormat
+const ExportFormat = {
+  CSV: "CSV",
+  XLSX: "XLSX",
+  JSON: "JSON",
+  XML: "XML"
+};
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -88,7 +96,7 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
       country: formData.get("country") as string,
       currency: formData.get("currency") as string,
       vatRate: parseFloat(formData.get("vatRate") as string),
-      defaultFormat: formData.get("defaultExportFormat") as ExportFormat,
+      defaultFormat: formData.get("defaultExportFormat") as ExportFormatType,
       salesAccount: formData.get("salesAccount") as string,
     };
     const regimeCode = formData.get("fiscalRegime") as string;

@@ -20,7 +20,16 @@ import fs from "fs/promises";
 import { parse } from "csv-parse/sync";
 import { XMLParser } from "fast-xml-parser";
 import * as XLSX from "xlsx";
-import { ReportStatus } from "@prisma/client";
+import type { ReportStatus as ReportStatusType } from "@prisma/client";
+
+// Import sécurisé de ReportStatus
+const ReportStatus = {
+  PENDING: "PENDING" as const,
+  PROCESSING: "PROCESSING" as const,
+  COMPLETED: "COMPLETED" as const,
+  COMPLETED_WITH_EMPTY_DATA: "COMPLETED_WITH_EMPTY_DATA" as const,
+  ERROR: "ERROR" as const
+};
 import { useState } from "react";
 import { downloadFileFromUrl } from "../utils/download";
 

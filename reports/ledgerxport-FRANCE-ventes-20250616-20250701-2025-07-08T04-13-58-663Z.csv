@@ -1,0 +1,5 @@
+JournalCode\tJournalLib\tEcritureNum\tEcritureDate\tCompteNum\tCompteLib\tCompAuxNum\tCompAuxLib\tPieceRef\tPieceDate\tEcritureLib\tDebit\tCredit\tEcritureLet\tDateLet\tValidDate\tMontantdevise\tIdevise
+VENTES\tJournal des ventes\tgid://shopify/Order/6797911130302\t2025-06-16\t701\tVentes de marchandises\t\t\t#1001\t2025-06-16\tVente de marchandises\t120.00\t0.00\t\t\t2025-06-16\t120.0\tUSD
+VENTES\tJournal des ventes\tgid://shopify/Order/6797914046654\t2025-06-16\t701\tVentes de marchandises\tgid://shopify/Customer/8426470998206\t\t#1002\t2025-06-16\tVente de marchandises\t120.00\t0.00\t\t\t2025-06-16\t120.0\tUSD
+VENTES\tJournal des ventes\tgid://shopify/Order/6798113636542\t2025-06-16\t701\tVentes de marchandises\tgid://shopify/Customer/8426849927358\t\t#1003\t2025-06-16\tVente de marchandises\t80.00\t0.00\t\t\t2025-06-16\t80.0\tUSD
+VENTES\tJournal des ventes\tgid://shopify/Order/6798117798078\t2025-06-16\t701\tVentes de marchandises\tgid://shopify/Customer/8426857889982\t\t#1004\t2025-06-16\tVente de marchandises\t160.00\t0.00\t\t\t2025-06-16\t160.0\tUSD

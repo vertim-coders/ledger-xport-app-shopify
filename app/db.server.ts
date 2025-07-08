@@ -1,9 +1,11 @@
-import { PrismaClient } from "@prisma/client";
+import type { PrismaClient as PrismaClientType } from "@prisma/client";
+import pkg from "@prisma/client";
+const { PrismaClient } = pkg;
 
-let prisma: PrismaClient;
+let prisma: PrismaClientType;
 
 declare global {
-  var __db__: PrismaClient;
+  var __db__: PrismaClientType;
 }
 
 // This is needed because in development we don't want to restart

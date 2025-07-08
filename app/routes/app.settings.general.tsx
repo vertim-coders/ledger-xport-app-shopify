@@ -19,7 +19,21 @@ import {
 } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
-import { ExportFormat, Protocol } from "@prisma/client";
+import type { ExportFormat as ExportFormatType, Protocol as ProtocolType } from "@prisma/client";
+
+// Import sécurisé d'ExportFormat et Protocol
+const ExportFormat = {
+  CSV: "CSV",
+  XLSX: "XLSX",
+  JSON: "JSON",
+  XML: "XML"
+};
+
+const Protocol = {
+  FTP: "FTP",
+  FTPS: "FTPS",
+  SFTP: "SFTP"
+};
 import { useState, useEffect } from "react";
 import fiscalRegimesData from "../data/fiscal-regimes.json";
 import currenciesData from "../data/currencies.json";
@@ -90,7 +104,7 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
     const data = {
       host: formData.get("host") as string,
       port: parseInt(formData.get("port") as string),
-      protocol: formData.get("protocol") as Protocol,
+      protocol: formData.get("protocol") as ProtocolType,
       username: formData.get("username") as string,
       password: formData.get("password") as string,
       directory: formData.get("directory") as string,
@@ -123,7 +137,7 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
     const data = {
         host: formData.get("host") as string,
         port: parseInt(formData.get("port") as string),
-        protocol: formData.get("protocol") as Protocol,
+        protocol: formData.get("protocol") as ProtocolType,
         username: formData.get("username") as string,
         password: formData.get("password") as string,
         directory: formData.get("directory") as string,
@@ -180,7 +194,7 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
     country: formData.get("country") as string,
     currency: formData.get("currency") as string,
     vatRate: parseFloat(formData.get("vatRate") as string),
-    defaultFormat: formData.get("defaultExportFormat") as ExportFormat,
+    defaultFormat: formData.get("defaultExportFormat") as ExportFormatType,
   };
   const regimeCode = formData.get("fiscalRegime") as string;
   const selectedRegime =

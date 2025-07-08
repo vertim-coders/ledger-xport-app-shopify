@@ -30,7 +30,23 @@ import { BiSimpleBtn } from "../components/Buttons/BiSimpleBtn";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import * as XLSX from 'xlsx';
-import { ReportStatus, ExportFormat } from "@prisma/client";
+import type { ReportStatus as ReportStatusType, ExportFormat as ExportFormatType } from "@prisma/client";
+
+// Import sécurisé d'ReportStatus et ExportFormat
+const ReportStatus = {
+  PENDING: "PENDING" as const,
+  PROCESSING: "PROCESSING" as const,
+  COMPLETED: "COMPLETED" as const,
+  COMPLETED_WITH_EMPTY_DATA: "COMPLETED_WITH_EMPTY_DATA" as const,
+  ERROR: "ERROR" as const
+};
+
+const ExportFormat = {
+  CSV: "CSV" as const,
+  XLSX: "XLSX" as const,
+  JSON: "JSON" as const,
+  XML: "XML" as const
+};
 import { ShopifyCustomerService } from "../models/ShopifyCustomer.service";
 import { ShopifyOrderService } from "../models/ShopifyOrder.service";
 import { ShopifyRefundService } from "../models/ShopifyRefund.service";
@@ -261,7 +277,7 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
             .map(([key]) => key)
             .join(','),
           status: ReportStatus.PENDING,
-          format: fileFormat as ExportFormat,
+          format: fileFormat as ExportFormatType,
           startDate: null, // Will be calculated dynamically by worker
           endDate: null,   // Will be calculated dynamically by worker
           shopId: shop.id,
@@ -343,7 +359,7 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
       const reportContent = ReportService.generateReport(
         data,
         shop.fiscalConfig.code,
-        fileFormat as ExportFormat,
+        fileFormat as ExportFormatType,
         dataType,
         shop.fiscalConfig.separator
       );
@@ -373,7 +389,7 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
       const results = [];
       for (const savedFile of savedFiles) {
         const { fileName, content, filePath } = savedFile;
-        const mimeType = getMimeType(fileFormat as ExportFormat);
+        const mimeType = getMimeType(fileFormat as ExportFormatType);
         let base64Content: string;
         try {
           if (Buffer.isBuffer(content)) {
@@ -408,7 +424,7 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
           .map(([key]) => key)
           .join(','),
         status: ReportStatus.PROCESSING,
-        format: fileFormat as ExportFormat,
+        format: fileFormat as ExportFormatType,
         startDate, // Save the actual dates for immediate generation
         endDate,   // Save the actual dates for immediate generation
         shopId: shop.id,
@@ -434,7 +450,7 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
         
         for (const savedFile of savedFiles) {
           const { fileName, content, filePath } = savedFile;
-          const mimeType = getMimeType(fileFormat as ExportFormat);
+          const mimeType = getMimeType(fileFormat as ExportFormatType);
           
           console.log(`Processing file: ${fileName}`);
           console.log(`Content type: ${typeof content}`);

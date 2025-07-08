@@ -1,4 +1,6 @@
-import { ExportFormat, Prisma, ReportStatus } from "@prisma/client";
+import type { ExportFormat as ExportFormatType, Prisma as PrismaType } from "@prisma/client";
+import pkg from "@prisma/client";
+const { ExportFormat, Prisma, ReportStatus } = pkg;
 import { MappingService } from "./mapping.service";
 import { XMLBuilder } from "fast-xml-parser";
 import * as XLSX from "xlsx";
@@ -77,7 +79,7 @@ export class ReportService {
   static generateReport(
     dataArray: any[],
     fiscalRegime: string,
-    format: ExportFormat,
+    format: ExportFormatType,
     dataType: string,
     separator: string = ","
   ): string | Buffer {
@@ -119,9 +121,9 @@ export class ReportService {
   }
 
   async generateAndSaveReport(options: {
-    shop: Prisma.ShopGetPayload<{ include: { fiscalConfig: true } }>,
+    shop: PrismaType.ShopGetPayload<{ include: { fiscalConfig: true } }>,
     dataType: string,
-    format: ExportFormat,
+    format: ExportFormatType,
     startDate: string,
     endDate: string,
     fileName: string,

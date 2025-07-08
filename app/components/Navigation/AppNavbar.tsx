@@ -7,7 +7,7 @@ export function AppNavbar() {
 
   const navigationItems = [
     {
-      label: "Acueil",
+      label: "Accueil",
       icon: "home",
       url: "/app",
     },
@@ -49,7 +49,14 @@ export function AppNavbar() {
   ];
 
   const handleNavigationClick = useCallback((url: string) => {
-    navigate(url);
+    try {
+      console.log("Navigating to:", url);
+      navigate(url);
+    } catch (error) {
+      console.error("Navigation error:", error);
+      // Fallback: try to change window.location
+      window.location.href = url;
+    }
   }, [navigate]);
 
   return (
@@ -99,7 +106,7 @@ export function AppNavbar() {
             justifyContent: 'center'
           }}>
             {navigationItems.map((item) => (
-              <div
+              <button
                 key={item.url}
                 onClick={() => handleNavigationClick(item.url)}
                 style={{
@@ -111,7 +118,10 @@ export function AppNavbar() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
-                  transition: 'all 0.2s ease'
+                  transition: 'all 0.2s ease',
+                  border: 'none',
+                  fontSize: '14px',
+                  fontWeight: '500'
                 }}
                 onMouseOver={(e) => {
                   if (location.pathname !== item.url) {
@@ -125,7 +135,7 @@ export function AppNavbar() {
                 }}
               >
                 <span>{item.label}</span>
-              </div>
+              </button>
             ))}
           </div>
         </div>

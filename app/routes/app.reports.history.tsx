@@ -21,7 +21,25 @@ import {
 import { useState, useCallback } from "react";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
-import { ReportStatus, ExportFormat, type Report } from "@prisma/client";
+import type { ReportStatus as ReportStatusType, ExportFormat as ExportFormatType, Report as ReportType } from "@prisma/client";
+
+// Import sécurisé de ReportStatus et ExportFormat
+const ReportStatusEnum = {
+  PENDING: "PENDING" as const,
+  PROCESSING: "PROCESSING" as const,
+  COMPLETED: "COMPLETED" as const,
+  COMPLETED_WITH_EMPTY_DATA: "COMPLETED_WITH_EMPTY_DATA" as const,
+  ERROR: "ERROR" as const
+};
+
+const ExportFormat = {
+  CSV: "CSV" as const,
+  XLSX: "XLSX" as const,
+  JSON: "JSON" as const,
+  XML: "XML" as const
+};
+
+type Report = ReportType;
 import { ArrowDownIcon, RefreshIcon, EmailIcon, SearchIcon } from "@shopify/polaris-icons";
 import { promises as fs } from "fs";
 import { downloadFileFromUrl } from "../utils/download";
@@ -254,12 +272,12 @@ export default function ExportHistory() {
   const rows = reports.map((report) => {
     console.log('Processing report:', { id: report.id, status: report.status });
     
-    const statusBadge = {
-      [ReportStatus.COMPLETED]: { content: "✅ Succès", tone: "success" as const },
-      [ReportStatus.COMPLETED_WITH_EMPTY_DATA]: { content: "ℹ️ Données vides", tone: "info" as const },
-      [ReportStatus.PROCESSING]: { content: "⏳ En cours", tone: "warning" as const },
-      [ReportStatus.ERROR]: { content: "❌ Échec", tone: "critical" as const },
-      [ReportStatus.PENDING]: { content: "⏳ En attente", tone: "warning" as const },
+    const statusBadge: { content: string; tone: "success" | "info" | "warning" | "critical" } = {
+      "COMPLETED": { content: "✅ Succès", tone: "success" as const },
+      "COMPLETED_WITH_EMPTY_DATA": { content: "ℹ️ Données vides", tone: "info" as const },
+      "PROCESSING": { content: "⏳ En cours", tone: "warning" as const },
+      "ERROR": { content: "❌ Échec", tone: "critical" as const },
+      "PENDING": { content: "⏳ En attente", tone: "warning" as const },
     }[report.status] || { content: "❓ Inconnu", tone: "warning" as const };
 
     console.log('Status badge:', statusBadge);
@@ -269,15 +287,15 @@ export default function ExportHistory() {
       <div 
         style={{ cursor: 'pointer', width: '100%', height: '100%' }}
         onClick={() => {
-          if (report.status === ReportStatus.PENDING) {
+          if (report.status === ReportStatusEnum.PENDING) {
             setToastMessage("Ce rapport est encore en attente de génération.");
             setToastError(true);
             setToastActive(true);
-          } else if (report.status === ReportStatus.COMPLETED_WITH_EMPTY_DATA) {
+          } else if (report.status === ReportStatusEnum.COMPLETED_WITH_EMPTY_DATA) {
             setToastMessage("Ce rapport a été généré sans données. Il n'y a rien à afficher.");
             setToastError(true);
             setToastActive(true);
-          } else if (report.status === ReportStatus.ERROR) {
+          } else if (report.status === ReportStatusEnum.ERROR) {
             setToastMessage("Ce rapport a échoué. Impossible d'afficher la vue.");
             setToastError(true);
             setToastActive(true);
@@ -300,7 +318,7 @@ export default function ExportHistory() {
       clickableCell(<Badge tone={statusBadge.tone}>{statusBadge.content}</Badge>, report),
       clickableCell(getTruncatedFileName(report.fileName), report),
       <LegacyStack spacing="tight">
-        {(report.status === ReportStatus.COMPLETED || report.status === ReportStatus.COMPLETED_WITH_EMPTY_DATA) && (
+        {(report.status === ReportStatusEnum.COMPLETED || report.status === ReportStatusEnum.COMPLETED_WITH_EMPTY_DATA) && (
           <Button
             icon={ArrowDownIcon}
             onClick={() => handleDownload(report.id, report.fileName)}
@@ -308,7 +326,7 @@ export default function ExportHistory() {
             loading={isDownloading === report.id}
           />
         )}
-        {report.status === ReportStatus.PENDING && (
+        {report.status === ReportStatusEnum.PENDING && (
           <>
             <Button 
               icon={ArrowDownIcon} 
@@ -319,7 +337,7 @@ export default function ExportHistory() {
             <Button icon={EmailIcon} />
           </>
         )}
-        {report.status === ReportStatus.ERROR && (
+        {report.status === ReportStatusEnum.ERROR && (
           <Button
             icon={RefreshIcon}
             onClick={() => handleRetry(report.id)}
@@ -366,11 +384,11 @@ export default function ExportHistory() {
                   label="Statut"
                   options={[
                     { label: "Tous", value: "all" },
-                    { label: "Succès", value: ReportStatus.COMPLETED },
-                    { label: "Données vides", value: ReportStatus.COMPLETED_WITH_EMPTY_DATA },
-                    { label: "En cours", value: ReportStatus.PROCESSING },
-                    { label: "Erreur", value: ReportStatus.ERROR },
-                    { label: "En attente", value: ReportStatus.PENDING },
+                    { label: "Succès", value: ReportStatusEnum.COMPLETED },
+                    { label: "Données vides", value: ReportStatusEnum.COMPLETED_WITH_EMPTY_DATA },
+                    { label: "En cours", value: ReportStatusEnum.PROCESSING },
+                    { label: "Erreur", value: ReportStatusEnum.ERROR },
+                    { label: "En attente", value: ReportStatusEnum.PENDING },
                   ]}
                   value={selectedStatus}
                   onChange={handleStatusChange}

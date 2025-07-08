@@ -17,7 +17,7 @@ const shopify = shopifyApp({
   sessionStorage: new PrismaSessionStorage(prisma),
   distribution: AppDistribution.AppStore,
   future: {
-    unstable_newEmbeddedAuthStrategy: true,
+    unstable_newEmbeddedAuthStrategy: false, // Désactiver temporairement
     removeRest: true,
     // @ts-expect-error: lineItemBilling is a future flag not yet in types
     lineItemBilling: true,

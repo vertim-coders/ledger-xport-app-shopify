@@ -3,7 +3,8 @@ import type { ShopifyCustomer } from "../types/ShopifyCustomerType";
 import type { ShopifyRefund } from "../types/ShopifyRefundType";
 import type { ShopifyTax } from "../types/ShopifyTaxType";
 import type { MappedData } from "../types/MappedDataType";
-import { ExportFormat } from "@prisma/client";
+import pkg from "@prisma/client";
+const { ExportFormat } = pkg;
 
 export class MappingService {
   private static generateEntryNumber(orderId: string, index: number): string {

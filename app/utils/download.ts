@@ -1,10 +1,19 @@
-import { ExportFormat } from "@prisma/client";
+import type { ExportFormat as ExportFormatType } from "@prisma/client";
+
+// Import sécurisé d'ExportFormat
+const ExportFormat = {
+  CSV: "CSV" as const,
+  XLSX: "XLSX" as const,
+  JSON: "JSON" as const,
+  XML: "XML" as const,
+  TXT: "TXT" as const
+};
 import JSZip from "jszip";
 
 /**
  * Get MIME type based on export format
  */
-export function getMimeType(format: ExportFormat): string {
+export function getMimeType(format: ExportFormatType): string {
   switch (format) {
     case ExportFormat.CSV:
       return 'text/csv';
@@ -131,7 +140,7 @@ export function downloadFilesFromResults(results: Array<{
 /**
  * Get file extension from format
  */
-export function getFileExtension(format: ExportFormat): string {
+export function getFileExtension(format: ExportFormatType): string {
   switch (format) {
     case ExportFormat.CSV:
       return 'csv';
@@ -156,7 +165,7 @@ export function generateFileName(
   dataType: string,
   startDate: string,
   endDate: string,
-  format: ExportFormat
+  format: ExportFormatType
 ): string {
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
   const extension = getFileExtension(format);

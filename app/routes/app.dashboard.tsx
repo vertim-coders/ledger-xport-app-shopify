@@ -16,7 +16,16 @@ import {
 } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
-import { ReportStatus } from "@prisma/client";
+import type { ReportStatus as ReportStatusType } from "@prisma/client";
+
+// Import sécurisé de ReportStatus
+const ReportStatus = {
+  PENDING: "PENDING" as const,
+  PROCESSING: "PROCESSING" as const,
+  COMPLETED: "COMPLETED" as const,
+  COMPLETED_WITH_EMPTY_DATA: "COMPLETED_WITH_EMPTY_DATA" as const,
+  ERROR: "ERROR" as const
+};
 import { BiSimpleBtn } from "../components/Buttons/BiSimpleBtn";
 import { downloadFileFromUrl } from "../utils/download";
 import {
