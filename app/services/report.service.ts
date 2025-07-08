@@ -168,10 +168,15 @@ export class ReportService {
       }
 
       if (!data || data.length === 0) {
-        return await prisma.report.update({
+        await prisma.report.update({
           where: { id: report.id },
           data: { status: ReportStatus.COMPLETED_WITH_EMPTY_DATA },
         });
+        return {
+          ...report,
+          status: ReportStatus.COMPLETED_WITH_EMPTY_DATA,
+          content: null,
+        };
       }
 
       const reportContent = ReportService.generateReport(
@@ -181,30 +186,37 @@ export class ReportService {
         dataType,
         fiscalConfig.separator,
       );
-      
-      const exportDir = join(process.cwd(), "reports");
-      await fs.mkdir(exportDir, { recursive: true });
-      const filePath = join(exportDir, report.fileName);
-      await fs.writeFile(filePath, reportContent);
 
-      return await prisma.report.update({
+      // Plus d'écriture sur disque !
+      await prisma.report.update({
         where: { id: report.id },
         data: {
           status: ReportStatus.COMPLETED,
-          filePath: filePath,
           fileSize: Buffer.byteLength(reportContent),
         },
       });
 
+      return {
+        ...report,
+        status: ReportStatus.COMPLETED,
+        content: reportContent,
+      };
+
     } catch (error: any) {
       console.error(`Error processing report ID ${report.id} for ${dataType}:`, error);
-      return await prisma.report.update({
+      await prisma.report.update({
         where: { id: report.id },
         data: {
           status: ReportStatus.ERROR,
           errorMessage: error.message || String(error),
         },
       });
+      return {
+        ...report,
+        status: ReportStatus.ERROR,
+        errorMessage: error.message || String(error),
+        content: null,
+      };
     }
   }
 } 

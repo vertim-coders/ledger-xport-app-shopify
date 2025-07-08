@@ -42,14 +42,24 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     throw new Response("Report is not ready for download", { status: 400 });
   }
 
-  if (!report.filePath) {
-    throw new Response("Report file not found", { status: 404 });
-  }
-
+  // Générer le rapport à la volée (en mémoire)
   try {
-    // Read the file
-    const fileContent = await fs.readFile(report.filePath);
-    
+    const reportService = new (require("../services/report.service").ReportService)(admin);
+    if (!report.startDate || !report.endDate) {
+      throw new Response("Report dates are missing", { status: 400 });
+    }
+    // On regénère le contenu à la volée (pas de lecture disque)
+    const generated = await reportService.generateAndSaveReport({
+      shop: report.shop,
+      dataType: report.dataType,
+      format: report.format,
+      startDate: report.startDate.toISOString(),
+      endDate: report.endDate.toISOString(),
+      fileName: report.fileName,
+      type: report.type,
+    });
+    const fileContent = generated.content;
+
     // Determine content type based on format
     let contentType = 'application/octet-stream';
     switch (report.format.toLowerCase()) {
@@ -74,13 +84,13 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     return new Response(fileContent, {
       headers: {
         "Content-Type": contentType,
-        "Content-Disposition": `attachment; filename="${report.fileName}"`,
-        "Content-Length": fileContent.length.toString(),
+        "Content-Disposition": `attachment; filename=\"${report.fileName}\"`,
+        "Content-Length": Buffer.byteLength(fileContent).toString(),
       },
     });
   } catch (error) {
-    console.error('Error reading report file:', error);
-    throw new Response("Failed to read report file", { status: 500 });
+    console.error('Error generating report file:', error);
+    throw new Response("Failed to generate report file", { status: 500 });
   }
 };
 

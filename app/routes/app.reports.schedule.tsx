@@ -329,7 +329,7 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
     }
 
     // Correction : Générer un fichier pour CHAQUE type sélectionné
-    const savedFiles: { filePath: string; fileName: string; content: Buffer | string }[] = [];
+    const savedFiles: { fileName: string; content: Buffer | string }[] = [];
     let hasEmptyData = false;
 
     for (const [dataType, isSelected] of Object.entries(dataTypes)) {
@@ -372,11 +372,12 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
       // Correction : Utiliser le bon nom pour chaque type
       const fileName = reportNames[dataType] || `${dataType}_${startDate.toISOString()}_${endDate.toISOString()}.${fileFormat.toLowerCase()}`;
       // Save to 'reports-schedule' directory
-      const exportDir = join(process.cwd(), 'reports-schedule');
-      await mkdir(exportDir, { recursive: true });
-      const filePath = join(exportDir, fileName);
-      await writeFile(filePath, reportContent);
-      savedFiles.push({ filePath, fileName, content: reportContent });
+      // const exportDir = join(process.cwd(), 'reports-schedule');
+      // await mkdir(exportDir, { recursive: true });
+      // const filePath = join(exportDir, fileName);
+      // await writeFile(filePath, reportContent);
+      // savedFiles.push({ filePath, fileName, content: reportContent });
+      savedFiles.push({ fileName, content: reportContent });
     }
 
     // Si aucun fichier généré
@@ -388,7 +389,7 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
     if (actionType === "generate") {
       const results = [];
       for (const savedFile of savedFiles) {
-        const { fileName, content, filePath } = savedFile;
+        const { fileName, content } = savedFile;
         const mimeType = getMimeType(fileFormat as ExportFormatType);
         let base64Content: string;
         try {
@@ -400,9 +401,7 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
             base64Content = Buffer.from(String(content), 'utf8').toString('base64');
           }
         } catch (error) {
-          const fs = await import('fs/promises');
-          const fileContent = await fs.readFile(filePath);
-          base64Content = fileContent.toString('base64');
+          base64Content = '';
         }
         results.push({
           status: 'success',
@@ -440,7 +439,7 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
         data: {
           status: ReportStatus.COMPLETED,
           fileSize: savedFiles.reduce((total, { content }) => total + Buffer.byteLength(content), 0),
-          filePath: savedFiles.map(({ filePath }) => filePath).join(',')
+          filePath: savedFiles.map(({ fileName }) => fileName).join(',')
         }
       });
 
@@ -449,7 +448,7 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
         const results = [];
         
         for (const savedFile of savedFiles) {
-          const { fileName, content, filePath } = savedFile;
+          const { fileName, content } = savedFile;
           const mimeType = getMimeType(fileFormat as ExportFormatType);
           
           console.log(`Processing file: ${fileName}`);
@@ -468,11 +467,8 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
               base64Content = Buffer.from(String(content), 'utf8').toString('base64');
             }
           } catch (error) {
-            console.error(`Error encoding content for ${fileName}, trying to read from file:`, error);
-            // Fallback: read the file from disk
-            const fs = await import('fs/promises');
-            const fileContent = await fs.readFile(filePath);
-            base64Content = fileContent.toString('base64');
+            // Plus de fallback disque : on laisse base64Content vide
+            base64Content = '';
           }
           
           console.log(`Base64 content length: ${base64Content.length}`);

@@ -355,8 +355,7 @@ export default function Dashboard() {
               typeLabel: r.type === "scheduled" ? "Planifié" : "Généré",
               downloadDisabled: r.type === "scheduled" && r.status !== "COMPLETED"
             }))}
-            onDownload={handleDownload}
-            isDownloading={isDownloading}
+            onDownload={(id, url) => window.open(url, '_blank')}
             onSeeAll={() => window.location.assign("/app/reports/history")}
             onView={id => navigate(`/app/reports/view/${id}`)}
           />

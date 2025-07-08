@@ -317,11 +317,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           type: 'manual'
         });
         
-        // Read the generated file content
-        let fileContent: string | Buffer;
-        if (report.filePath) {
-          fileContent = await fs.readFile(report.filePath);
-        } else {
+        // Utiliser le contenu généré en mémoire
+        let fileContent: string | Buffer | null = report.content;
+        if (!fileContent) {
           throw new Error('File was not generated');
         }
 
@@ -331,7 +329,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           reportId: report.id,
           fileName: report.fileName,
           reportStatus: report.status,
-          fileContent: fileContent.toString('base64'), // Encode file content as base64
+          fileContent: Buffer.isBuffer(fileContent) ? fileContent.toString('base64') : Buffer.from(fileContent, 'utf8').toString('base64'), // Encode file content as base64
           mimeType: getMimeType(format)
         });
       } catch (error: any) {
