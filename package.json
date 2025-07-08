@@ -2,7 +2,8 @@
   "name": "ledger-xport-app",
   "private": true,
   "scripts": {
-    "build": "prisma generate && remix vite:build",
+    "build": "prisma generate && prisma db push && remix vite:build",
+    "postinstall": "prisma generate",
     "dev": "shopify app dev",
     "config:link": "shopify app config link",
     "generate": "shopify app generate",
