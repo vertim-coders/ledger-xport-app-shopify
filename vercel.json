@@ -2,11 +2,6 @@
   "buildCommand": "npm run build",
   "installCommand": "npm install",
   "framework": "remix",
-  "functions": {
-    "app/db.server.ts": {
-      "maxDuration": 30
-    }
-  },
   "env": {
     "PRISMA_GENERATE_DATAPROXY": "true"
   },

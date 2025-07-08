@@ -17,6 +17,8 @@ import {
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
 import type { ReportStatus as ReportStatusType } from "@prisma/client";
+import { ShopifyCustomerService } from "../models/ShopifyCustomer.service";
+import { ShopifyOrderService } from "../models/ShopifyOrder.service";
 
 // Import sécurisé de ReportStatus
 const ReportStatus = {
@@ -39,6 +41,15 @@ import {
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 import { useState } from "react";
+import { StatCard } from "../components/Navigation/StatCard";
+import {
+  CheckIcon,
+  XCircleIcon,
+  ProfileIcon,
+  CashDollarIcon,
+} from "@shopify/polaris-icons";
+import { MonthlyReportsChart } from "../components/Navigation/MonthlyReportsChart";
+import { RecentExportsList } from "../components/Navigation/RecentExportsList";
 
 ChartJS.register(
   CategoryScale,
@@ -50,7 +61,7 @@ ChartJS.register(
 );
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+  const { session, admin } = await authenticate.admin(request);
   const shop = await prisma.shop.findUnique({
     where: { shopifyDomain: session.shop },
     include: {
@@ -124,9 +135,37 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     });
   }
 
+  // --- Récupération dynamique Shopify ---
+  // Plage : 1er janvier de l’année en cours à aujourd’hui
+  const yearStart = new Date(currentDate.getFullYear(), 0, 1);
+  const startDate = yearStart.toISOString();
+  const endDate = currentDate.toISOString();
+
+  // Nombre de clients
+  let customersCount = 0;
+  try {
+    const customers = await ShopifyCustomerService.getCustomers(admin, startDate, endDate);
+    customersCount = Array.isArray(customers) ? customers.length : 0;
+  } catch (e) {
+    customersCount = 0;
+  }
+
+  // Revenu total
+  let totalRevenue = 0;
+  try {
+    const orders = await ShopifyOrderService.getOrders(admin, startDate, endDate);
+    if (Array.isArray(orders)) {
+      totalRevenue = orders.reduce((sum, order) => sum + (parseFloat(order.total_price) || 0), 0);
+    }
+  } catch (e) {
+    totalRevenue = 0;
+  }
+
   return json({
     successfulExports,
     failedExports,
+    customersCount,
+    totalRevenue,
     recentReports: shop?.reports || [],
     upcomingExports: shop?.scheduledTasks || [],
     monthlyData
@@ -134,7 +173,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export default function Dashboard() {
-  const { successfulExports, failedExports, recentReports, upcomingExports, monthlyData } = useLoaderData<typeof loader>();
+  const { successfulExports, failedExports, customersCount, totalRevenue, recentReports, upcomingExports, monthlyData } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
   const [isDownloading, setIsDownloading] = useState<string | null>(null);
   const [toastActive, setToastActive] = useState(false);
@@ -238,22 +277,40 @@ export default function Dashboard() {
       <Layout>
         {/* Export Statistics */}
         <Layout.Section>
-          <Card>
-            <LegacyStack distribution="fill">
-              <div style={{ textAlign: 'center', padding: '20px' }}>
-                <Text variant="headingLg" as="h1">Exports réussis</Text>
-                <div style={{ color: '#007ace' }}>
-                  <Text variant="heading2xl" as="p">{successfulExports}</Text>
-                </div>
-              </div>
-              <div style={{ textAlign: 'center', padding: '20px' }}>
-                <Text variant="headingLg" as="h1">Exports échoués</Text>
-                <div style={{ color: '#007ace' }}>
-                  <Text variant="heading2xl" as="p">{failedExports}</Text>
-                </div>
-              </div>
-            </LegacyStack>
-          </Card>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 24, marginBottom: 32 }}>
+            <StatCard
+              title="Exports réussis"
+              value={successfulExports}
+              variation="+6.5% cette semaine"
+              icon={CheckIcon}
+              iconBg="#E6F7F1"
+              color="#009A6B"
+            />
+            <StatCard
+              title="Exports échoués"
+              value={failedExports}
+              variation="-2.1% cette semaine"
+              icon={XCircleIcon}
+              iconBg="#FFF4E6"
+              color="#FF8A65"
+            />
+            <StatCard
+              title="Customers"
+              value={customersCount}
+              variation="+3.2% cette semaine"
+              icon={ProfileIcon}
+              iconBg="#E6F0FF"
+              color="#0066FF"
+            />
+            <StatCard
+              title="Revenue"
+              value={`$${totalRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+              variation="+8.4% cette semaine"
+              icon={CashDollarIcon}
+              iconBg="#E6F0FF"
+              color="#0066FF"
+            />
+          </div>
         </Layout.Section>
 
         {/* New Report Button */}
@@ -279,130 +336,30 @@ export default function Dashboard() {
 
         {/* Export Statistics Chart */}
         <Layout.Section>
-          <Card>
-            <div style={{ padding: '20px' }}>
-              <Text variant="headingMd" as="h1">Statistiques des exports</Text>
-              
-              <div style={{ height: '400px', marginTop: '20px' }}>
-                {monthlyData && monthlyData.length > 0 ? (
-                  <Bar
-                    data={{
-                      labels: monthlyData.map(item => item.month),
-                      datasets: [
-                        {
-                          label: 'Nombre d\'exports',
-                          data: monthlyData.map(item => item.exports),
-                          backgroundColor: '#007ace',
-                          borderColor: '#007ace',
-                          borderWidth: 1,
-                          borderRadius: 4,
-                          borderSkipped: false,
-                        },
-                      ],
-                    }}
-                    options={{
-                      responsive: true,
-                      maintainAspectRatio: false,
-                      plugins: {
-                        legend: {
-                          display: false,
-                        },
-                        title: {
-                          display: false,
-                        },
-                        tooltip: {
-                          backgroundColor: '#fff',
-                          titleColor: '#637381',
-                          bodyColor: '#637381',
-                          borderColor: '#c9cccf',
-                          borderWidth: 1,
-                          cornerRadius: 8,
-                          displayColors: false,
-                          callbacks: {
-                            title: function(context) {
-                              return `Mois: ${context[0].label}`;
-                            },
-                            label: function(context) {
-                              return `Exports: ${context.parsed.y}`;
-                            },
-                          },
-                        },
-                      },
-                      scales: {
-                        y: {
-                          beginAtZero: true,
-                          grid: {
-                            color: '#e1e3e5',
-                          },
-                          ticks: {
-                            color: '#637381',
-                            font: {
-                              size: 12,
-                            },
-                          },
-                          border: {
-                            color: '#c9cccf',
-                          },
-                        },
-                        x: {
-                          grid: {
-                            display: false,
-                          },
-                          ticks: {
-                            color: '#637381',
-                            font: {
-                              size: 12,
-                            },
-                          },
-                          border: {
-                            color: '#c9cccf',
-                          },
-                        },
-                      },
-                    }}
-                  />
-                ) : (
-                  <div style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    height: '100%',
-                    color: '#637381'
-                  }}>
-                    <Text variant="bodyMd" as="p">Aucune donnée d'export disponible</Text>
-                  </div>
-                )}
-              </div>
-            </div>
-          </Card>
+          <div style={{ marginBottom: 16 }}>
+            <Text variant="headingMd" as="h1">Statistiques des exports</Text>
+          </div>
+          <MonthlyReportsChart data={monthlyData.map(item => ({ month: item.month, reports: item.exports }))} />
         </Layout.Section>
 
         {/* Recent Exports */}
         <Layout.Section>
-          <Card>
-            <div style={{ padding: '20px' }}>
-              <Text variant="headingMd" as="h1">Exports récemment générés</Text>
-              <DataTable
-                columnContentTypes={[
-                  'text',
-                  'text',
-                  'text',
-                  'text',
-                  'text',
-                  'text',
-                ]}
-                headings={[
-                  'Nom du rapport',
-                  'Type de rapport',
-                  'Créé le',
-                  'Mis à jour le',
-                  'Type de planification',
-                  'Actions',
-                ]}
-                rows={rows}
-              />
-            </div>
-          </Card>
+          <RecentExportsList
+            exports={recentReports.slice(0, 5).map(r => ({
+              id: r.id,
+              filename: r.fileName || r.type || "Export",
+              createdAt: r.createdAt,
+              downloadUrl: `/api/reports/${r.id}`,
+              type: r.type,
+              status: r.status,
+              typeLabel: r.type === "scheduled" ? "Planifié" : "Généré",
+              downloadDisabled: r.type === "scheduled" && r.status !== "COMPLETED"
+            }))}
+            onDownload={handleDownload}
+            isDownloading={isDownloading}
+            onSeeAll={() => window.location.assign("/app/reports/history")}
+            onView={id => navigate(`/app/reports/view/${id}`)}
+          />
         </Layout.Section>
 
         {/* Bottom Section - Recent Failures and Upcoming Exports side by side */}
