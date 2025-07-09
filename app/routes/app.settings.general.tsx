@@ -39,6 +39,7 @@ import fiscalRegimesData from "../data/fiscal-regimes.json";
 import currenciesData from "../data/currencies.json";
 import { BiSaveBtn } from "../components/Buttons/BiSaveBtn";
 import { BiSimpleBtn } from "../components/Buttons/BiSimpleBtn";
+import { PlusIcon } from "@shopify/polaris-icons";
 import { BiBtn } from "../components/Buttons/BiBtn";
 import shopify from "../shopify.server";
 import type { Settings } from "../types/SettingsType";

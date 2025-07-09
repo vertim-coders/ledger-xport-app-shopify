@@ -112,7 +112,7 @@ export function AppNavbar() {
                 alignItems: "center",
                 gap: 16,
                 padding: "18px 32px", // plus d’espace vertical
-                borderRadius: 8,
+                borderRadius: "10px 0px 0px 10px",
                 cursor: "pointer",
                 fontSize: 15,
                 fontWeight: 500,

@@ -27,6 +27,7 @@ import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
 import { BiSaveBtn } from "../components/Buttons/BiSaveBtn";
 import { BiSimpleBtn } from "../components/Buttons/BiSimpleBtn";
+import { OrderIcon, CalendarIcon } from "@shopify/polaris-icons";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import * as XLSX from 'xlsx';
@@ -1033,59 +1034,9 @@ export default function ScheduleReport() {
         <Layout>
           <Layout.Section>
             <Card>
-              <form onSubmit={handleGenerateAndDownload}>
+              <form>
                 <FormLayout>
-                  {/* Date Range */}
-                  <div>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <Text variant="headingMd" as="h1">Période du rapport</Text>
-                      <HelpIcon description="Choisissez la période sur laquelle vous souhaitez générer ou planifier un rapport. Les dates futures ne sont pas autorisées." />
-                    </span>
-                    <div style={{ marginBottom: '18px' }}>
-                      <Text variant="bodyMd" as="p">
-                        {actionType === 'generate' 
-                          ? "Sélectionnez la période pour la génération immédiate du rapport"
-                          : "La période sera calculée automatiquement selon la fréquence sélectionnée"
-                        }
-                      </Text>
-                    </div>
-                    <div style={{ position: 'relative' }}>
-                      <Button
-                        onClick={() => setShowDatePicker(!showDatePicker)}
-                        fullWidth
-                        disabled={actionType === 'schedule'}
-                      >
-                        {actionType === 'schedule' 
-                          ? "Période calculée automatiquement"
-                          : `Du ${selectedDates.start.toLocaleDateString()} au ${selectedDates.end.toLocaleDateString()}`
-                        }
-                      </Button>
-
-                      {showDatePicker && actionType !== 'schedule' && (
-                        <div style={{
-                          position: 'absolute',
-                          top: '100%',
-                          left: 0,
-                          zIndex: 100,
-                          backgroundColor: 'white',
-                          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
-                          borderRadius: '4px',
-                          marginTop: '8px'
-                        }}>
-                          <DatePicker
-                            month={datePickerMonth}
-                            year={datePickerYear}
-                            selected={{ start: selectedDates.start, end: selectedDates.end }}
-                            onMonthChange={handleMonthChange}
-                            onChange={handleDateSelection}
-                            allowRange
-                            multiMonth={false}
-                            disableDatesAfter={new Date()}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  {/* On retire la période du rapport */}
 
                   <Separator title="Contenu du rapport" />
 
@@ -1103,16 +1054,9 @@ export default function ScheduleReport() {
                             checked={value}
                             onChange={(checked) => handleDataTypeChange(key, checked)}
                           />
+                          {/* On retire le champ Nom du rapport (génération) */}
                           {value && (
                             <div style={{ display: 'flex', gap: 16, marginLeft: 32, alignItems: 'center' }}>
-                              <div style={{ minWidth: 320 }}>
-                                <TextField
-                                  label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>Nom du rapport (génération)<HelpIcon description="Nom du fichier généré lors d'une exportation immédiate. Vous pouvez le personnaliser." /></span>}
-                                  value={reportNames[key as keyof typeof reportNames]}
-                                  onChange={(val) => setReportNames(prev => ({ ...prev, [key]: val }))}
-                                  autoComplete="off"
-                                />
-                              </div>
                               <div style={{ minWidth: 320 }}>
                                 <TextField
                                   label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>Nom du rapport (planification)<HelpIcon description="Nom du fichier généré lors d'une exportation planifiée. Vous pouvez le personnaliser." /></span>}
@@ -1367,14 +1311,17 @@ export default function ScheduleReport() {
                         />
                       <LegacyStack spacing="tight">
                         <div style={{ minWidth: 160 }}>
-                          <BiSaveBtn
-                            title="Générer et télécharger"
-                            isLoading={isGenerating}
+                          {/* Le bouton de génération redirige vers la page de génération */}
+                          <BiSimpleBtn
+                            title="Générer un rapport"
+                            icon={<Icon source={OrderIcon} tone="inherit" />}
+                            onClick={() => navigate('/app/reports/manual-export')}
                           />
                         </div>
                         <div style={{ minWidth: 160 }}>
                           <BiSimpleBtn
                             title="Planifier automatiquement"
+                            icon={<Icon source={CalendarIcon} tone="inherit" />}
                             onClick={() => {
                               setActionType('schedule');
                               handleSchedule(new Event('submit') as any);

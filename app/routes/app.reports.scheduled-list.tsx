@@ -6,6 +6,8 @@ import { prisma } from "../db.server";
 import { Page, Card, DataTable, Button, Badge, Text, Modal, Box, InlineStack, Icon } from "@shopify/polaris";
 import { useState } from "react";
 import { PlayIcon, PauseCircleIcon, DeleteIcon } from "@shopify/polaris-icons";
+import { BiSimpleBtn } from "../components/Buttons/BiSimpleBtn";
+import { CalendarIcon } from "@shopify/polaris-icons";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -71,6 +73,13 @@ export default function ScheduledListPage() {
 
   return (
     <Page title="Plannifications programmées">
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+        <BiSimpleBtn
+          title="Planifier un rapport"
+          icon={<CalendarIcon width={20} height={20} color="#fff" />}
+          onClick={() => window.location.assign('/app/reports/schedule')}
+        />
+      </div>
       <Card>
         <DataTable
           columnContentTypes={["text", "text", "text", "text", "numeric", "text"]}

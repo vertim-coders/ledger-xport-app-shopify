@@ -29,6 +29,7 @@ const ReportStatus = {
   ERROR: "ERROR" as const
 };
 import { BiSimpleBtn } from "../components/Buttons/BiSimpleBtn";
+import { PlusIcon, OrderIcon, CalendarIcon, EditIcon } from "@shopify/polaris-icons";
 import { downloadFileFromUrl } from "../utils/download";
 import {
   Chart as ChartJS,
@@ -317,18 +318,21 @@ export default function Dashboard() {
         <Layout.Section>
           <div style={{ marginBottom: '0px', display: 'flex', gap: '24px', alignItems: 'flex-start', justifyContent: 'center' }}>
             <BiSimpleBtn 
-              title="Rapport personnalisé" 
-              onClick={() => navigate("/app/reports/custom")} 
-              style={{ minWidth: 200, maxWidth: 220 }}
-            />
-            <BiSimpleBtn 
-              title="Générer un nouveau rapport" 
+              title="Générer un rapport" 
+              icon={<Icon source={OrderIcon} tone="inherit" />} 
               onClick={handleNewReport} 
-              style={{ minWidth: 260, maxWidth: 280 }}
+              style={{ minWidth: 200, maxWidth: 220 }}
             />
             <BiSimpleBtn
               title="Planifier un rapport" 
+              icon={<Icon source={CalendarIcon} tone="inherit" />} 
               onClick={() => navigate("/app/reports/schedule")}
+              style={{ minWidth: 200, maxWidth: 220 }}
+            />
+            <BiSimpleBtn 
+              title="Rapport personnalisé" 
+              icon={<Icon source={EditIcon} tone="inherit" />} 
+              onClick={() => navigate("/app/reports/custom")} 
               style={{ minWidth: 200, maxWidth: 220 }}
             />
           </div>
