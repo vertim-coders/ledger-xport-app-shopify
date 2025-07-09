@@ -26,6 +26,15 @@ interface MonthlyReportsChartProps {
 }
 
 export const MonthlyReportsChart: React.FC<MonthlyReportsChartProps> = ({ data }) => {
+  // Responsive: détecte si mobile
+  const [isMobile, setIsMobile] = React.useState(false);
+  React.useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth <= 900);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
   const chartData = {
     labels: data.map((item) => item.month),
     datasets: [
@@ -83,8 +92,8 @@ export const MonthlyReportsChart: React.FC<MonthlyReportsChartProps> = ({ data }
   } as const;
 
   return (
-    <div style={{ background: "#fff", borderRadius: 16, boxShadow: "0 2px 12px 0 rgba(0,0,0,0.06)", padding: 24, minHeight: 320 }}>
-      <div style={{ width: "100%", height: 260 }}>
+    <div style={{ background: "#fff", borderRadius: 16, boxShadow: "0 2px 12px 0 rgba(0,0,0,0.06)", padding: isMobile ? 12 : 24, minHeight: isMobile ? 220 : 320, width: "100%" }}>
+      <div style={{ width: "100%", height: isMobile ? 160 : 260 }}>
         <Line data={chartData} options={options} />
       </div>
     </div>

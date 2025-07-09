@@ -22,10 +22,19 @@ interface RecentExportsListProps {
 }
 
 export const RecentExportsList: React.FC<RecentExportsListProps> = ({ exports, onDownload, onSeeAll, onView, isDownloading }) => {
+  // Responsive: détecte si mobile
+  const [isMobile, setIsMobile] = React.useState(false);
+  React.useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth <= 900);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
   return (
-    <div style={{ borderRadius: 16, boxShadow: "0 2px 12px 0 rgba(0,0,0,0.06)", background: "#fff" }}>
+    <div style={{ borderRadius: 16, boxShadow: "0 2px 12px 0 rgba(0,0,0,0.06)", background: "#fff", width: "100%", overflowX: isMobile ? "auto" : undefined }}>
       <Card padding="0">
-        <Box paddingBlock="400" paddingInline="400">
+        <Box paddingBlock={isMobile ? "200" : "400"} paddingInline={isMobile ? "200" : "400"}>
           <Text variant="headingMd" as="h2" fontWeight="bold">
             Exports récemment générés
           </Text>
@@ -33,22 +42,24 @@ export const RecentExportsList: React.FC<RecentExportsListProps> = ({ exports, o
         <Divider />
         <div style={{ display: "flex", flexDirection: "column" }}>
           {exports.length === 0 && (
-            <Box paddingBlock="400" paddingInline="400">
+            <Box paddingBlock={isMobile ? "200" : "400"} paddingInline={isMobile ? "200" : "400"}>
               <Text as="span" variant="bodyMd" tone="subdued">Aucun export récent</Text>
             </Box>
           )}
           {exports.map((exp, idx) => (
             <React.Fragment key={exp.id}>
-              <Box paddingBlock="300" paddingInline="400">
+              <Box paddingBlock={isMobile ? "200" : "300"} paddingInline={isMobile ? "200" : "400"}>
                 <div
                   style={{
                     display: "flex",
-                    alignItems: "center",
+                    flexDirection: isMobile ? "column" : "row",
+                    alignItems: isMobile ? "flex-start" : "center",
                     justifyContent: "space-between",
                     gap: 16,
                     borderRadius: 8,
                     transition: "background 0.15s",
                     cursor: onView ? "pointer" : undefined,
+                    width: "100%"
                   }}
                   onClick={onView ? () => onView(exp.id) : undefined}
                   onMouseOver={e => {
@@ -58,7 +69,7 @@ export const RecentExportsList: React.FC<RecentExportsListProps> = ({ exports, o
                     if (onView) e.currentTarget.style.background = "";
                   }}
                 >
-                  <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+                  <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", width: isMobile ? "100%" : undefined }}>
                     <span style={{ display: "flex", alignItems: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
                         <Text as="span" variant="bodyMd" fontWeight="medium">
@@ -79,13 +90,14 @@ export const RecentExportsList: React.FC<RecentExportsListProps> = ({ exports, o
                       </Text>
                     </span>
                   </div>
-                  <div onClick={e => e.stopPropagation()}>
+                  <div onClick={e => e.stopPropagation()} style={{ width: isMobile ? "100%" : undefined, marginTop: isMobile ? 8 : 0 }}>
                     {exp.downloadDisabled ? (
                       <Tooltip content="Ce rapport planifié n'a pas encore été exécuté.">
                         <Button
                           icon={<Icon source={ArrowDownIcon} />}
                           disabled
                           accessibilityLabel={`Téléchargement désactivé`}
+                          fullWidth={isMobile}
                         >
                           Télécharger
                         </Button>
@@ -98,6 +110,7 @@ export const RecentExportsList: React.FC<RecentExportsListProps> = ({ exports, o
                         onClick={() => onDownload?.(exp.id, exp.downloadUrl)}
                         loading={isDownloading === exp.id}
                         disabled={isDownloading === exp.id}
+                        fullWidth={isMobile}
                       >
                         Télécharger
                       </Button>
@@ -110,9 +123,9 @@ export const RecentExportsList: React.FC<RecentExportsListProps> = ({ exports, o
           ))}
         </div>
         <Divider />
-        <Box paddingBlock="300" paddingInline="400">
+        <Box paddingBlock={isMobile ? "200" : "300"} paddingInline={isMobile ? "200" : "400"}>
           <div style={{ textAlign: "center" }}>
-            <Button variant="tertiary" onClick={onSeeAll}>Voir tout</Button>
+            <Button variant="tertiary" onClick={onSeeAll} fullWidth={isMobile}>Voir tout</Button>
           </div>
         </Box>
       </Card>

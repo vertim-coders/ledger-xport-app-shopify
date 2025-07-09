@@ -6,6 +6,7 @@ import {
   Card,
   Text,
   LegacyStack,
+  Button as PolarisButton,
   Button,
   Badge,
   DataTable,
@@ -41,7 +42,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { StatCard } from "../components/Navigation/StatCard";
 import {
   CheckIcon,
@@ -180,6 +181,14 @@ export default function Dashboard() {
   const [toastActive, setToastActive] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [toastError, setToastError] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth <= 900);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   const handleNewReport = () => {
     navigate("/app/reports/manual-export");
@@ -278,7 +287,13 @@ export default function Dashboard() {
       <Layout>
         {/* Export Statistics */}
         <Layout.Section>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 24, marginBottom: 32 }}>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: isMobile ? "1fr" : "repeat(4, 1fr)",
+            gap: 24,
+            marginBottom: 32,
+            width: "100%"
+          }}>
             <StatCard
               title="Exports réussis"
               value={successfulExports}
@@ -367,7 +382,7 @@ export default function Dashboard() {
 
         {/* Bottom Section - Recent Failures and Upcoming Exports side by side */}
         <Layout.Section>
-          <div style={{ display: 'flex', gap: '16px' }}>
+          <div style={{ display: 'flex', gap: '16px', flexDirection: isMobile ? 'column' : 'row', width: '100%' }}>
             {/* Recent Failures */}
             <div style={{ flex: 1, minWidth: 0 }}>
               <Card>
@@ -376,12 +391,13 @@ export default function Dashboard() {
                     <Text variant="headingMd" as="h1">Échecs récents</Text>
                   </div>
                   {recentReports && recentReports.filter(report => report.status === ReportStatus.ERROR).length > 0 ? (
-                    <div style={{ 
+                    <div style={{
                       height: '300px',
                       overflowY: 'auto',
-                      overflowX: 'auto'
+                      overflowX: 'auto',
+                      width: '100%'
                     }}>
-                      <div style={{ minWidth: '600px' }}>
+                      <div style={{ minWidth: isMobile ? '400px' : '600px' }}>
                         <DataTable
                           columnContentTypes={[
                             'text',
@@ -398,12 +414,10 @@ export default function Dashboard() {
                           rows={recentReports
                             .filter(report => report.status === ReportStatus.ERROR)
                             .map(report => [
-                              report.fileName,
+                              <div style={{ cursor: 'pointer' }} onClick={() => navigate(`/app/reports/view/${report.id}`)}>{report.fileName}</div>,
                               report.type,
                               new Date(report.updatedAt).toLocaleDateString(),
-                              <Button onClick={() => handleRetry(report.id)}>
-                                Corriger
-                              </Button>
+                              <Button onClick={() => handleRetry(report.id)} icon="refresh">Réessayer</Button>
                             ])}
                         />
                       </div>
@@ -463,9 +477,9 @@ export default function Dashboard() {
                               date,
                               time,
                               getFrequencyLabel(task.frequency),
-                              <Button onClick={() => navigate(`/app/reports/schedule?id=${task.id}`)}>
+                              <PolarisButton onClick={() => navigate(`/app/reports/schedule?id=${task.id}`)}>
                                 Modifier
-                              </Button>
+                              </PolarisButton>
                             ];
                           })}
                         />
@@ -483,9 +497,9 @@ export default function Dashboard() {
                         image="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwIDNDMTEuNzE2IDMgNSA5LjcxNiA1IDE4QzUgMjYuMjg0IDExLjcxNiAzMyAyMCAzM0MyOC4yODQgMzMgMzUgMjYuMjg0IDM1IDE4QzM1IDkuNzE2IDI4LjI4NCAzIDIwIDNaTTIyIDI1SDJWMjNIMjJWMjVaTTIyIDIxSDJWMThIMjJWMjFaIiBmaWxsPSIjMDA3YWNlIi8+Cjwvc3ZnPgo="
                       >
                         <p>Les exports planifiés apparaîtront ici.</p>
-                        <Button onClick={() => navigate("/app/reports/schedule")}>
+                        <PolarisButton onClick={() => navigate("/app/reports/schedule")}>
                           Planifier un export
-                        </Button>
+                        </PolarisButton>
                       </EmptyState>
                     </div>
                   )}

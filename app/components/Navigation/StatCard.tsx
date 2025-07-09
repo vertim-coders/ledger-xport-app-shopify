@@ -11,10 +11,27 @@ interface StatCardProps {
 }
 
 export const StatCard: React.FC<StatCardProps> = ({ title, value, variation, icon, iconBg = "#E6F0FF", color = "#0066FF" }) => {
+  // Responsive: détecte si mobile
+  const [isMobile, setIsMobile] = React.useState(false);
+  React.useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth <= 900);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
   return (
-    <div style={{ borderRadius: 16, boxShadow: "0 2px 12px 0 rgba(0,0,0,0.06)", background: "#fff", minWidth: 0, minHeight: 0 }}>
+    <div style={{
+      borderRadius: 16,
+      boxShadow: "0 2px 12px 0 rgba(0,0,0,0.06)",
+      background: "#fff",
+      minWidth: 0,
+      minHeight: 0,
+      width: isMobile ? "100%" : undefined,
+      marginBottom: isMobile ? 16 : 0
+    }}>
       <Card padding="0">
-        <div style={{ display: "flex", flexDirection: "column", height: 160, justifyContent: "space-between", padding: 24 }}>
+        <div style={{ display: "flex", flexDirection: "column", height: isMobile ? 120 : 160, justifyContent: "space-between", padding: isMobile ? 16 : 24 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <Text as="span" variant="bodyMd" fontWeight="medium" tone="subdued">
               {title}
