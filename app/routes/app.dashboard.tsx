@@ -182,12 +182,18 @@ export default function Dashboard() {
   const [toastMessage, setToastMessage] = useState("");
   const [toastError, setToastError] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isNarrow, setIsNarrow] = useState(false);
+  const [isVeryNarrow, setIsVeryNarrow] = useState(false);
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth <= 900);
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
+    const check = () => {
+      setIsMobile(window.innerWidth <= 900);
+      setIsNarrow(window.innerWidth <= 1366);
+      setIsVeryNarrow(window.innerWidth <= 600);
+    };
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
   }, []);
 
   const handleNewReport = () => {
@@ -289,7 +295,8 @@ export default function Dashboard() {
         <Layout.Section>
           <div style={{
             display: "grid",
-            gridTemplateColumns: isMobile ? "1fr" : "repeat(4, 1fr)",
+            gridTemplateColumns:
+              isMobile ? "1fr" : isVeryNarrow ? "1fr" : isNarrow ? "1fr 1fr" : "repeat(4, 1fr)",
             gap: 24,
             marginBottom: 32,
             width: "100%"
@@ -331,24 +338,37 @@ export default function Dashboard() {
 
         {/* New Report Button */}
         <Layout.Section>
-          <div style={{ marginBottom: '0px', display: 'flex', gap: '24px', alignItems: 'flex-start', justifyContent: 'center' }}>
-            <BiSimpleBtn 
-              title="Générer un rapport" 
-              icon={<Icon source={OrderIcon} tone="inherit" />} 
-              onClick={handleNewReport} 
-              style={{ minWidth: 200, maxWidth: 220 }}
+          <div
+            style={{
+              marginBottom: '0px',
+              display: 'flex',
+              flexDirection: isVeryNarrow ? 'column' : 'row',
+              gap: isVeryNarrow ? 12 : 24,
+              alignItems: isVeryNarrow ? 'stretch' : 'flex-start',
+              justifyContent: isVeryNarrow ? 'stretch' : 'center',
+              width: '100%',
+              overflowX: isVeryNarrow ? undefined : 'auto',
+              flexWrap: isVeryNarrow ? 'nowrap' : 'wrap',
+              minWidth: 0
+            }}
+          >
+            <BiSimpleBtn
+              title="Générer un rapport"
+              icon={<Icon source={OrderIcon} tone="inherit" />}
+              onClick={handleNewReport}
+              style={{ minWidth: 200, maxWidth: 220, width: isVeryNarrow ? '100%' : undefined }}
             />
             <BiSimpleBtn
-              title="Planifier un rapport" 
-              icon={<Icon source={CalendarIcon} tone="inherit" />} 
+              title="Planifier un rapport"
+              icon={<Icon source={CalendarIcon} tone="inherit" />}
               onClick={() => navigate("/app/reports/schedule")}
-              style={{ minWidth: 200, maxWidth: 220 }}
+              style={{ minWidth: 200, maxWidth: 220, width: isVeryNarrow ? '100%' : undefined }}
             />
-            <BiSimpleBtn 
-              title="Rapport personnalisé" 
-              icon={<Icon source={EditIcon} tone="inherit" />} 
-              onClick={() => navigate("/app/reports/custom")} 
-              style={{ minWidth: 200, maxWidth: 220 }}
+            <BiSimpleBtn
+              title="Rapport personnalisé"
+              icon={<Icon source={EditIcon} tone="inherit" />}
+              onClick={() => navigate("/app/reports/custom")}
+              style={{ minWidth: 200, maxWidth: 220, width: isVeryNarrow ? '100%' : undefined }}
             />
           </div>
         </Layout.Section>

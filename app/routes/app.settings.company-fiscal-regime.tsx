@@ -205,6 +205,18 @@ export default function CompanyAndFiscalRegimeSettings() {
   const [toastError, setToastError] = useState(false);
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
   const isSaving = navigation.state === "submitting";
+  const [isMobile, setIsMobile] = useState(false);
+  const [isNarrow, setIsNarrow] = useState(false);
+
+  useEffect(() => {
+    const checkWidth = () => {
+      setIsMobile(window.innerWidth <= 540);
+      setIsNarrow(window.innerWidth <= 1504);
+    };
+    checkWidth();
+    window.addEventListener("resize", checkWidth);
+    return () => window.removeEventListener("resize", checkWidth);
+  }, []);
 
   const handleCompanyChange = (field: string, value: string) => {
     setCompanyFormData(prev => ({ ...prev, [field]: value }));
@@ -300,17 +312,26 @@ export default function CompanyAndFiscalRegimeSettings() {
               <form onSubmit={handleCompanySubmit}>
                 <LegacyStack vertical spacing="loose">
                   <FormLayout>
-                    <div style={{ width: 620 }}>
-                      <div style={{ fontWeight: 'bold', marginBottom: 4 }}>Régime Fiscal</div>
-                      <Select
-                        label=""
-                        options={regimes.map(regime => ({
-                          label: regime.name,
-                          value: regime.code,
-                        }))}
-                        value={selectedRegime}
-                        onChange={setSelectedRegime}
-                      />
+                    {/* Champ Régime Fiscal responsive */}
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: isMobile ? 'column' : 'row',
+                      gap: 24,
+                      width: '100%',
+                      marginBottom: 16
+                    }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 'bold', marginBottom: 4 }}>Régime Fiscal</div>
+                        <Select
+                          label=""
+                          options={regimes.map(regime => ({
+                            label: regime.name,
+                            value: regime.code,
+                          }))}
+                          value={selectedRegime}
+                          onChange={setSelectedRegime}
+                        />
+                      </div>
                     </div>
                     {selectedRegime && (
                       <div style={{ marginTop: '8px', marginBottom: '16px' }}>
@@ -329,8 +350,14 @@ export default function CompanyAndFiscalRegimeSettings() {
                       </div>
                     )}
 
-                    <LegacyStack distribution="fill">
-                      <div style={{ width: 420 }}>
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: isMobile ? 'column' : 'row',
+                      gap: 24,
+                      width: '100%',
+                      marginBottom: 16
+                    }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 'bold', marginBottom: 4 }}>Nom de l'entreprise</div>
                         <TextField
                           label=""
@@ -340,7 +367,7 @@ export default function CompanyAndFiscalRegimeSettings() {
                           autoComplete="off"
                         />
                       </div>
-                      <div style={{ width: 420 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 'bold', marginBottom: 4 }}>Taux de TVA (%)</div>
                         <TextField
                           label=""
@@ -354,10 +381,15 @@ export default function CompanyAndFiscalRegimeSettings() {
                           step={0.1}
                         />
                       </div>
-                    </LegacyStack>
-
-                    <LegacyStack distribution="fill">
-                      <div style={{ width: 420 }}>
+                    </div>
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: isMobile ? 'column' : 'row',
+                      gap: 24,
+                      width: '100%',
+                      marginBottom: 16
+                    }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 'bold', marginBottom: 4 }}>Devise</div>
                         <Select
                           label=""
@@ -372,7 +404,7 @@ export default function CompanyAndFiscalRegimeSettings() {
                           helpText={selectedRegime ? `Devise recommandée pour ${regimes.find(r => r.code === selectedRegime)?.name}: ${regimes.find(r => r.code === selectedRegime)?.currency}` : ''}
                         />
                       </div>
-                      <div style={{ width: 420 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 'bold', marginBottom: 4 }}>Compte de vente</div>
                         <TextField
                           label=""
@@ -383,7 +415,7 @@ export default function CompanyAndFiscalRegimeSettings() {
                           helpText="Code du compte de vente dans votre plan comptable (ex: 701)"
                         />
                       </div>
-                    </LegacyStack>
+                    </div>
 
                     <div style={{ marginTop: '32px', textAlign: 'center' }}>
                       <BiSaveBtn title="Sauvegarder cette configuration fiscale" isLoading={isSaving} />
