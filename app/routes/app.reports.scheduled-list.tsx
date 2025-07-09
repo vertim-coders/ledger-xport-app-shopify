@@ -76,7 +76,7 @@ export default function ScheduledListPage() {
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
         <BiSimpleBtn
           title="Planifier un rapport"
-          icon={<CalendarIcon width={20} height={20} color="#fff" />}
+          icon={<Icon source={CalendarIcon} tone="inherit" />}
           onClick={() => window.location.assign('/app/reports/schedule')}
         />
       </div>
