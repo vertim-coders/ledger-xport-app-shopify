@@ -43,6 +43,7 @@ type Report = ReportType;
 import { ArrowDownIcon, RefreshIcon, EmailIcon, SearchIcon } from "@shopify/polaris-icons";
 import { promises as fs } from "fs";
 import { downloadFileFromUrl } from "../utils/download";
+import Footer from "../components/Footer";
 
 type LoaderData = {
   reports: Array<Omit<Report, "startDate" | "endDate" | "createdAt" | "updatedAt"> & {
@@ -431,6 +432,9 @@ export default function ExportHistory() {
             />
             </div>
           </Card>
+        </Layout.Section>
+        <Layout.Section>
+          <Footer />
         </Layout.Section>
       </Layout>
       {toastActive && (

@@ -93,7 +93,7 @@ export const MonthlyReportsChart: React.FC<MonthlyReportsChartProps> = ({ data }
 
   return (
     <div style={{ background: "#fff", borderRadius: 16, boxShadow: "0 2px 12px 0 rgba(0,0,0,0.06)", padding: isMobile ? 12 : 24, minHeight: isMobile ? 220 : 320, width: "100%" }}>
-      <div style={{ width: "100%", height: isMobile ? 160 : 260 }}>
+      <div style={{ width: "100%", height: isMobile ? 240 : 340 }}>
         <Line data={chartData} options={options} />
       </div>
     </div>

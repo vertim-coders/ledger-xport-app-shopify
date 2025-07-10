@@ -66,13 +66,19 @@ export function AppNavbar({ open = true, onClose }: { open?: boolean; onClose?: 
   const location = useLocation();
   const isActive = (url: string) => location.pathname === url;
 
-  // Responsive: détecte si mobile
+  // Responsive: détecte si mobile et si la hauteur est faible
   const [isMobile, setIsMobile] = React.useState(false);
+  const [isShort, setIsShort] = React.useState(false);
+  const [isVeryShort, setIsVeryShort] = React.useState(false);
   React.useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth <= 900);
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
+    const check = () => {
+      setIsMobile(window.innerWidth <= 900);
+      setIsShort(window.innerHeight <= 700);
+      setIsVeryShort(window.innerHeight <= 500);
+    };
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
   }, []);
 
   // Gestion de l’overlay mobile
@@ -107,22 +113,29 @@ export function AppNavbar({ open = true, onClose }: { open?: boolean; onClose?: 
           bottom: 0,
           display: "flex",
           flexDirection: "column",
-          justifyContent: "space-between",
           zIndex: 100,
-          minHeight: "100vh",
+          minHeight: 0,
+          height: '100vh',
           borderRadius: isMobile ? 0 : "10px 10px 10px 10px",
           boxShadow: isMobile && showSidebar ? "2px 0 16px rgba(0,0,0,0.10)" : undefined,
           transition: "left 0.25s cubic-bezier(.4,0,.2,1)",
+          overflow: 'hidden',
         }}
       >
         {/* Haut : Logo + sous-texte */}
-        <div style={{ padding: "32px 0 16px 0", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <div style={{
+          padding: isVeryShort ? "8px 0 4px 0" : isShort ? "16px 0 8px 0" : "32px 0 16px 0",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          flexShrink: 0
+        }}>
           <img
             src={LOGO_SRC}
             alt={LOGO_ALT}
-            style={{ maxHeight: 48, width: "auto", objectFit: "contain", marginBottom: 8 }}
+            style={{ maxHeight: isVeryShort ? 28 : isShort ? 36 : 48, width: "auto", objectFit: "contain", marginBottom: isVeryShort ? 2 : isShort ? 4 : 8 }}
           />
-          <span style={{ color: "#e0e7ef" }}>
+          <span style={{ color: "#e0e7ef", fontSize: isVeryShort ? 10 : isShort ? 12 : undefined }}>
             <Text as="span" variant="bodySm" tone="subdued" alignment="center">
               {SUBTEXT}
             </Text>
@@ -130,7 +143,17 @@ export function AppNavbar({ open = true, onClose }: { open?: boolean; onClose?: 
         </div>
         <Divider borderColor="border" />
         {/* Menu vertical */}
-        <ul style={{ flex: 1, margin: 0, padding: "32px 0 0 0", listStyle: "none", display: "flex", flexDirection: "column", gap: 12 }}>
+        <ul style={{
+          flex: 1,
+          minHeight: 0,
+          margin: 0,
+          padding: isVeryShort ? "12px 0 0 0" : isShort ? "18px 0 0 0" : "32px 0 0 0",
+          listStyle: "none",
+          display: "flex",
+          flexDirection: "column",
+          gap: isVeryShort ? 4 : isShort ? 8 : 12,
+          overflow: 'hidden',
+        }}>
           {navigationItems.map((item) => (
             <li key={item.label} style={{ width: "100%" }}>
               <button
@@ -141,11 +164,11 @@ export function AppNavbar({ open = true, onClose }: { open?: boolean; onClose?: 
                   color: isActive(item.url) ? "#0066FF" : "#000000",
                   display: "flex",
                   alignItems: "center",
-                  gap: 16,
-                  padding: "18px 32px",
+                  gap: isVeryShort ? 6 : isShort ? 10 : 16,
+                  padding: isVeryShort ? "8px 16px" : isShort ? "12px 20px" : "18px 32px",
                   borderRadius: "10px 0px 0px 10px",
                   cursor: "pointer",
-                  fontSize: 15,
+                  fontSize: isVeryShort ? 12 : isShort ? 14 : 15,
                   fontWeight: 500,
                   transition: "background 0.2s, color 0.2s",
                 }}
@@ -167,23 +190,29 @@ export function AppNavbar({ open = true, onClose }: { open?: boolean; onClose?: 
           ))}
         </ul>
         {/* Bas : Paramètres généraux */}
-        <div style={{ width: "100%", padding: "0 24px 12px 24px" }}>
+        <div style={{
+          width: "100%",
+          padding: isVeryShort ? "0 12px 6px 12px" : isShort ? "0 16px 8px 16px" : "0 24px 12px 24px",
+          flexShrink: 0,
+          marginTop: 'auto',
+          background: 'inherit',
+        }}>
           <Divider borderColor="border" />
-          <div style={{ marginTop: 32, display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ marginTop: isVeryShort ? 12 : isShort ? 18 : 32, display: "flex", flexDirection: "column", gap: isVeryShort ? 4 : isShort ? 6 : 8 }}>
             <button
               style={{
-                marginBottom: 60,
+                marginBottom: isVeryShort ? 20 : isShort ? 32 : 60,
                 width: "100%",
                 background: isActive(settingsItem.url) ? "#fff" : "none",
                 border: "none",
                 color: isActive(settingsItem.url) ? "#0066FF" : "#000000",
                 display: "flex",
                 alignItems: "center",
-                gap: 16,
-                padding: "18px 32px",
+                gap: isVeryShort ? 6 : isShort ? 10 : 16,
+                padding: isVeryShort ? "8px 16px" : isShort ? "12px 20px" : "18px 32px",
                 borderRadius: 8,
                 cursor: "pointer",
-                fontSize: 15,
+                fontSize: isVeryShort ? 12 : isShort ? 14 : 15,
                 fontWeight: 500,
                 transition: "background 0.2s, color 0.2s",
               }}

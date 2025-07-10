@@ -25,6 +25,7 @@ import { useState, useEffect } from "react";
 import fiscalRegimesData from "../data/fiscal-regimes.json";
 import currenciesData from "../data/currencies.json";
 import { BiSaveBtn } from "../components/Buttons/BiSaveBtn";
+import Footer from "../components/Footer";
 
 // Import sécurisé d'ExportFormat
 const ExportFormat = {
@@ -424,6 +425,9 @@ export default function CompanyAndFiscalRegimeSettings() {
                 </LegacyStack>
               </form>
             </Card>
+          </Layout.Section>
+          <Layout.Section>
+            <Footer />
           </Layout.Section>
         </Layout>
       </Page>

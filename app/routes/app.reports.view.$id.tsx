@@ -57,16 +57,23 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   }
 
   try {
+    // Log filePath et format pour debug
+    console.log('Report filePath:', report.filePath, 'format:', report.format);
     // Read the file content
-    const fileContent = await fs.readFile(report.filePath, 'utf-8');
+    let fileContent: string | Buffer;
+    if (report.format.toLowerCase() === 'xlsx') {
+      fileContent = await fs.readFile(report.filePath); // Buffer pour XLSX
+    } else {
+      fileContent = await fs.readFile(report.filePath, 'utf-8'); // string pour texte
+    }
     let reportData: Record<string, any>[] = [];
     let headings: string[] = [];
 
     // Parse based on file format
     switch (report.format.toLowerCase()) {
-      case 'txt':
-        // Split by tabs and newlines
-        const lines = fileContent.split('\n');
+      case 'txt': {
+        const text = fileContent as string;
+        const lines = text.split('\n');
         headings = lines[0].split('\t');
         reportData = lines.slice(1).map(line => {
           const values = line.split('\t');
@@ -76,9 +83,10 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
           }, {});
         });
         break;
-
-      case 'csv':
-        reportData = parse(fileContent, {
+      }
+      case 'csv': {
+        const text = fileContent as string;
+        reportData = parse(text, {
           columns: true,
           skip_empty_lines: true,
           delimiter: report.shop.fiscalConfig?.separator || ','
@@ -87,9 +95,10 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
           headings = Object.keys(reportData[0]);
         }
         break;
-
-      case 'json':
-        const jsonData = JSON.parse(fileContent);
+      }
+      case 'json': {
+        const text = fileContent as string;
+        const jsonData = JSON.parse(text);
         // Handle different JSON structures
         if (Array.isArray(jsonData)) {
           reportData = jsonData;
@@ -129,10 +138,11 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
           headings = Object.keys(reportData[0]);
         }
         break;
-
-      case 'xml':
+      }
+      case 'xml': {
+        const text = fileContent as string;
         const parser = new XMLParser();
-        const xmlData = parser.parse(fileContent);
+        const xmlData = parser.parse(text);
         // Extract data from XML structure
         if (xmlData.report && xmlData.report.data) {
           const data = xmlData.report.data;
@@ -149,9 +159,10 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
           }
         }
         break;
-
-      case 'xlsx':
-        const workbook = XLSX.read(fileContent, { type: 'buffer' });
+      }
+      case 'xlsx': {
+        const buffer = fileContent as Buffer;
+        const workbook = XLSX.read(buffer, { type: 'buffer' });
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
         const xlsxData = XLSX.utils.sheet_to_json(firstSheet);
         if (xlsxData.length > 0) {
@@ -159,7 +170,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
           reportData = xlsxData as Record<string, any>[];
         }
         break;
-
+      }
       default:
         throw new Response("Unsupported format", { status: 400 });
     }
@@ -170,7 +181,12 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
       headings
     });
   } catch (error) {
-    console.error('Error reading report file:', error);
+    console.error('Error reading report file:', {
+      error: error instanceof Error ? error.stack : error,
+      filePath: report?.filePath,
+      format: report?.format,
+      reportId: report?.id,
+    });
     // Update report status to ERROR if file reading fails
     await prisma.report.update({
       where: { id: report.id },
@@ -331,6 +347,32 @@ export default function ReportView() {
           error={toastError}
         />
       )}
+    </Page>
+  );
+} 
+
+export function ErrorBoundary({ error }: { error: any }) {
+  // Remix fournit error.status si c'est une Response
+  const navigate = useNavigate();
+  const status = error?.status || (error instanceof Response ? error.status : undefined);
+  const message =
+    status === 404
+      ? "Ce rapport n’existe pas ou le fichier est introuvable."
+      : "Une erreur est survenue lors de l’affichage du rapport.";
+  return (
+    <Page title="Rapport introuvable">
+      <Layout>
+        <Layout.Section>
+          <Card>
+            <BlockStack gap="400">
+              <Text as="h2" variant="headingMd" tone="critical">
+                {message}
+              </Text>
+              <Button onClick={() => navigate("/app/reports/history")}>Retour à l’historique</Button>
+            </BlockStack>
+          </Card>
+        </Layout.Section>
+      </Layout>
     </Page>
   );
 } 

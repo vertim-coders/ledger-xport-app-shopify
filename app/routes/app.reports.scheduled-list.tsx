@@ -3,11 +3,12 @@ import { useLoaderData, useFetcher } from "@remix-run/react";
 import { listScheduledTasks, updateScheduledTaskStatus, deleteScheduledTask } from "../services/scheduledTask.service";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
-import { Page, Card, DataTable, Button, Badge, Text, Modal, Box, InlineStack, Icon } from "@shopify/polaris";
+import { Page, Card, DataTable, Button, Badge, Text, Modal, Box, InlineStack, Icon, Layout } from "@shopify/polaris";
 import { useState } from "react";
 import { PlayIcon, PauseCircleIcon, DeleteIcon } from "@shopify/polaris-icons";
 import { BiSimpleBtn } from "../components/Buttons/BiSimpleBtn";
 import { CalendarIcon } from "@shopify/polaris-icons";
+import Footer from "../components/Footer";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -105,6 +106,9 @@ export default function ScheduledListPage() {
           <Text as="span">Êtes-vous sûr de vouloir supprimer cette plannification ? Cette action est irréversible.</Text>
         </Modal.Section>
       </Modal>
+      <Layout.Section>
+        <Footer />
+      </Layout.Section>
     </Page>
   );
 } 

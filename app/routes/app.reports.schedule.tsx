@@ -59,6 +59,7 @@ import type { ReportMapping } from "../types/ReportMappingType";
 import { getMimeType, downloadFilesFromResults, downloadZipFromResults } from "../utils/download";
 import { BluePolarisCheckbox } from "../components/Buttons/BluePolarisCheckbox";
 import { BiBtn } from "../components/Buttons/BiBtn";
+import Footer from "../components/Footer";
 
 // Default mappings for different data types
 const defaultMappings: Record<string, Record<string, string>> = {
@@ -1334,6 +1335,9 @@ export default function ScheduleReport() {
                 </FormLayout>
               </form>
             </Card>
+          </Layout.Section>
+          <Layout.Section>
+            <Footer />
           </Layout.Section>
         </Layout>
       </Page>

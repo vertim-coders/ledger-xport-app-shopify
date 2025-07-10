@@ -25,6 +25,7 @@ import { useState, useCallback, useEffect } from "react";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
 import fiscalRegimesData from "../data/fiscal-regimes.json";
+import Footer from "../components/Footer";
 import type { FiscalConfiguration as FiscalRegimePrismaType, ReportStatus as ReportStatusType, ExportFormat as ExportFormatType } from "@prisma/client";
 
 // Import sécurisé de FiscalConfiguration, ReportStatus et ExportFormat
@@ -654,6 +655,9 @@ export default function ManualExportPage() {
                 </div>
             </form>
           </Card>
+        </Layout.Section>
+        <Layout.Section>
+          <Footer />
         </Layout.Section>
       </Layout>
       {toastActive && (

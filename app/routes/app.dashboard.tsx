@@ -20,6 +20,7 @@ import { prisma } from "../db.server";
 import type { ReportStatus as ReportStatusType } from "@prisma/client";
 import { ShopifyCustomerService } from "../models/ShopifyCustomer.service";
 import { ShopifyOrderService } from "../models/ShopifyOrder.service";
+import Footer from '../components/Footer';
 
 // Import sécurisé de ReportStatus
 const ReportStatus = {
@@ -52,6 +53,7 @@ import {
 } from "@shopify/polaris-icons";
 import { MonthlyReportsChart } from "../components/Navigation/MonthlyReportsChart";
 import { RecentExportsList } from "../components/Navigation/RecentExportsList";
+import FeedbackSection from "../components/FeedbackSection";
 
 ChartJS.register(
   CategoryScale,
@@ -184,12 +186,14 @@ export default function Dashboard() {
   const [isMobile, setIsMobile] = useState(false);
   const [isNarrow, setIsNarrow] = useState(false);
   const [isVeryNarrow, setIsVeryNarrow] = useState(false);
+  const [isTwoCol, setIsTwoCol] = useState(false);
 
   useEffect(() => {
     const check = () => {
       setIsMobile(window.innerWidth <= 900);
       setIsNarrow(window.innerWidth <= 1366);
       setIsVeryNarrow(window.innerWidth <= 600);
+      setIsTwoCol(window.innerWidth <= 1140 && window.innerWidth > 600);
     };
     check();
     window.addEventListener("resize", check);
@@ -295,8 +299,13 @@ export default function Dashboard() {
         <Layout.Section>
           <div style={{
             display: "grid",
-            gridTemplateColumns:
-              isMobile ? "1fr" : isVeryNarrow ? "1fr" : isNarrow ? "1fr 1fr" : "repeat(4, 1fr)",
+            gridTemplateColumns: isVeryNarrow
+              ? "1fr"
+              : isTwoCol
+              ? "1fr 1fr"
+              : isNarrow
+              ? "1fr 1fr"
+              : "repeat(4, 1fr)",
             gap: 24,
             marginBottom: 32,
             width: "100%"
@@ -373,31 +382,55 @@ export default function Dashboard() {
           </div>
         </Layout.Section>
 
-        {/* Export Statistics Chart */}
+        {/* Export Statistics Chart + Recent Exports side by side */}
         <Layout.Section>
-          <div style={{ marginBottom: 16 }}>
-            <Text variant="headingMd" as="h1">Statistiques des exports</Text>
+          <div
+            style={{
+              display: 'flex',
+              gap: '16px',
+              flexDirection: isMobile ? 'column' : 'row',
+              width: '100%',
+              alignItems: 'stretch',
+              minHeight: 0,
+            }}
+          >
+            {/* Statistiques des exports */}
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+              <Card>
+                <div style={{ marginBottom: 16, padding: 20 }}>
+                  <Text variant="headingMd" as="h1">Statistiques des exports</Text>
+                </div>
+                <div style={{ padding: 20, paddingTop: 0 }}>
+                  <MonthlyReportsChart data={monthlyData.map(item => ({ month: item.month, reports: item.exports }))} />
+                </div>
+              </Card>
+            </div>
+            {/* Exports récemment générés */}
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+              <Card>
+                <div style={{ marginBottom: 16, padding: 20 }}>
+                  <Text variant="headingMd" as="h1">Rapports récemment générés</Text>
+                </div>
+                <div style={{ padding: 20, paddingTop: 0 }}>
+                  <RecentExportsList
+                    exports={recentReports.slice(0, 5).map(r => ({
+                      id: r.id,
+                      filename: r.fileName || r.type || "Export",
+                      createdAt: r.createdAt,
+                      downloadUrl: `/api/reports/${r.id}`,
+                      type: r.type,
+                      status: r.status,
+                      typeLabel: r.type === "scheduled" ? "Planifié" : "Généré",
+                      downloadDisabled: r.type === "scheduled" && r.status !== "COMPLETED"
+                    }))}
+                    onDownload={(id, url) => window.location.href = url}
+                    onSeeAll={() => navigate("/app/reports/history")}
+                    onView={id => navigate(`/app/reports/view/${id}`)}
+                  />
+                </div>
+              </Card>
+            </div>
           </div>
-          <MonthlyReportsChart data={monthlyData.map(item => ({ month: item.month, reports: item.exports }))} />
-        </Layout.Section>
-
-        {/* Recent Exports */}
-        <Layout.Section>
-          <RecentExportsList
-            exports={recentReports.slice(0, 5).map(r => ({
-              id: r.id,
-              filename: r.fileName || r.type || "Export",
-              createdAt: r.createdAt,
-              downloadUrl: `/api/reports/${r.id}`,
-              type: r.type,
-              status: r.status,
-              typeLabel: r.type === "scheduled" ? "Planifié" : "Généré",
-              downloadDisabled: r.type === "scheduled" && r.status !== "COMPLETED"
-            }))}
-            onDownload={(id, url) => window.open(url, '_blank')}
-            onSeeAll={() => window.location.assign("/app/reports/history")}
-            onView={id => navigate(`/app/reports/view/${id}`)}
-          />
         </Layout.Section>
 
         {/* Bottom Section - Recent Failures and Upcoming Exports side by side */}
@@ -531,46 +564,10 @@ export default function Dashboard() {
 
         {/* Popular Reports */}
         <Layout.Section>
-          <Card>
-            <div style={{ padding: '20px' }}>
-              <Text variant="headingMd" as="h1">Rapports populaires</Text>
-              <LegacyStack distribution="fill">
-                <Card>
-                  <div style={{ padding: '16px' }}>
-                    <LegacyStack alignment="center">
-                      <Thumbnail source="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEwIDVIMzBWMzVIMFY1Wk0xMiA3VjMzSDI4VjdIMTJaIiBmaWxsPSIjMDA3YWNlIi8+CjxwYXRoIGQ9Ik0xNSAxMEgyNVYxMkgxNVYxMFpNMTUgMTVIMjVWMTdIMTVWMTVaTTE1IDIwSDI1VjIySDE1VjIwWk0xNSAyNUgyNVYyN0gxNVYyNVoiIGZpbGw9IiMwMDdhY2UiLz4KPC9zdmc+Cg==" alt="Ventes" />
-                      <div>
-                        <Text variant="headingMd" as="h3">Ventes</Text>
-                        <Text variant="bodyMd" as="p">Exports des transactions</Text>
-                      </div>
-                    </LegacyStack>
-                  </div>
-                </Card>
-                <Card>
-                  <div style={{ padding: '16px' }}>
-                    <LegacyStack alignment="center">
-                      <Thumbnail source="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwIDNDMTEuNzE2IDMgNSA5LjcxNiA1IDE4QzUgMjYuMjg0IDExLjcxNiAzMyAyMCAzM0MyOC4yODQgMzMgMzUgMjYuMjg0IDM1IDE4QzM1IDkuNzE2IDI4LjI4NCAzIDIwIDNaTTIyIDI1SDJWMjNIMjJWMjVaTTIyIDIxSDJWMThIMjJWMjFaIiBmaWxsPSIjRjU1NTU1Ii8+Cjwvc3ZnPgo=" alt="Taxes" />
-                      <div>
-                        <Text variant="headingMd" as="h3">Taxes</Text>
-                        <Text variant="bodyMd" as="p">Déclarations fiscales</Text>
-                      </div>
-                    </LegacyStack>
-                  </div>
-                </Card>
-                <Card>
-                  <div style={{ padding: '16px' }}>
-                    <LegacyStack alignment="center">
-                      <Thumbnail source="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwIDNDMTEuNzE2IDMgNSA5LjcxNiA1IDE4QzUgMjYuMjg0IDExLjcxNiAzMyAyMCAzM0MyOC4yODQgMzMgMzUgMjYuMjg0IDM1IDE4QzM1IDkuNzE2IDI4LjI4NCAzIDIwIDNaTTIyIDI1SDJWMjNIMjJWMjVaTTIyIDIxSDJWMThIMjJWMjFaIiBmaWxsPSIjMDA3YWNlIi8+Cjwvc3ZnPgo=" alt="Clients" />
-                      <div>
-                        <Text variant="headingMd" as="h3">Clients</Text>
-                        <Text variant="bodyMd" as="p">Base clients</Text>
-                      </div>
-                    </LegacyStack>
-                  </div>
-                </Card>
-              </LegacyStack>
-            </div>
-          </Card>
+          <FeedbackSection />
+        </Layout.Section>
+        <Layout.Section>
+          <Footer />
         </Layout.Section>
       </Layout>
       {toastActive && (

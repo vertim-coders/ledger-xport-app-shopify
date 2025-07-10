@@ -45,6 +45,7 @@ import shopify from "../shopify.server";
 import type { Settings } from "../types/SettingsType";
 import ftpService from "../services/ftp.service";
 import { encrypt, decrypt } from "../utils/crypto.server";
+import Footer from "app/components/Footer";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -635,6 +636,9 @@ export default function GeneralSettings() {
                 </form>
               </BlockStack>
             </Card>
+          </Layout.Section>
+          <Layout.Section>
+            <Footer />
           </Layout.Section>
         </Layout>
       </Page>

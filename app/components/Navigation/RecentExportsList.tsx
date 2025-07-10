@@ -34,11 +34,12 @@ export const RecentExportsList: React.FC<RecentExportsListProps> = ({ exports, o
   return (
     <div style={{ borderRadius: 16, boxShadow: "0 2px 12px 0 rgba(0,0,0,0.06)", background: "#fff", width: "100%", overflowX: isMobile ? "auto" : undefined }}>
       <Card padding="0">
-        <Box paddingBlock={isMobile ? "200" : "400"} paddingInline={isMobile ? "200" : "400"}>
+        {/* Supprimer le titre ici, il sera géré par le parent */}
+        {/* <Box paddingBlock={isMobile ? "200" : "400"} paddingInline={isMobile ? "200" : "400"}>
           <Text variant="headingMd" as="h2" fontWeight="bold">
             Exports récemment générés
           </Text>
-        </Box>
+        </Box> */}
         <Divider />
         <div style={{ display: "flex", flexDirection: "column" }}>
           {exports.length === 0 && (
@@ -107,10 +108,8 @@ export const RecentExportsList: React.FC<RecentExportsListProps> = ({ exports, o
                         icon={<Icon source={ArrowDownIcon} />}
                         variant="primary"
                         accessibilityLabel={`Télécharger ${exp.filename}`}
-                        onClick={() => onDownload?.(exp.id, exp.downloadUrl)}
-                        loading={isDownloading === exp.id}
-                        disabled={isDownloading === exp.id}
                         fullWidth={isMobile}
+                        onClick={() => { window.location.href = exp.downloadUrl; }}
                       >
                         Télécharger
                       </Button>

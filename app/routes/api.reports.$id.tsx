@@ -3,6 +3,7 @@ import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
 import { promises as fs } from "fs";
 import type { ReportStatus as ReportStatusType } from "@prisma/client";
+import { ReportService } from "../services/report.service";
 
 // Import sécurisé de ReportStatus
 const ReportStatus = {
@@ -44,7 +45,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
 
   // Générer le rapport à la volée (en mémoire)
   try {
-    const reportService = new (require("../services/report.service").ReportService)(admin);
+    const reportService = new ReportService(admin);
     if (!report.startDate || !report.endDate) {
       throw new Response("Report dates are missing", { status: 400 });
     }
@@ -56,9 +57,13 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
       startDate: report.startDate.toISOString(),
       endDate: report.endDate.toISOString(),
       fileName: report.fileName,
-      type: report.type,
+      type: report.type === 'scheduled' ? 'scheduled' : 'manual',
     });
     const fileContent = generated.content;
+
+    if (!fileContent) {
+      throw new Response("Report content not found", { status: 404 });
+    }
 
     // Determine content type based on format
     let contentType = 'application/octet-stream';
