@@ -4,7 +4,6 @@ import {
   Page,
   Layout,
   Card,
-  Text,
   Select,
   TextField,
   DataTable,
@@ -12,10 +11,6 @@ import {
   LegacyStack,
   Badge,
   Icon,
-  Thumbnail,
-  Modal,
-  Banner,
-  type BadgeProps,
   Toast,
 } from "@shopify/polaris";
 import { useState, useCallback } from "react";
@@ -319,7 +314,7 @@ export default function ExportHistory() {
       clickableCell(<Badge tone={statusBadge.tone}>{statusBadge.content}</Badge>, report),
       clickableCell(getTruncatedFileName(report.fileName), report),
       <LegacyStack spacing="tight">
-        {(report.status === ReportStatusEnum.COMPLETED || report.status === ReportStatusEnum.COMPLETED_WITH_EMPTY_DATA) && (
+        {report.status === ReportStatusEnum.COMPLETED && (
           <Button
             icon={ArrowDownIcon}
             onClick={() => handleDownload(report.id, report.fileName)}
@@ -328,15 +323,7 @@ export default function ExportHistory() {
           />
         )}
         {report.status === ReportStatusEnum.PENDING && (
-          <>
-            <Button 
-              icon={ArrowDownIcon} 
-              onClick={() => handleDownload(report.id, report.fileName)}
-              disabled={isDownloading === report.id}
-              loading={isDownloading === report.id}
-            />
-            <Button icon={EmailIcon} />
-          </>
+          <Button icon={EmailIcon} />
         )}
         {report.status === ReportStatusEnum.ERROR && (
           <Button

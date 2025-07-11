@@ -7,12 +7,12 @@ import {
   Button,
   DataTable,
   Text,
-  Banner,
   BlockStack,
   InlineStack,
-  Box,
   Toast,
+  Icon,
 } from "@shopify/polaris";
+import { ArrowDownIcon } from "@shopify/polaris-icons";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
 import { formatDate } from "../utils/date";
@@ -20,7 +20,7 @@ import fs from "fs/promises";
 import { parse } from "csv-parse/sync";
 import { XMLParser } from "fast-xml-parser";
 import * as XLSX from "xlsx";
-import type { ReportStatus as ReportStatusType } from "@prisma/client";
+import Footer from '../components/Footer';
 
 // Import sécurisé de ReportStatus
 const ReportStatus = {
@@ -32,6 +32,7 @@ const ReportStatus = {
 };
 import { useState } from "react";
 import { downloadFileFromUrl } from "../utils/download";
+import { ReportService } from "../services/report.service";
 
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
@@ -52,127 +53,250 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     },
   });
 
-  if (!report || !report.filePath) {
-    throw new Response("Report file not found", { status: 404 });
+  if (!report) {
+    throw new Response("Report not found", { status: 404 });
   }
 
   try {
-    // Log filePath et format pour debug
-    console.log('Report filePath:', report.filePath, 'format:', report.format);
-    // Read the file content
-    let fileContent: string | Buffer;
-    if (report.format.toLowerCase() === 'xlsx') {
-      fileContent = await fs.readFile(report.filePath); // Buffer pour XLSX
-    } else {
-      fileContent = await fs.readFile(report.filePath, 'utf-8'); // string pour texte
-    }
     let reportData: Record<string, any>[] = [];
     let headings: string[] = [];
 
-    // Parse based on file format
-    switch (report.format.toLowerCase()) {
-      case 'txt': {
-        const text = fileContent as string;
-        const lines = text.split('\n');
-        headings = lines[0].split('\t');
-        reportData = lines.slice(1).map(line => {
-          const values = line.split('\t');
-          return headings.reduce((obj: Record<string, any>, heading, index) => {
-            obj[heading] = values[index] || '';
-            return obj;
-          }, {});
-        });
-        break;
+    // Si le rapport a un filePath, lire depuis le disque
+    if (report.filePath) {
+      console.log('Reading report from file:', report.filePath, 'format:', report.format);
+      let fileContent: string | Buffer;
+      if (report.format.toLowerCase() === 'xlsx') {
+        fileContent = await fs.readFile(report.filePath); // Buffer pour XLSX
+      } else {
+        fileContent = await fs.readFile(report.filePath, 'utf-8'); // string pour texte
       }
-      case 'csv': {
-        const text = fileContent as string;
-        reportData = parse(text, {
-          columns: true,
-          skip_empty_lines: true,
-          delimiter: report.shop.fiscalConfig?.separator || ','
-        });
-        if (reportData.length > 0) {
-          headings = Object.keys(reportData[0]);
-        }
-        break;
-      }
-      case 'json': {
-        const text = fileContent as string;
-        const jsonData = JSON.parse(text);
-        // Handle different JSON structures
-        if (Array.isArray(jsonData)) {
-          reportData = jsonData;
-        } else if (typeof jsonData === 'object') {
-          // If it's a single object with nested arrays (like orders, customers, etc.)
-          if (jsonData.orders || jsonData.customers || jsonData.refunds || jsonData.taxes) {
-            const allData = [
-              ...(jsonData.orders || []),
-              ...(jsonData.customers || []),
-              ...(jsonData.refunds || []),
-              ...(jsonData.taxes || [])
-            ];
-            reportData = allData;
-          } else {
-            // If it's a single object without nested arrays, wrap it in an array
-            reportData = [jsonData];
-          }
-        }
-        
-        // Ensure all data is flattened and contains only simple values
-        reportData = reportData.map(item => {
-          const flattened: Record<string, any> = {};
-          Object.entries(item).forEach(([key, value]) => {
-            if (value === null || value === undefined) {
-              flattened[key] = '';
-            } else if (typeof value === 'object') {
-              // Convert objects to strings
-              flattened[key] = JSON.stringify(value);
-            } else {
-              flattened[key] = value;
-            }
+      
+      // Parse based on file format
+      switch (report.format.toLowerCase()) {
+        case 'txt': {
+          const text = fileContent as string;
+          const lines = text.split('\n');
+          headings = lines[0].split('\t');
+          reportData = lines.slice(1).map(line => {
+            const values = line.split('\t');
+            return headings.reduce((obj: Record<string, any>, heading, index) => {
+              obj[heading] = values[index] || '';
+              return obj;
+            }, {});
           });
-          return flattened;
-        });
-
-        if (reportData.length > 0) {
-          headings = Object.keys(reportData[0]);
+          break;
         }
-        break;
-      }
-      case 'xml': {
-        const text = fileContent as string;
-        const parser = new XMLParser();
-        const xmlData = parser.parse(text);
-        // Extract data from XML structure
-        if (xmlData.report && xmlData.report.data) {
-          const data = xmlData.report.data;
-          // Combine all data arrays
-          const allData = [
-            ...(data.orders || []),
-            ...(data.customers || []),
-            ...(data.refunds || []),
-            ...(data.taxes || [])
-          ];
-          if (allData.length > 0) {
-            headings = Object.keys(allData[0] as object);
-            reportData = allData as Record<string, any>[];
+        case 'csv': {
+          const text = fileContent as string;
+          reportData = parse(text, {
+            columns: true,
+            skip_empty_lines: true,
+            delimiter: report.shop.fiscalConfig?.separator || ','
+          });
+          if (reportData.length > 0) {
+            headings = Object.keys(reportData[0]);
           }
+          break;
         }
-        break;
-      }
-      case 'xlsx': {
-        const buffer = fileContent as Buffer;
-        const workbook = XLSX.read(buffer, { type: 'buffer' });
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const xlsxData = XLSX.utils.sheet_to_json(firstSheet);
-        if (xlsxData.length > 0) {
-          headings = Object.keys(xlsxData[0] as object);
-          reportData = xlsxData as Record<string, any>[];
+        case 'json': {
+          const text = fileContent as string;
+          const jsonData = JSON.parse(text);
+          // Handle different JSON structures
+          if (Array.isArray(jsonData)) {
+            reportData = jsonData;
+          } else if (typeof jsonData === 'object') {
+            // If it's a single object with nested arrays (like orders, customers, etc.)
+            if (jsonData.orders || jsonData.customers || jsonData.refunds || jsonData.taxes) {
+              const allData = [
+                ...(jsonData.orders || []),
+                ...(jsonData.customers || []),
+                ...(jsonData.refunds || []),
+                ...(jsonData.taxes || [])
+              ];
+              reportData = allData;
+            } else {
+              // If it's a single object without nested arrays, wrap it in an array
+              reportData = [jsonData];
+            }
+          }
+          
+          // Ensure all data is flattened and contains only simple values
+          reportData = reportData.map(item => {
+            const flattened: Record<string, any> = {};
+            Object.entries(item).forEach(([key, value]) => {
+              if (value === null || value === undefined) {
+                flattened[key] = '';
+              } else if (typeof value === 'object') {
+                // Convert objects to strings
+                flattened[key] = JSON.stringify(value);
+              } else {
+                flattened[key] = value;
+              }
+            });
+            return flattened;
+          });
+
+          if (reportData.length > 0) {
+            headings = Object.keys(reportData[0]);
+          }
+          break;
         }
-        break;
+        case 'xml': {
+          const text = fileContent as string;
+          const parser = new XMLParser();
+          const xmlData = parser.parse(text);
+          // Extract data from XML structure
+          if (xmlData.report && xmlData.report.data) {
+            const data = xmlData.report.data;
+            // Combine all data arrays
+            const allData = [
+              ...(data.orders || []),
+              ...(data.customers || []),
+              ...(data.refunds || []),
+              ...(data.taxes || [])
+            ];
+            if (allData.length > 0) {
+              headings = Object.keys(allData[0] as object);
+              reportData = allData as Record<string, any>[];
+            }
+          }
+          break;
+        }
+        case 'xlsx': {
+          const buffer = fileContent as Buffer;
+          const workbook = XLSX.read(buffer, { type: 'buffer' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const xlsxData = XLSX.utils.sheet_to_json(firstSheet);
+          if (xlsxData.length > 0) {
+            headings = Object.keys(xlsxData[0] as object);
+            reportData = xlsxData as Record<string, any>[];
+          }
+          break;
+        }
+        default:
+          throw new Response("Unsupported format", { status: 400 });
       }
-      default:
-        throw new Response("Unsupported format", { status: 400 });
+    } else {
+      // Si pas de filePath, générer le contenu à la volée
+      console.log('Generating report content on-the-fly for report:', report.id);
+      
+      if (!report.startDate || !report.endDate) {
+        throw new Response("Report dates are missing", { status: 400 });
+      }
+
+      const reportService = new ReportService(admin);
+      const generated = await reportService.generateReportContent({
+        shop: report.shop,
+        dataType: report.dataType,
+        format: report.format,
+        startDate: report.startDate.toISOString(),
+        endDate: report.endDate.toISOString(),
+      });
+
+      if (!generated.content) {
+        throw new Response("No data available for this report", { status: 404 });
+      }
+
+      // Parse the generated content
+      const content = generated.content;
+      
+      switch (report.format.toLowerCase()) {
+        case 'txt': {
+          const text = content as string;
+          const lines = text.split('\n');
+          headings = lines[0].split('\t');
+          reportData = lines.slice(1).map(line => {
+            const values = line.split('\t');
+            return headings.reduce((obj: Record<string, any>, heading, index) => {
+              obj[heading] = values[index] || '';
+              return obj;
+            }, {});
+          });
+          break;
+        }
+        case 'csv': {
+          const text = content as string;
+          reportData = parse(text, {
+            columns: true,
+            skip_empty_lines: true,
+            delimiter: report.shop.fiscalConfig?.separator || ','
+          });
+          if (reportData.length > 0) {
+            headings = Object.keys(reportData[0]);
+          }
+          break;
+        }
+        case 'json': {
+          const text = content as string;
+          const jsonData = JSON.parse(text);
+          if (Array.isArray(jsonData)) {
+            reportData = jsonData;
+          } else if (typeof jsonData === 'object') {
+            if (jsonData.orders || jsonData.customers || jsonData.refunds || jsonData.taxes) {
+              const allData = [
+                ...(jsonData.orders || []),
+                ...(jsonData.customers || []),
+                ...(jsonData.refunds || []),
+                ...(jsonData.taxes || [])
+              ];
+              reportData = allData;
+            } else {
+              reportData = [jsonData];
+            }
+          }
+          
+          reportData = reportData.map(item => {
+            const flattened: Record<string, any> = {};
+            Object.entries(item).forEach(([key, value]) => {
+              if (value === null || value === undefined) {
+                flattened[key] = '';
+              } else if (typeof value === 'object') {
+                flattened[key] = JSON.stringify(value);
+              } else {
+                flattened[key] = value;
+              }
+            });
+            return flattened;
+          });
+
+          if (reportData.length > 0) {
+            headings = Object.keys(reportData[0]);
+          }
+          break;
+        }
+        case 'xml': {
+          const text = content as string;
+          const parser = new XMLParser();
+          const xmlData = parser.parse(text);
+          if (xmlData.report && xmlData.report.data) {
+            const data = xmlData.report.data;
+            const allData = [
+              ...(data.orders || []),
+              ...(data.customers || []),
+              ...(data.refunds || []),
+              ...(data.taxes || [])
+            ];
+            if (allData.length > 0) {
+              headings = Object.keys(allData[0] as object);
+              reportData = allData as Record<string, any>[];
+            }
+          }
+          break;
+        }
+        case 'xlsx': {
+          const buffer = content as Buffer;
+          const workbook = XLSX.read(buffer, { type: 'buffer' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const xlsxData = XLSX.utils.sheet_to_json(firstSheet);
+          if (xlsxData.length > 0) {
+            headings = Object.keys(xlsxData[0] as object);
+            reportData = xlsxData as Record<string, any>[];
+          }
+          break;
+        }
+        default:
+          throw new Response("Unsupported format", { status: 400 });
+      }
     }
 
     return json({
@@ -227,18 +351,7 @@ export default function ReportView() {
     }
   };
 
-  const handleRegenerate = () => {
-    try {
-      navigate(`/app/reports/manual-export?reportId=${report.id}`);
-      setToastMessage("Régénération du rapport en cours...");
-      setToastError(false);
-      setToastActive(true);
-    } catch (error) {
-      setToastMessage("Erreur lors de la régénération du rapport");
-      setToastError(true);
-      setToastActive(true);
-    }
-  };
+
 
   const handleDelete = async () => {
     if (confirm("Are you sure you want to delete this report?")) {
@@ -315,10 +428,10 @@ export default function ReportView() {
                     onClick={handleDownload}
                     disabled={report.status !== ReportStatus.COMPLETED || isDownloading}
                     loading={isDownloading}
+                    icon={<Icon source={ArrowDownIcon} />}
                   >
                     Télécharger
                   </Button>
-                  <Button onClick={handleRegenerate}>Re-générer</Button>
                   <Button tone="critical" onClick={handleDelete}>
                     Supprimer
                   </Button>
@@ -338,6 +451,9 @@ export default function ReportView() {
               )}
             </BlockStack>
           </Card>
+        </Layout.Section>
+        <Layout.Section>
+          <Footer />
         </Layout.Section>
       </Layout>
       {toastActive && (

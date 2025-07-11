@@ -7,30 +7,21 @@ import {
   FormLayout,
   TextField,
   Select,
-  DatePicker,
   Text,
-  Checkbox,
   LegacyStack,
-  Button,
   Tag,
-  InlineStack,
   Toast,
   Frame,
   Popover,
   Icon,
-  Button as PolarisButton,
   Text as PolarisText,
   Banner,
 } from "@shopify/polaris";
 import { useState, useCallback, useEffect } from "react";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
-import { BiSaveBtn } from "../components/Buttons/BiSaveBtn";
 import { BiSimpleBtn } from "../components/Buttons/BiSimpleBtn";
 import { OrderIcon, CalendarIcon } from "@shopify/polaris-icons";
-import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
-import * as XLSX from 'xlsx';
 import type { ReportStatus as ReportStatusType, ExportFormat as ExportFormatType } from "@prisma/client";
 
 // Import sécurisé d'ReportStatus et ExportFormat
@@ -52,10 +43,7 @@ import { ShopifyCustomerService } from "../models/ShopifyCustomer.service";
 import { ShopifyOrderService } from "../models/ShopifyOrder.service";
 import { ShopifyRefundService } from "../models/ShopifyRefund.service";
 import { ShopifyTaxService } from "../models/ShopifyTax.service";
-import { MappingService } from "../services/mapping.service";
 import { ReportService } from "../services/report.service";
-import type { ColumnMapping } from "../types/ColumnMappingType";
-import type { ReportMapping } from "../types/ReportMappingType";
 import { getMimeType, downloadFilesFromResults, downloadZipFromResults } from "../utils/download";
 import { BluePolarisCheckbox } from "../components/Buttons/BluePolarisCheckbox";
 import { BiBtn } from "../components/Buttons/BiBtn";

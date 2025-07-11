@@ -10,7 +10,6 @@ import {
   BlockStack,
   InlineStack,
   Icon,
-  Toast,
 } from '@shopify/polaris';
 import { PlusIcon, AlertCircleIcon, NoteIcon, ChatIcon} from '@shopify/polaris-icons';
 // ConversationIcon ou MessageIcon n'est pas certain, on testera l'un puis l'autre
@@ -21,86 +20,13 @@ const APP_NAME = 'Ledger Xport'; // À personnaliser si besoin
 
 const FeedbackSection: React.FC = () => {
   const [chatOpen, setChatOpen] = useState(false);
-  const [toastActive, setToastActive] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const [toastError, setToastError] = useState(false);
 
-  const handleAppReview = async () => {
-    try {
-      // Vérifier si nous sommes dans l'admin Shopify
-      const host = new URLSearchParams(window.location.search).get('host');
-      if (!host) {
-        setToastMessage('Cette fonctionnalité n\'est disponible que dans l\'admin Shopify');
-        setToastError(true);
-        setToastActive(true);
-        return;
-      }
+  const [showReviewMessage, setShowReviewMessage] = useState(false);
 
-      // Note: L'API Reviews de Shopify App Bridge est disponible à partir de la version 4.0.0
-      // Le projet utilise actuellement la version 3.7.10, donc on utilise le fallback App Store
-      // TODO: Mettre à jour @shopify/app-bridge vers v4+ pour utiliser l'API Reviews native
-      
-      console.log('Redirection vers l\'App Store pour laisser un avis');
-      window.open('https://apps.shopify.com/ledger-xport', '_blank');
-      setToastMessage('Redirection vers l\'App Store pour laisser un avis');
-      setToastError(false);
-      setToastActive(true);
-      
-      // Code pour l'API Reviews (à activer après mise à jour vers App Bridge v4+)
-      /*
-      const { createApp } = await import('@shopify/app-bridge');
-      const { reviews } = await import('@shopify/app-bridge/actions');
-
-      const app = createApp({
-        apiKey: process.env.SHOPIFY_API_KEY || '',
-        host: host,
-      });
-
-      const reviewsModal = reviews(app);
-      const result = await reviewsModal.dispatch(reviews.Action.OPEN);
-
-      if (!result.success) {
-        let errorMessage = 'Impossible d\'afficher la fenêtre d\'évaluation';
-        
-        switch (result.code) {
-          case 'mobile-app':
-            errorMessage = 'La fenêtre d\'évaluation n\'est pas prise en charge sur les appareils mobiles';
-            break;
-          case 'already-reviewed':
-            errorMessage = 'Vous avez déjà évalué cette application';
-            break;
-          case 'annual-limit-reached':
-            errorMessage = 'La fenêtre d\'évaluation a déjà été affichée le nombre maximal de fois cette année';
-            break;
-          case 'cooldown-period':
-            errorMessage = 'La fenêtre d\'évaluation a déjà été affichée récemment (période de refroidissement de 60 jours)';
-            break;
-          case 'merchant-ineligible':
-            errorMessage = 'Vous n\'êtes pas autorisé à évaluer cette application';
-            break;
-          default:
-            errorMessage = `${result.message || 'Erreur inconnue'}`;
-        }
-        
-        setToastMessage(errorMessage);
-        setToastError(true);
-        setToastActive(true);
-        console.log(`Review modal not displayed. Reason: ${result.code}: ${result.message}`);
-      } else {
-        setToastMessage('Fenêtre d\'évaluation affichée avec succès');
-        setToastError(false);
-        setToastActive(true);
-      }
-      */
-    } catch (error) {
-      console.error('Error requesting review:', error);
-      setToastMessage('Erreur lors de l\'ouverture de la fenêtre d\'évaluation');
-      setToastError(true);
-      setToastActive(true);
-    }
+  const handleAppReview = () => {
+    // Fonctionnalité en cours de développement
+    setShowReviewMessage(true);
   };
-
-  const toggleToast = () => setToastActive((active) => !active);
 
   return (
     <Box paddingBlockStart="400" paddingBlockEnd="400">
@@ -161,15 +87,36 @@ const FeedbackSection: React.FC = () => {
         </Modal.Section>
       </Modal>
 
-      {/* Toast pour les messages de feedback */}
-      {toastActive && (
-        <Toast
-          content={toastMessage}
-          error={toastError}
-          onDismiss={toggleToast}
-          duration={4000}
-        />
-      )}
+      {/* Modal Review Feature */}
+      <Modal
+        open={showReviewMessage}
+        onClose={() => setShowReviewMessage(false)}
+        title="Fonctionnalité en cours de développement"
+        primaryAction={{ content: 'Fermer', onAction: () => setShowReviewMessage(false) }}
+      >
+        <Modal.Section>
+          <BlockStack gap="300">
+            <Text as="p">
+              La fonctionnalité d'avis intégrée est actuellement en cours de développement.
+            </Text>
+            <Text as="p" tone="subdued">
+              Nous travaillons sur l'intégration de l'API Reviews de Shopify App Bridge pour vous offrir une expérience d'évaluation fluide directement dans l'interface d'administration.
+            </Text>
+            <Text as="p">
+              En attendant, vous pouvez toujours laisser un avis sur notre page App Store.
+            </Text>
+            <Button 
+              onClick={() => {
+                window.open('https://apps.shopify.com/ledger-xport', '_blank');
+                setShowReviewMessage(false);
+              }}
+              variant="primary"
+            >
+              Aller sur l'App Store
+            </Button>
+          </BlockStack>
+        </Modal.Section>
+      </Modal>
 
       {/* Responsive: stack columns on mobile */}
       <style>{`

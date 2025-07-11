@@ -120,6 +120,61 @@ export class ReportService {
     }
   }
 
+  async generateReportContent(options: {
+    shop: PrismaType.ShopGetPayload<{ include: { fiscalConfig: true } }>,
+    dataType: string,
+    format: ExportFormatType,
+    startDate: string,
+    endDate: string,
+  }) {
+    const { shop, dataType, format, startDate, endDate } = options;
+    const { fiscalConfig } = shop;
+
+    if (!fiscalConfig) {
+      throw new Error("Fiscal configuration is missing for this shop.");
+    }
+
+    let data: any[] | null = null;
+    try {
+      switch (dataType) {
+        case "ventes":
+          data = await ShopifyOrderService.getOrders(this.admin, startDate, endDate);
+          break;
+        case "clients":
+          data = await ShopifyCustomerService.getCustomers(this.admin, startDate, endDate);
+          break;
+        case "remboursements":
+          data = await ShopifyRefundService.getRefunds(this.admin, startDate, endDate);
+          break;
+        case "taxes":
+          data = await ShopifyTaxService.getTaxes(this.admin, startDate, endDate);
+          break;
+      }
+
+      if (!data || data.length === 0) {
+        return {
+          content: null,
+        };
+      }
+
+      const reportContent = ReportService.generateReport(
+        data,
+        fiscalConfig.code,
+        format,
+        dataType,
+        fiscalConfig.separator,
+      );
+
+      return {
+        content: reportContent,
+      };
+
+    } catch (error: any) {
+      console.error(`Error generating report content for ${dataType}:`, error);
+      throw error;
+    }
+  }
+
   async generateAndSaveReport(options: {
     shop: PrismaType.ShopGetPayload<{ include: { fiscalConfig: true } }>,
     dataType: string,
@@ -187,12 +242,18 @@ export class ReportService {
         fiscalConfig.separator,
       );
 
-      // Plus d'écriture sur disque !
+      // Sauvegarder le fichier sur le disque pour la cohérence
+      const exportDir = join(process.cwd(), 'reports');
+      await fs.mkdir(exportDir, { recursive: true });
+      const filePath = join(exportDir, report.fileName);
+      await fs.writeFile(filePath, reportContent);
+      
       await prisma.report.update({
         where: { id: report.id },
         data: {
           status: ReportStatus.COMPLETED,
           fileSize: Buffer.byteLength(reportContent),
+          filePath: filePath,
         },
       });
 

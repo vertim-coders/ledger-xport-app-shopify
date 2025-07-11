@@ -5,13 +5,10 @@ import {
   Layout,
   Card,
   Text,
-  LegacyStack,
   Button as PolarisButton,
   Button,
-  Badge,
   DataTable,
   Icon,
-  Thumbnail,
   EmptyState,
   Toast,
 } from "@shopify/polaris";
@@ -423,7 +420,6 @@ export default function Dashboard() {
                       typeLabel: r.type === "scheduled" ? "Planifié" : "Généré",
                       downloadDisabled: r.type === "scheduled" && r.status !== "COMPLETED"
                     }))}
-                    onDownload={(id, url) => window.location.href = url}
                     onSeeAll={() => navigate("/app/reports/history")}
                     onView={id => navigate(`/app/reports/view/${id}`)}
                   />

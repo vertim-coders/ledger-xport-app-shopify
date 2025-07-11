@@ -30,7 +30,21 @@ const Footer: React.FC = () => (
         </div>
       </Layout.Section>
     </Layout>
-    <Box paddingBlockStart="600">
+    
+    {/* Barre explicative pour les liens */}
+    <div style={{ 
+      paddingTop: '16px', 
+      paddingBottom: '8px', 
+      marginTop: '16px',
+      borderTop: '1px solid var(--p-border-subdued)',
+      textAlign: 'center'
+    }}>
+      <Text as="p" tone="subdued" variant="bodyXs">
+        Liens utiles et ressources
+      </Text>
+    </div>
+    
+    <Box paddingBlockStart="400">
       <Text as="p" tone="subdued" variant="bodyXs" alignment="center">
         &copy; {new Date().getFullYear()}. LedgerXport. All rights reserved.
       </Text>

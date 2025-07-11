@@ -7,16 +7,10 @@ import {
   FormLayout,
   TextField,
   Select,
-  Button,
   Text,
   Toast,
   Frame,
-  Banner,
-  List,
   LegacyStack,
-  Tabs,
-  Collapsible,
-  ButtonGroup,
 } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";

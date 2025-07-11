@@ -2,7 +2,6 @@ import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from "@remix-r
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
 import { promises as fs } from "fs";
-import type { ReportStatus as ReportStatusType } from "@prisma/client";
 import { ReportService } from "../services/report.service";
 
 // Import sécurisé de ReportStatus
@@ -43,21 +42,19 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     throw new Response("Report is not ready for download", { status: 400 });
   }
 
-  // Générer le rapport à la volée (en mémoire)
+  // Générer le contenu du rapport sans sauvegarder (juste pour le téléchargement)
   try {
     const reportService = new ReportService(admin);
     if (!report.startDate || !report.endDate) {
       throw new Response("Report dates are missing", { status: 400 });
     }
-    // On regénère le contenu à la volée (pas de lecture disque)
-    const generated = await reportService.generateAndSaveReport({
+    // On génère le contenu à la volée sans sauvegarder (pas de nouveau rapport)
+    const generated = await reportService.generateReportContent({
       shop: report.shop,
       dataType: report.dataType,
       format: report.format,
       startDate: report.startDate.toISOString(),
       endDate: report.endDate.toISOString(),
-      fileName: report.fileName,
-      type: report.type === 'scheduled' ? 'scheduled' : 'manual',
     });
     const fileContent = generated.content;
 

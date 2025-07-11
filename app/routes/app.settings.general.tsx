@@ -7,12 +7,10 @@ import {
   FormLayout,
   TextField,
   Select,
-  Button,
   Text,
   Toast,
   Frame,
   Banner,
-  List,
   LegacyStack,
   Checkbox,
   BlockStack,
@@ -38,11 +36,7 @@ import { useState, useEffect } from "react";
 import fiscalRegimesData from "../data/fiscal-regimes.json";
 import currenciesData from "../data/currencies.json";
 import { BiSaveBtn } from "../components/Buttons/BiSaveBtn";
-import { BiSimpleBtn } from "../components/Buttons/BiSimpleBtn";
-import { PlusIcon } from "@shopify/polaris-icons";
 import { BiBtn } from "../components/Buttons/BiBtn";
-import shopify from "../shopify.server";
-import type { Settings } from "../types/SettingsType";
 import ftpService from "../services/ftp.service";
 import { encrypt, decrypt } from "../utils/crypto.server";
 import Footer from "app/components/Footer";

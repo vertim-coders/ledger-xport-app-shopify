@@ -4,21 +4,12 @@ import {
   Page,
   Layout,
   Card,
-  FormLayout,
   DatePicker,
   Select,
   TextField,
-  Button,
   Text,
-  Checkbox,
   BlockStack,
   InlineStack,
-  Badge,
-  Icon,
-  Thumbnail,
-  Modal,
-  Banner,
-  type BadgeProps,
   Toast,
 } from "@shopify/polaris";
 import { useState, useCallback, useEffect } from "react";
@@ -559,6 +550,25 @@ export default function ManualExportPage() {
         .Polaris-Checkbox__Input:checked + .Polaris-Checkbox__Backdrop .Polaris-Checkbox__Icon {
           color: #0066FF !important;
           fill: #0066FF !important;
+        }
+        
+        /* Style pour les points de sélection du DatePicker */
+        .Polaris-DatePicker__Day--selected {
+          background-color: #0066FF !important;
+          color: white !important;
+        }
+        
+        .Polaris-DatePicker__Day--selected:hover {
+          background-color: #0052CC !important;
+        }
+        
+        .Polaris-DatePicker__Day--inRange {
+          background-color: #E3F2FD !important;
+          color: #0066FF !important;
+        }
+        
+        .Polaris-DatePicker__Day--inRange:hover {
+          background-color: #BBDEFB !important;
         }
       `}</style>
     <Page
