@@ -304,7 +304,7 @@ export default function Dashboard() {
               ? "1fr 1fr"
               : "repeat(4, 1fr)",
             gap: 24,
-            marginBottom: 32,
+            marginBottom: 20,
             width: "100%"
           }}>
             <StatCard

@@ -11,7 +11,8 @@ import {
   InlineStack,
   Icon,
 } from '@shopify/polaris';
-import { PlusIcon, AlertCircleIcon, NoteIcon, ChatIcon} from '@shopify/polaris-icons';
+import { PlusIcon, AlertCircleIcon, NoteIcon, ChatIcon, ExternalIcon, EmailIcon, PlayIcon, CalendarIcon } from '@shopify/polaris-icons';
+import { Crisp } from "crisp-sdk-web";
 // ConversationIcon ou MessageIcon n'est pas certain, on testera l'un puis l'autre
 // import { ConversationIcon } from '@shopify/polaris-icons';
 // import { MessageIcon } from '@shopify/polaris-icons';
@@ -60,33 +61,49 @@ const FeedbackSection: React.FC = () => {
           <div style={{ minWidth: 0 }}>
             <BlockStack gap="200">
               <Text as="h3" variant="headingMd">Entrer en contact</Text>
-              <Button onClick={() => setChatOpen(true)} icon={<Icon source={ChatIcon} />}>
+              <Button onClick={() => {
+                Crisp.chat.open();
+              }} icon={<Icon source={ChatIcon} />}>
                 Démarrer un chat en direct
               </Button>
-              <Link url="mailto:support@ledgerxport.com" external>
-                Envoyez-nous un email
-              </Link>
-              <Link url="https://help.ledgerxport.com" external>
-                Visitez le centre d'aide
-              </Link>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 8,
+                marginTop: 8,
+                marginLeft: 35
+              }}>
+                <Link url="mailto:support@ledgerxport.com" external>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <Icon source={EmailIcon} tone="base" />
+                    Envoyez-nous un email
+                  </span>
+                </Link>
+                <Link url="/demo" external={false}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <Icon source={PlayIcon} tone="base" />
+                    Accéder à la démo
+                  </span>
+                </Link>
+                <Link url="https://help.ledgerxport.com" external>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <Icon source={ExternalIcon} tone="base" />
+                    Visitez le centre d'aide
+                  </span>
+                </Link>
+                <Link url="/plans" external={false}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <Icon source={CalendarIcon} tone="base" />
+                    Accéder au plan
+                  </span>
+                </Link>
+              </div>
             </BlockStack>
           </div>
         </div>
       </Card>
 
       {/* Modal Live Chat */}
-      <Modal
-        open={chatOpen}
-        onClose={() => setChatOpen(false)}
-        title="Live Chat"
-        primaryAction={{ content: 'Close', onAction: () => setChatOpen(false) }}
-      >
-        <Modal.Section>
-          {/* Ici, intégrer le widget de chat réel (Shopify App Bridge, Intercom, etc.) */}
-          <Text as="p">Live chat coming soon! (Intégration réelle à faire ici)</Text>
-        </Modal.Section>
-      </Modal>
-
       {/* Modal Review Feature */}
       <Modal
         open={showReviewMessage}

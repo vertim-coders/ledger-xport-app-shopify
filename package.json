@@ -46,6 +46,7 @@
     "@types/xml2js": "^0.4.14",
     "basic-ftp": "^5.0.5",
     "chart.js": "^4.5.0",
+    "crisp-sdk-web": "^1.0.25",
     "csv-parse": "^5.6.0",
     "csv-writer": "^1.6.0",
     "exceljs": "^4.4.0",
