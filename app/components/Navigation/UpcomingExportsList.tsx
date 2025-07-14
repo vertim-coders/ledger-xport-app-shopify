@@ -1,6 +1,7 @@
 import React from "react";
 import { Card, Text, Icon, Divider, Box, Button } from "@shopify/polaris";
 import { CalendarIcon } from "@shopify/polaris-icons";
+import { useTranslation } from "react-i18next";
 
 export interface UpcomingExport {
   id: string;
@@ -14,12 +15,13 @@ interface UpcomingExportsListProps {
 }
 
 export const UpcomingExportsList: React.FC<UpcomingExportsListProps> = ({ exports, onPlan }) => {
+  const { t } = useTranslation();
   return (
     <div style={{ borderRadius: 16, boxShadow: "0 2px 12px 0 rgba(0,0,0,0.06)", background: "#fff", minHeight: 240 }}>
       <Card padding="0">
         <Box paddingBlock="400" paddingInline="400">
           <Text variant="headingMd" as="h2" fontWeight="bold">
-            Les prochains exports
+            {t('upcomingExportsList.title')}
           </Text>
         </Box>
         <Divider />
@@ -29,18 +31,18 @@ export const UpcomingExportsList: React.FC<UpcomingExportsListProps> = ({ export
               <Icon source={CalendarIcon} tone="subdued" />
               <span style={{ display: "block", marginTop: 12 }}>
                 <Text as="span" variant="bodyMd" fontWeight="medium">
-                  Aucun export planifié
+                  {t('upcomingExportsList.noScheduledExport')}
                 </Text>
               </span>
               <span style={{ display: "block" }}>
                 <Text as="span" variant="bodySm" tone="subdued">
-                  Les exports planifiés apparaîtront ici.
+                  {t('upcomingExportsList.scheduledWillAppear')}
                 </Text>
               </span>
               <div style={{ marginTop: 20 }}>
                 <span style={{ background: "#111", borderRadius: 8, display: "inline-block" }}>
                   <Button variant="primary" onClick={onPlan}>
-                    Planifier un export
+                    {t('upcomingExportsList.planExport')}
                   </Button>
                 </span>
               </div>
@@ -61,13 +63,14 @@ export const UpcomingExportsList: React.FC<UpcomingExportsListProps> = ({ export
                       </span>
                       <span style={{ display: "block", marginTop: 2 }}>
                         <Text as="span" variant="bodySm" tone="subdued">
-                          {new Date(exp.scheduledAt).toLocaleString("fr-FR", { dateStyle: "medium", timeStyle: "short" })}
+                          {/* TODO: internationaliser la date si besoin */}
+                          {new Date(exp.scheduledAt).toLocaleString()}
                         </Text>
                       </span>
                     </div>
                     <span style={{ background: "#000000", borderRadius: 8, display: "inline-block" }}>
                       <Button variant="primary">
-                        Modifier
+                        {t('actions.edit')}
                       </Button>
                     </span>
                   </div>

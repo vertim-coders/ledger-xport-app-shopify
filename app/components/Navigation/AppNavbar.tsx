@@ -9,62 +9,66 @@ import {
   StoreIcon,
 } from "@shopify/polaris-icons";
 import { useNavigate, useLocation } from "@remix-run/react";
+import { useTranslation } from 'react-i18next';
 
 // Personnalisation facile : couleurs, textes, icônes
 const SIDEBAR_BG = "#D3D3D3"; // Couleur principale
 const SIDEBAR_WIDTH = 260;
 const LOGO_SRC = "/assets/LedgerXportLogo.png";
 const LOGO_ALT = "LedgerXport Logo";
-const SUBTEXT = "Sales Management Dashboard";
+export function AppNavbar({ open = true, onClose }: { open?: boolean; onClose?: () => void }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isActive = (url: string) => location.pathname === url;
+
+  const SUBTEXT = t('nav.sidebarSubtext', 'Sales Management Dashboard');
 
 const navigationItems = [
   {
-    label: "Accueil",
+      label: t('nav.home', 'Accueil'),
     icon: HomeIcon,
     url: "/app",
   },
   {
-    label: "Configuration",
+      label: t('nav.configuration', 'Configuration'),
     icon: SettingsIcon,
     url: "/app/settings/company-fiscal-regime",
   },
   {
-    label: "Tableau de bord",
+      label: t('nav.dashboard', 'Tableau de bord'),
     icon: ProfileIcon,
     url: "/app/dashboard",
   },
   {
-    label: "Exports manuels",
+      label: t('nav.manualExports', 'Exports manuels'),
     icon: OrderIcon,
     url: "/app/reports/manual-export",
   },
   {
-    label: "Exports planifiés",
+      label: t('nav.scheduledExports', 'Exports planifiés'),
     icon: CalendarIcon,
     url: "/app/reports/schedule",
   },
   {
-    label: "Toutes les planifications",
+      label: t('nav.allSchedules', 'Toutes les planifications'),
     icon: CalendarIcon,
     url: "/app/reports/scheduled-list",
   },
   {
-    label: "Historiques des exports",
+      label: t('nav.exportHistory', 'Historiques des exports'),
     icon: StoreIcon,
     url: "/app/reports/history",
   },
 ];
 
 const settingsItem = {
-  label: "Paramètres généraux",
+    label: t('nav.generalSettings', 'Paramètres généraux'),
   icon: SettingsIcon,
   url: "/app/settings/general",
 };
 
-export function AppNavbar({ open = true, onClose }: { open?: boolean; onClose?: () => void }) {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const isActive = (url: string) => location.pathname === url;
+
 
   // Responsive: détecte si mobile et si la hauteur est faible
   const [isMobile, setIsMobile] = React.useState(false);

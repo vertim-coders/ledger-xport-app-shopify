@@ -35,6 +35,7 @@ model Shop {
   id              String                @id @default(cuid())
   shopifyDomain   String                @unique
   accessToken     String
+  language        String                @default("fr")
   fiscalConfig    FiscalConfiguration?
   reports         Report[]
   generalSettings GeneralSettings?

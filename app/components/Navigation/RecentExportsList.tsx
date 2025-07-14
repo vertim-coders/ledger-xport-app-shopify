@@ -2,6 +2,7 @@ import React from "react";
 import { Card, Text, Button, Icon, Divider, Box, Badge, Tooltip, Toast } from "@shopify/polaris";
 import { ArrowDownIcon } from "@shopify/polaris-icons";
 import { downloadFileFromUrl } from "../../utils/download";
+import { useTranslation } from "react-i18next";
 
 export interface RecentExport {
   id: string;
@@ -28,6 +29,7 @@ export const RecentExportsList: React.FC<RecentExportsListProps> = ({ exports, o
   const [toastActive, setToastActive] = React.useState(false);
   const [toastMessage, setToastMessage] = React.useState("");
   const [toastError, setToastError] = React.useState(false);
+  const { t } = useTranslation();
 
   React.useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth <= 900);
@@ -43,12 +45,12 @@ export const RecentExportsList: React.FC<RecentExportsListProps> = ({ exports, o
     setLocalDownloading(downloadingId);
     try {
       await downloadFileFromUrl(exportItem.downloadUrl, exportItem.filename);
-      setToastMessage("Fichier téléchargé avec succès");
+      setToastMessage(t('toast.downloadSuccess'));
       setToastError(false);
       setToastActive(true);
     } catch (error) {
       console.error('Download error:', error);
-      setToastMessage("Erreur lors du téléchargement");
+      setToastMessage(t('toast.downloadError'));
       setToastError(true);
       setToastActive(true);
     } finally {
@@ -70,7 +72,7 @@ export const RecentExportsList: React.FC<RecentExportsListProps> = ({ exports, o
           <div style={{ display: "flex", flexDirection: "column" }}>
             {exports.length === 0 && (
               <Box paddingBlock={isMobile ? "200" : "400"} paddingInline={isMobile ? "200" : "400"}>
-                <Text as="span" variant="bodyMd" tone="subdued">Aucun export récent</Text>
+                <Text as="span" variant="bodyMd" tone="subdued">{t('recentExportsList.noRecentExport')}</Text>
               </Box>
             )}
             {exports.map((exp, idx) => (
@@ -106,40 +108,43 @@ export const RecentExportsList: React.FC<RecentExportsListProps> = ({ exports, o
                         {exp.typeLabel && (
                           <span style={{ marginLeft: 10 }}>
                             <Badge tone={exp.type === "scheduled" ? "info" : "success"}>
-                              {exp.typeLabel}
+                              {exp.type === "scheduled"
+                                ? t('status.scheduled')
+                                : t('status.success')}
                             </Badge>
                           </span>
                         )}
                       </span>
                       <span style={{ display: "block", marginTop: 2 }}>
                         <Text as="span" variant="bodySm" tone="subdued">
-                          {new Date(exp.createdAt).toLocaleString("fr-FR", { dateStyle: "medium", timeStyle: "short" })}
+                          {/* TODO: internationaliser la date si besoin */}
+                          {new Date(exp.createdAt).toLocaleString()}
                         </Text>
                       </span>
                     </div>
                     <div onClick={e => e.stopPropagation()} style={{ width: isMobile ? "100%" : undefined, marginTop: isMobile ? 8 : 0 }}>
                       {exp.downloadDisabled ? (
-                        <Tooltip content="Ce rapport planifié n'a pas encore été exécuté.">
+                        <Tooltip content={t('recentExportsList.scheduledNotRun')}>
                           <Button
                             icon={<Icon source={ArrowDownIcon} />}
                             disabled
-                            accessibilityLabel={`Téléchargement désactivé`}
+                            accessibilityLabel={t('recentExportsList.downloadDisabled')}
                             fullWidth={isMobile}
                           >
-                            Télécharger
+                            {t('actions.download')}
                           </Button>
                         </Tooltip>
                       ) : (
                         <Button
                           icon={<Icon source={ArrowDownIcon} />}
                           variant="primary"
-                          accessibilityLabel={`Télécharger ${exp.filename}`}
+                          accessibilityLabel={t('recentExportsList.downloadLabel', { filename: exp.filename })}
                           fullWidth={isMobile}
                           loading={localDownloading === exp.id || isDownloading === exp.id}
                           disabled={localDownloading === exp.id || isDownloading === exp.id}
                           onClick={() => handleDownload(exp)}
                         >
-                          Télécharger
+                          {t('actions.download')}
                         </Button>
                       )}
                     </div>
@@ -152,7 +157,7 @@ export const RecentExportsList: React.FC<RecentExportsListProps> = ({ exports, o
           <Divider />
           <Box paddingBlock={isMobile ? "200" : "300"} paddingInline={isMobile ? "200" : "400"}>
             <div style={{ textAlign: "center" }}>
-              <Button variant="tertiary" onClick={onSeeAll} fullWidth={isMobile}>Voir tout</Button>
+              <Button variant="tertiary" onClick={onSeeAll} fullWidth={isMobile}>{t('actions.seeAll')}</Button>
             </div>
           </Box>
         </Card>

@@ -9,6 +9,7 @@ import { PlayIcon, PauseCircleIcon, DeleteIcon } from "@shopify/polaris-icons";
 import { BiSimpleBtn } from "../components/Buttons/BiSimpleBtn";
 import { CalendarIcon } from "@shopify/polaris-icons";
 import Footer from "../components/Footer";
+import { useTranslation } from "react-i18next";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -44,12 +45,13 @@ export default function ScheduledListPage() {
   const { scheduledTasks } = useLoaderData<typeof loader>();
   const fetcher = useFetcher();
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   const rows = scheduledTasks.map((task: any) => [
-    <Text variant="bodyMd" as="span" key="type">{task.report?.dataType}</Text>,
-    <Text variant="bodyMd" as="span" key="freq">{task.frequency}</Text>,
+    <Text variant="bodyMd" as="span" key="type">{t(`dataType.${task.report?.dataType}`)}</Text>,
+    <Text variant="bodyMd" as="span" key="freq">{t(`frequency.${task.frequency}`)}</Text>,
     <Text variant="bodyMd" as="span" key="time">{task.executionTime}</Text>,
-    <Badge key="status" tone={statusTones[task.status] || undefined}>{task.status}</Badge>,
+    <Badge key="status" tone={statusTones[task.status] || undefined}>{t(`status.${task.status}`)}</Badge>,
     <Text variant="bodyMd" as="span" key="execs">{task.tasks.filter((t: any) => t.status === "COMPLETED").length}</Text>,
     <InlineStack key="actions" gap="200">
       {task.status !== "ACTIVE" && (
@@ -57,7 +59,7 @@ export default function ScheduledListPage() {
           <input type="hidden" name="actionType" value="updateStatus" />
           <input type="hidden" name="id" value={task.id} />
           <input type="hidden" name="status" value="ACTIVE" />
-          <Button icon={<Icon source={PlayIcon} />} size="slim" submit>Activer</Button>
+          <Button icon={<Icon source={PlayIcon} />} size="slim" submit>{t('actions.activate')}</Button>
         </fetcher.Form>
       )}
       {task.status === "ACTIVE" && (
@@ -65,18 +67,18 @@ export default function ScheduledListPage() {
           <input type="hidden" name="actionType" value="updateStatus" />
           <input type="hidden" name="id" value={task.id} />
           <input type="hidden" name="status" value="PAUSED" />
-          <Button icon={<Icon source={PauseCircleIcon} />} size="slim" submit>Pause</Button>
+          <Button icon={<Icon source={PauseCircleIcon} />} size="slim" submit>{t('actions.pause')}</Button>
         </fetcher.Form>
       )}
-      <Button icon={<Icon source={DeleteIcon} />} size="slim" tone="critical" onClick={() => setDeleteId(task.id)}>Supprimer</Button>
+      <Button icon={<Icon source={DeleteIcon} />} size="slim" tone="critical" onClick={() => setDeleteId(task.id)}>{t('actions.delete')}</Button>
     </InlineStack>
   ]);
 
   return (
-    <Page title="Plannifications programmées">
+    <Page title={t('scheduledList.title')}>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
         <BiSimpleBtn
-          title="Planifier un rapport"
+          title={t('scheduledList.planReport')}
           icon={<Icon source={CalendarIcon} tone="inherit" />}
           onClick={() => window.location.assign('/app/reports/schedule')}
         />
@@ -84,26 +86,33 @@ export default function ScheduledListPage() {
       <Card>
         <DataTable
           columnContentTypes={["text", "text", "text", "text", "numeric", "text"]}
-          headings={["Type", "Fréquence", "Heure", "Statut", "Exécutions", "Actions"]}
+          headings={[
+            t('scheduledList.type'),
+            t('scheduledList.frequency'),
+            t('scheduledList.time'),
+            t('scheduledList.status'),
+            t('scheduledList.executions'),
+            t('scheduledList.actions'),
+          ]}
           rows={rows}
         />
       </Card>
       <Modal
         open={!!deleteId}
         onClose={() => setDeleteId(null)}
-        title="Supprimer la plannification ?"
+        title={t('scheduledList.deleteTitle')}
         primaryAction={{
-          content: "Supprimer",
+          content: t('actions.delete'),
           destructive: true,
           onAction: () => {
             fetcher.submit({ actionType: "delete", id: deleteId }, { method: "post" });
             setDeleteId(null);
           },
         }}
-        secondaryActions={[{ content: "Annuler", onAction: () => setDeleteId(null) }]}
+        secondaryActions={[{ content: t('actions.cancel'), onAction: () => setDeleteId(null) }]}
       >
         <Modal.Section>
-          <Text as="span">Êtes-vous sûr de vouloir supprimer cette plannification ? Cette action est irréversible.</Text>
+          <Text as="span">{t('scheduledList.deleteConfirm')}</Text>
         </Modal.Section>
       </Modal>
       <Layout.Section>

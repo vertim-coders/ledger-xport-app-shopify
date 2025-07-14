@@ -10,6 +10,7 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+import { useTranslation } from "react-i18next";
 
 ChartJS.register(
   CategoryScale,
@@ -28,6 +29,7 @@ interface MonthlyReportsChartProps {
 export const MonthlyReportsChart: React.FC<MonthlyReportsChartProps> = ({ data }) => {
   // Responsive: détecte si mobile
   const [isMobile, setIsMobile] = React.useState(false);
+  const { t } = useTranslation();
   React.useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth <= 900);
     checkMobile();
@@ -39,7 +41,7 @@ export const MonthlyReportsChart: React.FC<MonthlyReportsChartProps> = ({ data }
     labels: data.map((item) => item.month),
     datasets: [
       {
-        label: "Rapports générés",
+        label: t('monthlyReportsChart.generatedReports'),
         data: data.map((item) => item.reports),
         fill: false,
         borderColor: "#0066FF",
@@ -71,8 +73,8 @@ export const MonthlyReportsChart: React.FC<MonthlyReportsChartProps> = ({ data }
         cornerRadius: 8,
         displayColors: false,
         callbacks: {
-          title: (context: any) => `Mois : ${context[0].label}`,
-          label: (context: any) => `Rapports : ${context.parsed.y}`,
+          title: (context: any) => `${t('monthlyReportsChart.month')} : ${context[0].label}`,
+          label: (context: any) => `${t('monthlyReportsChart.reports')} : ${context.parsed.y}`,
         },
       },
     },

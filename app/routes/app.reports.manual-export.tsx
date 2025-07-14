@@ -57,6 +57,7 @@ import type { ReportMapping } from "../types/ReportMappingType";
 import { getMimeType, downloadFilesFromResults, downloadZipFromResults } from "../utils/download";
 import React from 'react';
 import { BluePolarisCheckbox } from "../components/Buttons/BluePolarisCheckbox";
+import { useTranslation } from 'react-i18next';
 
 // Frontend helper functions for display purposes (mirroring backend logic)
 const defaultMappingsFrontend: Record<string, Record<string, string>> = {
@@ -348,6 +349,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 export default function ManualExportPage() {
   const { fiscalRegime } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
+  const { t } = useTranslation();
 
   const [selectedDates, setSelectedDates] = useState<DateRange>(() => {
     const today = new Date();
@@ -394,7 +396,7 @@ export default function ManualExportPage() {
           // Generate filename for newly selected type
           const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
           const format = selectedFormat.toLowerCase().replace(/^\./, '');
-          newFileNames[key] = `ledgerxport-${fiscalRegime?.code || 'EXPORT'}-${key}-${selectedDates.start.toISOString().split('T')[0]}-${selectedDates.end.toISOString().split('T')[0]}-${timestamp}.${format}`;
+          newFileNames[key] = `ledgerxport-${fiscalRegime?.code || 'EXPORT'}-${DATA_TYPE_LABELS[key]}-${selectedDates.start.toISOString().split('T')[0]}-${selectedDates.end.toISOString().split('T')[0]}-${timestamp}.${format}`;
         } else {
           // Clear filename for deselected type
           newFileNames[key] = "";
@@ -430,7 +432,7 @@ export default function ManualExportPage() {
       
       // Check if it's an error response
       if ('error' in actionData) {
-        setToastMessage(`Erreur: ${actionData.error}`);
+        setToastMessage(t('toast.error', 'Erreur: {error}', { error: actionData.error }));
         setToastError(true);
         setToastActive(true);
         return;
@@ -440,28 +442,28 @@ export default function ManualExportPage() {
       if ('results' in actionData && actionData.results && actionData.results.length > 0) {
         if (actionData.results.length > 1) {
           downloadZipFromResults(actionData.results, "export-rapports.zip");
-          setToastMessage(`Rapport(s) généré(s) et téléchargé(s) avec succès (${actionData.results.length} fichiers dans un ZIP)`);
+          setToastMessage(t('toast.success', 'Rapport(s) généré(s) et téléchargé(s) avec succès ({count} fichiers dans un ZIP)', { count: actionData.results.length }));
           setToastError(false);
           setToastActive(true);
         } else {
         const downloadedCount = downloadFilesFromResults(actionData.results);
         if (downloadedCount > 0) {
-          setToastMessage(`Rapport(s) généré(s) et téléchargé(s) avec succès (${downloadedCount} fichier(s))`);
+          setToastMessage(t('toast.success', 'Rapport(s) généré(s) et téléchargé(s) avec succès ({count} fichier(s))', { count: downloadedCount }));
           setToastError(false);
           setToastActive(true);
         } else {
-          setToastMessage("Aucun rapport généré");
+          setToastMessage(t('toast.noReport', 'Aucun rapport généré'));
           setToastError(true);
           setToastActive(true);
           }
         }
       } else {
-        setToastMessage("Aucun rapport généré");
+        setToastMessage(t('toast.noReport', 'Aucun rapport généré'));
         setToastError(true);
         setToastActive(true);
       }
     }
-  }, [actionData]);
+  }, [actionData, t]);
 
   useEffect(() => {
     // For each selected data type, generate a filename with the current format
@@ -472,7 +474,7 @@ export default function ManualExportPage() {
       Object.entries(dataTypes).forEach(([key, isSelected]) => {
         if (isSelected) {
           newFileNames[key as keyof typeof newFileNames] =
-            `ledgerxport-${fiscalRegime?.code || 'EXPORT'}-${key}-${formatDate(selectedDates.start)}-${formatDate(selectedDates.end)}-${timestamp}.${cleanFormat.toLowerCase()}`;
+            `ledgerxport-${fiscalRegime?.code || 'EXPORT'}-${DATA_TYPE_LABELS[key as keyof typeof DATA_TYPE_LABELS]}-${formatDate(selectedDates.start)}-${formatDate(selectedDates.end)}-${timestamp}.${cleanFormat.toLowerCase()}`;
         } else {
           newFileNames[key as keyof typeof newFileNames] = "";
         }
@@ -544,6 +546,14 @@ export default function ManualExportPage() {
     ? generateMappingsFrontend(fiscalRegime, selectedDataTypeForDisplay) 
     : [];
 
+  // Ajout des clés de traduction pour les types de données
+  const DATA_TYPE_LABELS = {
+    ventes: t('dataType.ventes', 'Ventes'),
+    clients: t('dataType.clients', 'Clients'),
+    remboursements: t('dataType.remboursements', 'Remboursements'),
+    taxes: t('dataType.taxes', 'Taxes'),
+  };
+
   return (
     <>
       <style>{`
@@ -572,8 +582,8 @@ export default function ManualExportPage() {
         }
       `}</style>
     <Page
-      title="Export manuel"
-      backAction={{ content: "Retour", url: "/app" }}
+      title={t('manualExport.title', 'Export manuel')}
+      backAction={{ content: t('action.back', 'Retour'), url: "/app" }}
     >
       <Layout>
         <Layout.Section>
@@ -582,8 +592,8 @@ export default function ManualExportPage() {
               <div className="p-4">
                 <BlockStack gap="400">
                   <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <Text variant="headingMd" as="h1"> Période d'export </Text>
-                    <HelpIcon description="Choisissez la période sur laquelle vous souhaitez générer un export. Les dates futures ne sont pas autorisées." />
+                    <Text variant="headingMd" as="h1">{t('manualExport.period', "Période d'export")}</Text>
+                    <HelpIcon description={t('manualExport.periodHelp', "Choisissez la période sur laquelle vous souhaitez générer un export. Les dates futures ne sont pas autorisées.")} />
                   </span>
                       <DatePicker
                         month={currentMonth}
@@ -605,21 +615,21 @@ export default function ManualExportPage() {
               <div className="p-4">
                 <BlockStack gap="400">
                   <span style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: '10px' }}>
-                    <Text variant="headingMd" as="h1">Types de données</Text>
-                    <HelpIcon description="Sélectionnez les types de données à exporter : ventes, clients, remboursements ou taxes. Vous pouvez en choisir plusieurs." />
+                    <Text variant="headingMd" as="h1">{t('manualExport.dataTypes', 'Types de données')}</Text>
+                    <HelpIcon description={t('manualExport.dataTypesHelp', "Sélectionnez les types de données à exporter : ventes, clients, remboursements ou taxes. Vous pouvez en choisir plusieurs.")} />
                   </span>
                 <BlockStack gap="200">
                     {Object.entries(dataTypes).map(([key, value]) => (
                       <InlineStack key={key} gap="200">
                     <BluePolarisCheckbox
-                          label={key.charAt(0).toUpperCase() + key.slice(1)}
+                          label={DATA_TYPE_LABELS[key as keyof typeof DATA_TYPE_LABELS]}
                           checked={value}
                           onChange={() => handleDataTypeChange(key as keyof typeof dataTypes)}
                         />
                         {value && (
                           <div style={{ marginLeft: 32, minWidth: 320 }}>
                           <TextField
-                              label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>Nom du fichier<HelpIcon description="Nom du fichier généré pour ce type de données. Vous pouvez le personnaliser." /></span>}
+                              label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{t('manualExport.fileName', 'Nom du fichier')}<HelpIcon description={t('manualExport.fileNameHelp', "Nom du fichier généré pour ce type de données. Vous pouvez le personnaliser.")} /></span>}
                             value={fileNames[key as keyof typeof fileNames]}
                             onChange={(value) => setFileNames(prev => ({ ...prev, [key]: value }))}
                             autoComplete="off"
@@ -635,11 +645,11 @@ export default function ManualExportPage() {
               {fiscalRegime && (
                 <div className="p-4">
                   <span style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: '10px', marginBottom: '8px' }}>
-                    <Text variant="headingMd" as="h1">Configuration fiscale</Text>
+                    <Text variant="headingMd" as="h1">{t('manualExport.fiscalConfig', 'Configuration fiscale')}</Text>
                   </span>
                   <BlockStack gap="200">
                 <Select
-                      label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><b>Format d'export</b><HelpIcon description="Choisissez le format de fichier pour l'exportation : CSV, Excel, JSON ou XML." /></span>}
+                      label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><b>{t('manualExport.exportFormat', "Format d'export")}</b><HelpIcon description={t('manualExport.exportFormatHelp', "Choisissez le format de fichier pour l'exportation : CSV, Excel, JSON ou XML.")} /></span>}
                       options={fiscalRegime.exportFormats.map(format => ({
                         label: format.toUpperCase(),
                         value: format,
@@ -648,7 +658,7 @@ export default function ManualExportPage() {
                   value={selectedFormat}
                 />
                 <Select
-                      label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: '8px' }}><b>Logiciel compatible</b><HelpIcon description="Sélectionnez le logiciel cible pour lequel l'export sera compatible (ex : Sage, Odoo, QuickBooks, etc.)." /></span>}
+                      label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: '8px' }}><b>{t('manualExport.compatibleSoftware', 'Logiciel compatible')}</b><HelpIcon description={t('manualExport.compatibleSoftwareHelp', "Sélectionnez le logiciel cible pour lequel l'export sera compatible (ex : Sage, Odoo, QuickBooks, etc.).")} /></span>}
                       options={fiscalRegime.compatibleSoftware.map(software => ({
                         label: software,
                         value: software,
@@ -661,7 +671,7 @@ export default function ManualExportPage() {
               )}
 
                 <div className="p-4" style={{ marginTop: 32, display: 'flex', justifyContent: 'center' }}>
-                   <BiSaveBtn title="Générer et télécharger l'export" isLoading={isGenerating} />
+                   <BiSaveBtn title={t('manualExport.generate', "Générer et télécharger l'export")} isLoading={isGenerating} />
                 </div>
             </form>
           </Card>

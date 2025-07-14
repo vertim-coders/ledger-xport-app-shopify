@@ -13,6 +13,7 @@ import {
 } from '@shopify/polaris';
 import { PlusIcon, AlertCircleIcon, NoteIcon, ChatIcon, ExternalIcon, EmailIcon, PlayIcon, CalendarIcon } from '@shopify/polaris-icons';
 import { Crisp } from "crisp-sdk-web";
+import { useTranslation } from 'react-i18next';
 // ConversationIcon ou MessageIcon n'est pas certain, on testera l'un puis l'autre
 // import { ConversationIcon } from '@shopify/polaris-icons';
 // import { MessageIcon } from '@shopify/polaris-icons';
@@ -20,6 +21,7 @@ import { Crisp } from "crisp-sdk-web";
 const APP_NAME = 'Ledger Xport'; // À personnaliser si besoin
 
 const FeedbackSection: React.FC = () => {
+  const { t } = useTranslation();
   const [chatOpen, setChatOpen] = useState(false);
 
   const [showReviewMessage, setShowReviewMessage] = useState(false);
@@ -47,12 +49,12 @@ const FeedbackSection: React.FC = () => {
           {/* Bloc Share your feedback */}
           <div style={{ minWidth: 0 }}>
             <BlockStack gap="200">
-              <Text as="h3" variant="headingMd">Partagez vos commentaires</Text>
+              <Text as="h3" variant="headingMd">{t('feedback.shareFeedback', 'Partagez vos commentaires')}</Text>
               <Text as="p" variant="bodyMd" tone="subdued">
-                Partagez votre expérience avec {APP_NAME} en laissant un avis sur l'App Store.
+                {t('feedback.shareExperience', 'Partagez votre expérience avec {appName} en laissant un avis sur l\'App Store.', { appName: APP_NAME })}
               </Text>
               <Button onClick={handleAppReview} icon={<Icon source={NoteIcon} />}>
-                Donner un avis sur l'app
+                {t('feedback.rateApp', 'Donner un avis sur l\'app')}
               </Button>
             </BlockStack>
           </div>
@@ -60,11 +62,11 @@ const FeedbackSection: React.FC = () => {
           {/* Bloc Get in touch */}
           <div style={{ minWidth: 0 }}>
             <BlockStack gap="200">
-              <Text as="h3" variant="headingMd">Entrer en contact</Text>
+              <Text as="h3" variant="headingMd">{t('feedback.getInTouch', 'Entrer en contact')}</Text>
               <Button onClick={() => {
                 Crisp.chat.open();
               }} icon={<Icon source={ChatIcon} />}>
-                Démarrer un chat en direct
+                {t('feedback.startChat', 'Démarrer un chat en direct')}
               </Button>
               <div style={{
                 display: 'grid',
@@ -76,25 +78,25 @@ const FeedbackSection: React.FC = () => {
                 <Link url="mailto:support@ledgerxport.com" external>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                     <Icon source={EmailIcon} tone="base" />
-                    Envoyez-nous un email
+                    {t('feedback.sendEmail', 'Envoyez-nous un email')}
                   </span>
                 </Link>
-                <Link url="/demo" external={false}>
+                <Link url="/demo">
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                     <Icon source={PlayIcon} tone="base" />
-                    Accéder à la démo
+                    {t('feedback.accessDemo', 'Accéder à la démo')}
                   </span>
                 </Link>
                 <Link url="https://help.ledgerxport.com" external>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                     <Icon source={ExternalIcon} tone="base" />
-                    Visitez le centre d'aide
+                    {t('feedback.visitHelp', 'Visitez le centre d\'aide')}
                   </span>
                 </Link>
-                <Link url="/plans" external={false}>
+                <Link url="/plans">
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                     <Icon source={CalendarIcon} tone="base" />
-                    Accéder au plan
+                    {t('feedback.accessPlan', 'Accéder au plan')}
                   </span>
                 </Link>
               </div>
@@ -108,19 +110,16 @@ const FeedbackSection: React.FC = () => {
       <Modal
         open={showReviewMessage}
         onClose={() => setShowReviewMessage(false)}
-        title="Fonctionnalité en cours de développement"
-        primaryAction={{ content: 'Fermer', onAction: () => setShowReviewMessage(false) }}
+        title={t('feedback.featureInDev', 'Fonctionnalité en cours de développement')}
+        primaryAction={{ content: t('action.close', 'Fermer'), onAction: () => setShowReviewMessage(false) }}
       >
         <Modal.Section>
           <BlockStack gap="300">
             <Text as="p">
-              La fonctionnalité d'avis intégrée est actuellement en cours de développement.
+              {t('feedback.featureInDevDesc', 'Nous travaillons sur l\'intégration de l\'API Reviews de Shopify App Bridge pour vous offrir une expérience d\'évaluation fluide directement dans l\'interface d\'administration.')}
             </Text>
             <Text as="p" tone="subdued">
-              Nous travaillons sur l'intégration de l'API Reviews de Shopify App Bridge pour vous offrir une expérience d'évaluation fluide directement dans l'interface d'administration.
-            </Text>
-            <Text as="p">
-              En attendant, vous pouvez toujours laisser un avis sur notre page App Store.
+              {t('feedback.waitingReview', 'En attendant, vous pouvez toujours laisser un avis sur notre page App Store.')}
             </Text>
             <Button 
               onClick={() => {
@@ -129,7 +128,7 @@ const FeedbackSection: React.FC = () => {
               }}
               variant="primary"
             >
-              Aller sur l'App Store
+              {t('feedback.goToAppStore', 'Aller sur l\'App Store')}
             </Button>
           </BlockStack>
         </Modal.Section>

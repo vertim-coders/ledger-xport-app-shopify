@@ -20,6 +20,7 @@ import fiscalRegimesData from "../data/fiscal-regimes.json";
 import currenciesData from "../data/currencies.json";
 import { BiSaveBtn } from "../components/Buttons/BiSaveBtn";
 import Footer from "../components/Footer";
+import { useTranslation } from "react-i18next";
 
 // Import sécurisé d'ExportFormat
 const ExportFormat = {
@@ -202,6 +203,7 @@ export default function CompanyAndFiscalRegimeSettings() {
   const isSaving = navigation.state === "submitting";
   const [isMobile, setIsMobile] = useState(false);
   const [isNarrow, setIsNarrow] = useState(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const checkWidth = () => {
@@ -227,14 +229,14 @@ export default function CompanyAndFiscalRegimeSettings() {
     data.append("fiscalRegime", selectedRegime);
     try {
       await submit(data, { method: "post" });
-      setToastMessage("Paramètres de l'entreprise enregistrés avec succès");
+      setToastMessage(t('toast.companySaveSuccess', 'Paramètres de l\'entreprise enregistrés avec succès'));
       setToastError(false);
       setToastActive(true);
       setTimeout(() => {
         navigate("/app/dashboard");
       }, 1000);
     } catch (error) {
-      setToastMessage("Erreur lors de l'enregistrement des paramètres de l'entreprise");
+      setToastMessage(t('toast.companySaveError', 'Erreur lors de l\'enregistrement des paramètres de l\'entreprise'));
       setToastError(true);
       setToastActive(true);
     }
@@ -247,11 +249,11 @@ export default function CompanyAndFiscalRegimeSettings() {
     data.append("currency", companyFormData.currency);
     try {
       await submit(data, { method: "post" });
-      setToastMessage("Régime fiscal enregistré avec succès");
+      setToastMessage(t('toast.fiscalSaveSuccess', 'Régime fiscal enregistré avec succès'));
       setToastError(false);
       setToastActive(true);
     } catch (error) {
-      setToastMessage("Erreur lors de l'enregistrement du régime fiscal");
+      setToastMessage(t('toast.fiscalSaveError', 'Erreur lors de l\'enregistrement du régime fiscal'));
       setToastError(true);
       setToastActive(true);
     }

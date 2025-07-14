@@ -33,6 +33,7 @@ const ReportStatus = {
 import { useState } from "react";
 import { downloadFileFromUrl } from "../utils/download";
 import { ReportService } from "../services/report.service";
+import { useTranslation } from 'react-i18next';
 
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
@@ -330,6 +331,7 @@ export default function ReportView() {
   const [toastMessage, setToastMessage] = useState("");
   const [toastError, setToastError] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const { t } = useTranslation();
 
   const handleDownload = async () => {
     if (isDownloading) return; // Prevent multiple clicks
@@ -338,12 +340,12 @@ export default function ReportView() {
     try {
       const downloadUrl = `/api/reports/${report.id}`;
       await downloadFileFromUrl(downloadUrl, report.fileName);
-      setToastMessage("Fichier téléchargé avec succès");
+      setToastMessage(t('report.downloadSuccess', 'Fichier téléchargé avec succès'));
       setToastError(false);
       setToastActive(true);
     } catch (error) {
       console.error('Download error:', error);
-      setToastMessage("Erreur lors du téléchargement");
+      setToastMessage(t('report.downloadError', 'Erreur lors du téléchargement'));
       setToastError(true);
       setToastActive(true);
     } finally {
@@ -354,17 +356,17 @@ export default function ReportView() {
 
 
   const handleDelete = async () => {
-    if (confirm("Are you sure you want to delete this report?")) {
+    if (confirm(t('report.deleteConfirm', 'Are you sure you want to delete this report?'))) {
       try {
         await fetch(`/api/reports/${report.id}`, {
           method: "DELETE",
         });
-        setToastMessage("Rapport supprimé avec succès");
+        setToastMessage(t('report.deleteSuccess', 'Rapport supprimé avec succès'));
         setToastError(false);
         setToastActive(true);
         navigate("/app/reports/history");
       } catch (error) {
-        setToastMessage("Erreur lors de la suppression du rapport");
+        setToastMessage(t('report.deleteError', 'Erreur lors de la suppression du rapport'));
         setToastError(true);
         setToastActive(true);
       }
@@ -395,20 +397,20 @@ export default function ReportView() {
   return (
     <Page
       title={report.fileName}
-      backAction={{ content: "Reports", url: "/app/reports/history" }}
+      backAction={{ content: t('report.back', 'Rapports'), url: "/app/reports/history" }}
     >
       <Layout>
         <Layout.Section>
           <Card>
             <BlockStack gap="400">
               <Text as="h2" variant="headingMd">
-                Détails du rapport
+                {t('report.details', 'Détails du rapport')}
               </Text>
               <InlineStack gap="400">
                 <Text as="p" variant="bodyMd">
-                  Période: {report.startDate && report.endDate 
-                    ? `${formatDate(report.startDate)} au ${formatDate(report.endDate)}`
-                    : "Calculé automatiquement selon la fréquence"
+                  {t('report.period', 'Période')}: {report.startDate && report.endDate 
+                    ? `${formatDate(report.startDate)} ${t('report.to', 'au')} ${formatDate(report.endDate)}`
+                    : t('report.autoFrequency', 'Calculé automatiquement selon la fréquence')
                   }
                 </Text>
               </InlineStack>
@@ -421,7 +423,7 @@ export default function ReportView() {
             <BlockStack gap="400">
               <InlineStack align="space-between">
                 <Text as="h2" variant="headingMd">
-                  Rapport de données
+                  {t('report.dataReport', 'Rapport de données')}
                 </Text>
                 <InlineStack gap="200">
                   <Button 
@@ -430,10 +432,10 @@ export default function ReportView() {
                     loading={isDownloading}
                     icon={<Icon source={ArrowDownIcon} />}
                   >
-                    Télécharger
+                    {t('actions.download', 'Télécharger')}
                   </Button>
                   <Button tone="critical" onClick={handleDelete}>
-                    Supprimer
+                    {t('actions.delete', 'Supprimer')}
                   </Button>
                 </InlineStack>
               </InlineStack>
@@ -441,12 +443,12 @@ export default function ReportView() {
               {reportData.length > 0 ? (
                 <DataTable
                   columnContentTypes={headings.map(() => "text")}
-                  headings={headings}
+                  headings={headings.map(key => t(`report.column.${key}`, key))}
                   rows={rows}
                 />
               ) : (
                 <Text as="p" variant="bodyMd">
-                  Aucune donnée disponible dans ce rapport.
+                  {t('report.noData', 'Aucune donnée disponible dans ce rapport.')}
                 </Text>
               )}
             </BlockStack>
@@ -471,12 +473,13 @@ export function ErrorBoundary({ error }: { error: any }) {
   // Remix fournit error.status si c'est une Response
   const navigate = useNavigate();
   const status = error?.status || (error instanceof Response ? error.status : undefined);
+  const { t } = require('react-i18next').useTranslation();
   const message =
     status === 404
-      ? "Ce rapport n’existe pas ou le fichier est introuvable."
-      : "Une erreur est survenue lors de l’affichage du rapport.";
+      ? t('report.notFound', 'Ce rapport n’existe pas ou le fichier est introuvable.')
+      : t('report.error', 'Une erreur est survenue lors de l’affichage du rapport.');
   return (
-    <Page title="Rapport introuvable">
+    <Page title={t('report.notFoundTitle', 'Rapport introuvable')}>
       <Layout>
         <Layout.Section>
           <Card>
@@ -484,7 +487,7 @@ export function ErrorBoundary({ error }: { error: any }) {
               <Text as="h2" variant="headingMd" tone="critical">
                 {message}
               </Text>
-              <Button onClick={() => navigate("/app/reports/history")}>Retour à l’historique</Button>
+              <Button onClick={() => navigate("/app/reports/history")}>{t('report.backHistory', 'Retour à l’historique')}</Button>
             </BlockStack>
           </Card>
         </Layout.Section>

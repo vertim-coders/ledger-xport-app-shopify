@@ -7,10 +7,12 @@ import {
   FormLayout,
   TextField,
   Select,
+  Button,
   Text,
   Toast,
   Frame,
   Banner,
+  List,
   LegacyStack,
   Checkbox,
   BlockStack,
@@ -33,13 +35,17 @@ const Protocol = {
   SFTP: "SFTP"
 };
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import fiscalRegimesData from "../data/fiscal-regimes.json";
 import currenciesData from "../data/currencies.json";
 import { BiSaveBtn } from "../components/Buttons/BiSaveBtn";
+import { BiSimpleBtn } from "../components/Buttons/BiSimpleBtn";
 import { BiBtn } from "../components/Buttons/BiBtn";
+import shopify from "../shopify.server";
+import type { Settings } from "../types/SettingsType";
 import ftpService from "../services/ftp.service";
 import { encrypt, decrypt } from "../utils/crypto.server";
-import Footer from "app/components/Footer";
+import { LanguageSelector } from "../components/LanguageSelector";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -262,6 +268,7 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export default function GeneralSettings() {
+  const { t } = useTranslation();
   const { settings, generalSettings, ftpConfig, regimes, shopDetails } = useLoaderData<typeof loader>();
   const submit = useSubmit();
   const navigate = useNavigate();
@@ -298,18 +305,18 @@ export default function GeneralSettings() {
       const { success, error } = actionData.ftpTestResult as { success: boolean; error?: string };
       if (success) {
         setTestStatus("success");
-        setToastMessage("Connexion FTP réussie !");
+        setToastMessage(t('toast.ftpTestSuccess'));
         setToastError(false);
         setToastActive(true);
       } else {
         setTestStatus("error");
-        setToastMessage(`Échec de la connexion FTP: ${error || 'Veuillez vérifier vos informations.'}`);
+        setToastMessage(t('toast.ftpTestError', { error: error || t('ftp.errorBannerText') }));
         setToastError(true);
         setToastActive(true);
       }
     }
      if (actionData && 'ftpSuccess' in actionData && actionData.ftpSuccess) {
-        setToastMessage("Configuration FTP enregistrée avec succès !");
+        setToastMessage(t('toast.ftpSaveSuccess'));
         setToastError(false);
         setToastActive(true);
     }
@@ -353,11 +360,11 @@ export default function GeneralSettings() {
     data.append("fiscalRegime", selectedRegime);
     try {
       await submit(data, { method: "post" });
-      setToastMessage("Paramètres enregistrés avec succès");
+      setToastMessage(t('toast.saveSuccess'));
       setToastError(false);
       setToastActive(true);
     } catch (error) {
-      setToastMessage("Erreur lors de l'enregistrement des paramètres");
+      setToastMessage(t('toast.saveError'));
       setToastError(true);
       setToastActive(true);
     }
@@ -389,18 +396,28 @@ export default function GeneralSettings() {
   return (
     <Frame>
       <Page
-        title="Paramètres généraux"
-        subtitle="Configurez les paramètres généraux de votre application"
+        title={t('settings.general.title')}
+        subtitle={t('settings.general.subtitle')}
       >
         <Layout>
+          <Layout.Section>
+            <Card>
+              <div style={{ padding: 10 }}>
+                <Text variant="bodyMd" as="span" fontWeight="bold">{t('form.language')}</Text>
+                <div style={{ marginTop: 8 }}>
+                  <LanguageSelector label="" helpText={t('settings.general.languageHelp', 'La langue de l\'interface sera appliquée immédiatement.')} />
+                </div>
+              </div>
+            </Card>
+          </Layout.Section>
           <Layout.Section>
             <Card>
               <form onSubmit={handleSubmit}>
                 <LegacyStack vertical spacing="loose">
                   <FormLayout>
                     <div>
-                      <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
-                        <Text variant="bodyMd" as="span">Nom de l'entreprise</Text>
+                      <div style={{ marginBottom: 4, display: 'block' }}>
+                        <Text variant="bodyMd" as="span" fontWeight="bold">{t('settings.general.companyName')}</Text>
                       </div>
                       <TextField
                         label=""
@@ -412,8 +429,8 @@ export default function GeneralSettings() {
                     </div>
 
                     <div>
-                      <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
-                        <Text variant="bodyMd" as="span">Régime Fiscal</Text>
+                      <div style={{ marginBottom: 4, display: 'block' }}>
+                        <Text variant="bodyMd" as="span" fontWeight="bold">{t('settings.general.fiscalRegime')}</Text>
                       </div>
                       <Select
                         label=""
@@ -431,21 +448,21 @@ export default function GeneralSettings() {
                           {regimes.find(r => r.code === selectedRegime)?.description}
                         </Text>
                         <p style={{ color: '#637381', margin: '4px 0' }}>
-                          Pays: {regimes.find(r => r.code === selectedRegime)?.countries.join(', ')}
+                          {t('form.country')}: {regimes.find(r => r.code === selectedRegime)?.countries.join(', ')}
                         </p>
                         <p style={{ color: '#637381', margin: '4px 0' }}>
-                          Format de fichier: {regimes.find(r => r.code === selectedRegime)?.fileFormat}
+                          {t('settings.general.fileFormat', 'Format de fichier')}: {regimes.find(r => r.code === selectedRegime)?.fileFormat}
                         </p>
                         <p style={{ color: '#637381', margin: '4px 0' }}>
-                          Logiciels compatibles: {regimes.find(r => r.code === selectedRegime)?.compatibleSoftware.join(', ')}
+                          {t('settings.general.compatibleSoftware', 'Logiciels compatibles')}: {regimes.find(r => r.code === selectedRegime)?.compatibleSoftware.join(', ')}
                         </p>
                       </div>
                     )}
 
                     <LegacyStack distribution="fill">
                       <div>
-                        <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
-                          <Text variant="bodyMd" as="span">Devise</Text>
+                        <div style={{ marginBottom: 4, display: 'block' }}>
+                          <Text variant="bodyMd" as="span" fontWeight="bold">{t('form.currency')}</Text>
                         </div>
                         <Select
                           label=""
@@ -457,12 +474,12 @@ export default function GeneralSettings() {
                           value={formData.currency}
                           onChange={value => handleChange("currency", value)}
                           disabled={!selectedRegime}
-                          helpText={selectedRegime ? `Devise recommandée pour ${regimes.find(r => r.code === selectedRegime)?.name}: ${regimes.find(r => r.code === selectedRegime)?.currency}` : ''}
+                          helpText={selectedRegime ? t('settings.general.currencyHelp', { regime: regimes.find(r => r.code === selectedRegime)?.name, currency: regimes.find(r => r.code === selectedRegime)?.currency }) : ''}
                         />
                       </div>
                       <div>
-                        <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
-                          <Text variant="bodyMd" as="span">Taux de TVA (%)</Text>
+                        <div style={{ marginBottom: 4, display: 'block' }}>
+                          <Text variant="bodyMd" as="span" fontWeight="bold">{t('settings.general.vatRate')}</Text>
                         </div>
                         <TextField
                           label=""
@@ -480,8 +497,8 @@ export default function GeneralSettings() {
 
                     <LegacyStack vertical spacing="loose">
                       <div>
-                        <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
-                          <Text variant="bodyMd" as="span">Compte de vente</Text>
+                        <div style={{ marginBottom: 4, display: 'block' }}>
+                          <Text variant="bodyMd" as="span" fontWeight="bold">{t('settings.general.salesAccount')}</Text>
                         </div>
                         <LegacyStack vertical spacing="tight">
                           <TextField
@@ -489,44 +506,31 @@ export default function GeneralSettings() {
                             value={formData.salesAccount}
                             onChange={(value) => handleChange("salesAccount", value)}
                             autoComplete="off"
-                            helpText="Le compte de vente par défaut pour les exportations"
+                            helpText={t('settings.general.salesAccountHelp')}
                           />
                         </LegacyStack>
                       </div>
 
                       <div>
-                        <Text variant="headingMd" as="h2">Fuseau horaire</Text>
+                        <div style={{ marginBottom: 4, display: 'block' }}>
+                          <Text variant="bodyMd" as="span" fontWeight="bold">{t('settings.general.timezone')}</Text>
+                        </div>
                         <LegacyStack vertical spacing="tight">
                           <Text variant="bodyMd" as="p">
-                            Fuseau horaire du magasin: {shopDetails?.timezone || 'UTC'}
+                            {t('settings.general.shopTimezone')}: {shopDetails?.timezone || 'UTC'}
                           </Text>
                           <Banner
-                            title="Configuration du fuseau horaire"
+                            title={t('settings.general.timezoneBannerTitle')}
                             tone="info"
                           >
-                            <p>Nous ne proposons pas d'option pour modifier le fuseau horaire. Pour modifier le fuseau horaire, veuillez le faire directement dans les paramètres de votre boutique Shopify.</p>
-                          </Banner>
-                        </LegacyStack>
-                      </div>
-
-                      <div>
-                        <Text variant="headingMd" as="h2">Langue</Text>
-                        <LegacyStack vertical spacing="tight">
-                          <Text variant="bodyMd" as="p">
-                            Langue du magasin: {shopDetails?.locale || 'fr'}
-                          </Text>
-                          <Banner
-                            title="Configuration de la langue"
-                            tone="info"
-                          >
-                            <p>Nous ne proposons pas d'option pour modifier la langue. Pour modifier la langue, veuillez le faire directement dans les paramètres de votre boutique Shopify.</p>
+                            <p>{t('settings.general.timezoneBannerText')}</p>
                           </Banner>
                         </LegacyStack>
                       </div>
                     </LegacyStack>
 
                     <div style={{ marginTop: '32px', textAlign: 'center' }}>
-                      <BiSaveBtn title="Enregistrer les paramètres" isLoading={isSaving} />
+                      <BiSaveBtn title={t('action.save')} isLoading={isSaving} />
                     </div>
                   </FormLayout>
                 </LegacyStack>
@@ -541,14 +545,14 @@ export default function GeneralSettings() {
                 <form onSubmit={handleFtpSubmit} id="ftp-settings-form">
                   <FormLayout>
                     <TextField
-                      label="Hôte FTP"
+                      label={t('ftp.host')}
                       name="host"
                       value={ftpFormData.host}
                       onChange={(value) => handleFtpChange("host", value)}
                       autoComplete="off"
                     />
                     <TextField
-                      label="Port"
+                      label={t('ftp.port')}
                       name="port"
                       type="number"
                       value={String(ftpFormData.port)}
@@ -556,7 +560,7 @@ export default function GeneralSettings() {
                       autoComplete="off"
                     />
                     <Select
-                      label="Protocole"
+                      label={t('ftp.protocol')}
                       name="protocol"
                       options={[
                         { label: "SFTP", value: "SFTP" },
@@ -566,36 +570,36 @@ export default function GeneralSettings() {
                       onChange={(value) => handleFtpChange("protocol", value)}
                     />
                     <TextField
-                      label="Nom d'utilisateur"
+                      label={t('ftp.username')}
                       name="username"
                       value={ftpFormData.username}
                       onChange={(value) => handleFtpChange("username", value)}
                       autoComplete="off"
                     />
                     <TextField
-                      label="Mot de passe"
+                      label={t('ftp.password')}
                       name="password"
                       type="password"
                       value={ftpFormData.password}
                       onChange={(value) => handleFtpChange("password", value)}
-                      helpText="Laissez vide pour conserver le mot de passe actuel."
+                      helpText={t('ftp.passwordHelp')}
                       autoComplete="new-password"
                     />
                     <TextField
-                      label="Répertoire cible"
+                      label={t('ftp.directory')}
                       name="directory"
                       value={ftpFormData.directory}
                       onChange={(value) => handleFtpChange("directory", value)}
                       autoComplete="off"
                     />
                     <Checkbox
-                      label="Mode passif"
+                      label={t('ftp.passiveMode')}
                       name="passiveMode"
                       checked={ftpFormData.passiveMode}
                       onChange={(checked) => handleFtpChange("passiveMode", checked)}
                     />
                     <TextField
-                      label="Délai de nouvelle tentative (secondes)"
+                      label={t('ftp.retryDelay')}
                       name="retryDelay"
                       type="number"
                       value={String(ftpFormData.retryDelay)}
@@ -605,34 +609,31 @@ export default function GeneralSettings() {
                     <LegacyStack>
                       <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}>
                         <BiBtn
-                          title="Tester la connexion"
+                          title={t('ftp.testConnection')}
                           onClick={handleFtpTest}
                           style={{ minWidth: 'unset', maxWidth: 'unset', margin: 0 }}
                         />
                       </div>
                       <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
                         <BiSaveBtn
-                          title="Enregistrer la configuration FTP"
+                          title={t('ftp.saveConfig')}
                           isLoading={isSaving}
                           style={{ minWidth: 'unset', maxWidth: 'unset', margin: 0 }}
                         />
                       </div>
                     </LegacyStack>
-                     {testStatus === "success" && (
-                        <Banner title="Connexion réussie" tone="success" onDismiss={() => setTestStatus('idle')} />
+                    {testStatus === "success" && (
+                        <Banner title={t('ftp.successBannerTitle')} tone="success" onDismiss={() => setTestStatus('idle')} />
                     )}
                     {testStatus === "error" && (
-                        <Banner title="Échec de la connexion" tone="critical" onDismiss={() => setTestStatus('idle')}>
-                            <Text as="span">Veuillez vérifier vos informations et réessayer.</Text>
+                        <Banner title={t('ftp.errorBannerTitle')} tone="critical" onDismiss={() => setTestStatus('idle')}>
+                            <Text as="span">{t('ftp.errorBannerText')}</Text>
                         </Banner>
                     )}
                   </FormLayout>
                 </form>
               </BlockStack>
             </Card>
-          </Layout.Section>
-          <Layout.Section>
-            <Footer />
           </Layout.Section>
         </Layout>
       </Page>

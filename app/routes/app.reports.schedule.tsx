@@ -23,6 +23,7 @@ import { prisma } from "../db.server";
 import { BiSimpleBtn } from "../components/Buttons/BiSimpleBtn";
 import { OrderIcon, CalendarIcon } from "@shopify/polaris-icons";
 import type { ReportStatus as ReportStatusType, ExportFormat as ExportFormatType } from "@prisma/client";
+import { useTranslation } from 'react-i18next';
 
 // Import sécurisé d'ReportStatus et ExportFormat
 const ReportStatus = {
@@ -613,6 +614,8 @@ export default function ScheduleReport() {
   // Action type state to track whether user is generating or scheduling
   const [actionType, setActionType] = useState<'generate' | 'schedule'>('generate');
 
+  const { t } = useTranslation();
+
   useEffect(() => {
     console.log("All data from services:", data);
     console.log("Customers:", data.customers);
@@ -629,7 +632,7 @@ export default function ScheduleReport() {
       
     // Erreur générique
     if ('error' in actionData && actionData.error) {
-        setToastMessage(`Erreur: ${actionData.error}`);
+        setToastMessage(t('toast.error', 'Erreur: {error}', { error: actionData.error }));
         setToastError(true);
         setToastActive(true);
         return;
@@ -641,37 +644,37 @@ export default function ScheduleReport() {
       if (Array.isArray(results) && results.length > 0) {
         if (results.length > 1) {
           downloadZipFromResults(results, "export-rapports.zip");
-          setToastMessage(`Rapport(s) généré(s) et téléchargé(s) avec succès (${results.length} fichiers dans un ZIP)`);
+          setToastMessage(t('toast.success', 'Rapport(s) généré(s) et téléchargé(s) avec succès ({count} fichiers dans un ZIP)', { count: results.length }));
           setToastError(false);
           setToastActive(true);
         } else {
           const downloadedCount = downloadFilesFromResults(results);
         if (downloadedCount > 0) {
-          setToastMessage(`Rapport(s) généré(s) et téléchargé(s) avec succès (${downloadedCount} fichier(s))`);
+          setToastMessage(t('toast.success', 'Rapport(s) généré(s) et téléchargé(s) avec succès ({count} fichier(s))', { count: downloadedCount }));
           setToastError(false);
           setToastActive(true);
         } else {
-          setToastMessage("Aucun rapport généré");
+          setToastMessage(t('toast.noReport', 'Aucun rapport généré'));
           setToastError(true);
           setToastActive(true);
         }
         }
       } else {
-        setToastMessage("Aucun rapport généré");
+        setToastMessage(t('toast.noReport', 'Aucun rapport généré'));
         setToastError(true);
         setToastActive(true);
       }
     }
     // Planification : toast succès uniquement si success === true
     if (actionType === 'schedule' && 'success' in actionData && actionData.success === true) {
-      setToastMessage("Planification enregistrée avec succès");
+      setToastMessage(t('toast.success', 'Planification enregistrée avec succès'));
       setToastError(false);
       setToastActive(true);
       setTimeout(() => {
         navigate('/app/dashboard');
       }, 1000);
     }
-  }, [actionData, actionType, navigate]);
+  }, [actionData, actionType, navigate, t]);
 
   // Report name state
   const [reportNames, setReportNames] = useState<{ [key: string]: string }>({
@@ -767,7 +770,7 @@ export default function ScheduleReport() {
         if (isSelected) {
           // For now, we'll use the generate format as default
           // The actual format will be determined when the user clicks Generate or Schedule
-          newReportNames[key] = `ledgerxport-${fiscalCode}-${key}-${formattedStartDate}-${formattedEndDate}-${timestamp}.${fileFormat.toLowerCase()}`;
+          newReportNames[key] = `ledgerxport-${fiscalCode}-${DATA_TYPE_LABELS[key as keyof typeof DATA_TYPE_LABELS]}-${formattedStartDate}-${formattedEndDate}-${timestamp}.${fileFormat.toLowerCase()}`;
         }
       });
       return newReportNames;
@@ -781,7 +784,7 @@ export default function ScheduleReport() {
         const fiscalCode = shop?.fiscalConfig?.code || 'EXPORT';
         setReportNamesSchedule(prev => ({
           ...prev,
-          [key]: `ledgerxport-${fiscalCode}-${key}-${frequency}.${fileFormat.toLowerCase()}`
+          [key]: `ledgerxport-${fiscalCode}-${DATA_TYPE_LABELS[key as keyof typeof DATA_TYPE_LABELS]}-${frequency}.${fileFormat.toLowerCase()}`
         }));
       }
     });
@@ -792,15 +795,16 @@ export default function ScheduleReport() {
   const generateReportName = (dataType: string, actionType: 'generate' | 'schedule'): string => {
     const fiscalCode = shop?.fiscalConfig?.code || 'EXPORT';
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const dataTypeLabel = DATA_TYPE_LABELS[dataType as keyof typeof DATA_TYPE_LABELS] || dataType;
     
     if (actionType === 'generate') {
       // For Generate: include period dates
       const formattedStartDate = formatDate(selectedDates.start);
       const formattedEndDate = formatDate(selectedDates.end);
-      return `ledgerxport-${fiscalCode}-${dataType}-${formattedStartDate}-${formattedEndDate}-${timestamp}.${fileFormat.toLowerCase()}`;
+      return `ledgerxport-${fiscalCode}-${dataTypeLabel}-${formattedStartDate}-${formattedEndDate}-${timestamp}.${fileFormat.toLowerCase()}`;
     } else {
       // For Schedule: include frequency instead of dates
-      return `ledgerxport-${fiscalCode}-${dataType}-${frequency}.${fileFormat.toLowerCase()}`;
+      return `ledgerxport-${fiscalCode}-${dataTypeLabel}-${frequency}.${fileFormat.toLowerCase()}`;
     }
   };
 
@@ -815,13 +819,13 @@ export default function ScheduleReport() {
       const fiscalCode = shop?.fiscalConfig?.code || 'EXPORT';
       setReportNames(prev => ({
         ...prev,
-        [key]: `ledgerxport-${fiscalCode}-${key}-${formattedStartDate}-${formattedEndDate}-${timestamp}.${fileFormat.toLowerCase()}`
+        [key]: `ledgerxport-${fiscalCode}-${DATA_TYPE_LABELS[key as keyof typeof DATA_TYPE_LABELS]}-${formattedStartDate}-${formattedEndDate}-${timestamp}.${fileFormat.toLowerCase()}`
       }));
       setReportNamesSchedule(prev => {
         if (!reportNamesScheduleTouched[key] && !prev[key]) {
           return {
             ...prev,
-            [key]: `ledgerxport-${fiscalCode}-${key}-${frequency}.${fileFormat.toLowerCase()}`
+            [key]: `ledgerxport-${fiscalCode}-${DATA_TYPE_LABELS[key as keyof typeof DATA_TYPE_LABELS]}-${frequency}.${fileFormat.toLowerCase()}`
           };
         }
         return prev;
@@ -917,7 +921,7 @@ export default function ScheduleReport() {
     // Vérifier qu'un seul type de données est sélectionné
     const selectedTypes = Object.entries(dataTypes).filter(([_, isSelected]) => isSelected);
     if (selectedTypes.length !== 1) {
-      setToastMessage("Vous ne pouvez planifier qu'un seul type de données à la fois. Veuillez en sélectionner un seul.");
+      setToastMessage(t('toast.error', 'Vous ne pouvez planifier qu\'un seul type de données à la fois. Veuillez en sélectionner un seul.'));
       setToastError(true);
       setToastActive(true);
       setActionType('generate'); // S'assurer que le mode repasse en génération immédiate
@@ -926,7 +930,7 @@ export default function ScheduleReport() {
 
     // Validate required To recipients
     if (schedulingType === 'email' && emailConfig.to.length === 0) {
-      setToastMessage("Au moins un destinataire (To) est requis");
+      setToastMessage(t('toast.error', 'Au moins un destinataire (To) est requis'));
       setToastActive(true);
       return;
     }
@@ -1003,12 +1007,28 @@ export default function ScheduleReport() {
     setSchedulingType(value);
     if (value === "ftp" && !ftpConfig) {
       setError(
-        "La configuration FTP est requise. Veuillez la configurer dans les paramètres avant de planifier.",
+        t('toast.error', 'La configuration FTP est requise. Veuillez la configurer dans les paramètres avant de planifier.', { error: t('toast.ftpConfigRequired', 'La configuration FTP est requise. Veuillez la configurer dans les paramètres avant de planifier.') }),
       );
     } else {
       setError("");
     }
-  }, [ftpConfig]);
+  }, [ftpConfig, t]);
+
+  // Ajout des clés de traduction pour les types de données
+  const DATA_TYPE_LABELS = {
+    ventes: t('dataType.ventes', 'Ventes'),
+    clients: t('dataType.clients', 'Clients'),
+    remboursements: t('dataType.remboursements', 'Remboursements'),
+    taxes: t('dataType.taxes', 'Taxes'),
+  };
+
+  // Ajout des labels de fréquence traduits
+  const FREQUENCY_OPTIONS = [
+    { label: t('schedule.frequency.daily', 'Quotidien'), value: 'daily' },
+    { label: t('schedule.frequency.weekly', 'Hebdomadaire'), value: 'weekly' },
+    { label: t('schedule.frequency.monthly', 'Mensuel'), value: 'monthly' },
+    { label: t('schedule.frequency.yearly', 'Annuel'), value: 'yearly' },
+  ];
 
   return (
     <>
@@ -1019,7 +1039,7 @@ export default function ScheduleReport() {
         }
       `}</style>
     <Frame>
-      <Page title="Planifier un rapport">
+      <Page title={t('schedule.title', 'Planifier un rapport')}>
         <Layout>
           <Layout.Section>
             <Card>
@@ -1027,19 +1047,19 @@ export default function ScheduleReport() {
                 <FormLayout>
                   {/* On retire la période du rapport */}
 
-                  <Separator title="Contenu du rapport" />
+                  <Separator title={t('schedule.reportContent', 'Contenu du rapport')} />
 
                   {/* Data Types */}
                   <div>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: '8px' }}>
-                      <Text variant="headingMd" as="h1">Types de données</Text>
-                      <HelpIcon description="Sélectionnez les types de données à exporter : ventes, clients, remboursements ou taxes. Vous pouvez en choisir plusieurs." />
+                      <Text variant="headingMd" as="h1">{t('schedule.dataTypes', 'Types de données')}</Text>
+                      <HelpIcon description={t('schedule.dataTypesHelp', 'Sélectionnez les types de données à exporter : ventes, clients, remboursements ou taxes. Vous pouvez en choisir plusieurs.')} />
                     </span>
                     <LegacyStack vertical spacing="tight">
                       {Object.entries(dataTypes).map(([key, value]) => (
                         <LegacyStack key={key} spacing="tight">
                             <BluePolarisCheckbox
-                            label={key.charAt(0).toUpperCase() + key.slice(1)}
+                            label={DATA_TYPE_LABELS[key as keyof typeof DATA_TYPE_LABELS]}
                             checked={value}
                             onChange={(checked) => handleDataTypeChange(key, checked)}
                           />
@@ -1048,7 +1068,7 @@ export default function ScheduleReport() {
                             <div style={{ display: 'flex', gap: 16, marginLeft: 32, alignItems: 'center' }}>
                               <div style={{ minWidth: 320 }}>
                                 <TextField
-                                  label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>Nom du rapport (planification)<HelpIcon description="Nom du fichier généré lors d'une exportation planifiée. Vous pouvez le personnaliser." /></span>}
+                                  label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{t('schedule.reportName', 'Nom du rapport (planification)')}<HelpIcon description={t('schedule.help.reportName', "Nom du fichier généré lors d'une exportation planifiée. Vous pouvez le personnaliser.")} /></span>}
                                   value={reportNamesSchedule[key as keyof typeof reportNamesSchedule]}
                                   onChange={(val) => {
                                     setReportNamesSchedule(prev => ({ ...prev, [key]: val }));
@@ -1066,7 +1086,7 @@ export default function ScheduleReport() {
 
                   {/* File Format */}
                   <Select
-                    label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Text variant="headingMd" as="h1">Format du fichier</Text><HelpIcon description="Choisissez le format de fichier pour l'exportation : CSV, Excel, JSON ou XML." /></span>}
+                    label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Text variant="headingMd" as="h1">{t('schedule.fileFormat', 'Format du fichier')}</Text><HelpIcon description={t('schedule.help.fileFormat', "Choisissez le format de fichier pour l'exportation : CSV, Excel, JSON ou XML.")} /></span>}
                     options={[
                       { label: 'CSV', value: 'CSV' },
                       { label: 'Excel (XLSX)', value: 'XLSX' },
@@ -1077,16 +1097,16 @@ export default function ScheduleReport() {
                     onChange={setFileFormat}
                   />
 
-                  <Separator title="Planification" />
+                  <Separator title={t('schedule.scheduling', 'Planification')} />
 
                   {/* Scheduling Type */}
                   <Select
-                    label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Text variant="headingMd" as="h1">Type de réception</Text><HelpIcon description="Choisissez comment vous souhaitez recevoir le rapport planifié : par email, FTP, Google Drive ou Google Sheet." /></span>}
+                    label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Text variant="headingMd" as="h1">{t('schedule.deliveryType', 'Type de réception')}</Text><HelpIcon description={t('schedule.help.deliveryType', "Choisissez comment vous souhaitez recevoir le rapport planifié : par email, FTP, Google Drive ou Google Sheet.")} /></span>}
                     options={[
-                      { label: 'Email', value: 'email' },
-                      { label: 'FTP', value: 'ftp' },
-                      { label: 'Drive', value: 'drive' },
-                      { label: 'Sheet', value: 'sheet' },
+                      { label: t('schedule.deliveryType.email', 'Email'), value: 'email' },
+                      { label: t('schedule.deliveryType.ftp', 'FTP'), value: 'ftp' },
+                      { label: t('schedule.deliveryType.drive', 'Drive'), value: 'drive' },
+                      { label: t('schedule.deliveryType.sheet', 'Sheet'), value: 'sheet' },
                     ]}
                     value={schedulingType}
                     onChange={handleSchedulingTypeChange}
@@ -1096,14 +1116,14 @@ export default function ScheduleReport() {
                   {error && (
                     <div style={{ marginTop: '16px' }}>
                       <Banner
-                        title="Configuration FTP requise"
+                        title={t('toast.ftpConfigRequired', 'Configuration FTP requise')}
                         tone="critical"
-                        action={{ content: 'Aller aux paramètres', url: '/app/settings/general' }}
+                        action={{ content: t('action.goToSettings', 'Aller aux paramètres'), url: '/app/settings/general' }}
                         onDismiss={() => setError('')}
                       >
                         <p>
-                          Vous devez configurer vos paramètres FTP avant de pouvoir
-                          planifier un export par ce biais.
+                          {t('toast.ftpConfigExplanation', 'Vous devez configurer vos paramètres FTP avant de pouvoir')}
+                          {t('toast.ftpConfigExplanation2', 'planifier un export par ce biais.')}
                         </p>
                       </Banner>
                     </div>
@@ -1113,11 +1133,11 @@ export default function ScheduleReport() {
                   {schedulingType === "ftp" && ftpConfig && !error && (
                     <div style={{ marginTop: '16px' }}>
                       <Banner
-                        title="FTP configuré"
+                        title={t('toast.ftpConfigured', 'FTP configuré')}
                         tone="success"
                       >
                         <p>
-                          La configuration FTP est prête. Vous pouvez lancer la planification d'un export par FTP.
+                          {t('toast.ftpConfiguredExplanation', 'La configuration FTP est prête. Vous pouvez lancer la planification d\'un export par FTP.')}
                         </p>
                       </Banner>
                     </div>
@@ -1127,13 +1147,13 @@ export default function ScheduleReport() {
                   {schedulingType === "email" && (
                     <div>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: '8px' }}>
-                        <Text variant="headingMd" as="h1">Configuration Email</Text>
-                        <HelpIcon description="Configurez les destinataires et options d'envoi pour recevoir automatiquement les rapports par email." />
+                        <Text variant="headingMd" as="h1">{t('schedule.emailConfig', 'Configuration Email')}</Text>
+                        <HelpIcon description={t('schedule.help.emailConfig', "Configurez les destinataires et options d'envoi pour recevoir automatiquement les rapports par email.")} />
                       </span>
                       <LegacyStack vertical spacing="loose">
                         <div>
                           <Text variant="bodyMd" as="p" fontWeight="bold">
-                            Destinataires (To) <span style={{ color: 'red' }}>*</span>
+                            {t('schedule.recipients.to', 'Destinataires (To)')} <span style={{ color: 'red' }}>*</span>
                           </Text>
                           <div style={{ marginBottom: '8px' }}>
                             {emailConfig.to.map((email, index) => (
@@ -1147,7 +1167,7 @@ export default function ScheduleReport() {
                             value={emailInputs.to}
                             onChange={(e) => handleEmailInputChange('to', e.target.value)}
                             onKeyDown={(e) => handleEmailKeyDown('to', e)}
-                            placeholder="Entrez une adresse email et appuyez sur Entrée"
+                            placeholder={t('schedule.recipients.toPlaceholder', 'Entrez une adresse email et appuyez sur Entrée')}
                             style={{
                               width: '100%',
                               padding: '8px',
@@ -1157,9 +1177,8 @@ export default function ScheduleReport() {
                             }}
                           />
                         </div>
-
                         <div>
-                          <Text variant="bodyMd" as="p" fontWeight="bold">Copie (CC) - Optionnel</Text>
+                          <Text variant="bodyMd" as="p" fontWeight="bold">{t('schedule.recipients.cc', 'Copie (CC) - Optionnel')}</Text>
                           <div style={{ marginBottom: '8px' }}>
                             {emailConfig.cc.map((email, index) => (
                               <Tag key={index} onRemove={() => removeEmail('cc', email)}>
@@ -1172,7 +1191,7 @@ export default function ScheduleReport() {
                             value={emailInputs.cc}
                             onChange={(e) => handleEmailInputChange('cc', e.target.value)}
                             onKeyDown={(e) => handleEmailKeyDown('cc', e)}
-                            placeholder="Entrez une adresse email et appuyez sur Entrée (optionnel)"
+                            placeholder={t('schedule.recipients.ccPlaceholder', 'Entrez une adresse email et appuyez sur Entrée (optionnel)')}
                             style={{
                               width: '100%',
                               padding: '8px',
@@ -1182,9 +1201,8 @@ export default function ScheduleReport() {
                             }}
                           />
                         </div>
-
                         <div>
-                          <Text variant="bodyMd" as="p" fontWeight="bold">Copie cachée (BCC) - Optionnel</Text>
+                          <Text variant="bodyMd" as="p" fontWeight="bold">{t('schedule.recipients.bcc', 'Copie cachée (BCC) - Optionnel')}</Text>
                           <div style={{ marginBottom: '8px' }}>
                             {emailConfig.bcc.map((email, index) => (
                               <Tag key={index} onRemove={() => removeEmail('bcc', email)}>
@@ -1197,7 +1215,7 @@ export default function ScheduleReport() {
                             value={emailInputs.bcc}
                             onChange={(e) => handleEmailInputChange('bcc', e.target.value)}
                             onKeyDown={(e) => handleEmailKeyDown('bcc', e)}
-                            placeholder="Entrez une adresse email et appuyez sur Entrée (optionnel)"
+                            placeholder={t('schedule.recipients.bccPlaceholder', 'Entrez une adresse email et appuyez sur Entrée (optionnel)')}
                             style={{
                               width: '100%',
                               padding: '8px',
@@ -1207,9 +1225,8 @@ export default function ScheduleReport() {
                             }}
                           />
                         </div>
-
                         <div>
-                          <Text variant="bodyMd" as="p" fontWeight="bold">Répondre à (Reply To) - Optionnel</Text>
+                          <Text variant="bodyMd" as="p" fontWeight="bold">{t('schedule.recipients.replyTo', 'Répondre à (Reply To) - Optionnel')}</Text>
                           <div style={{ marginBottom: '8px' }}>
                             {emailConfig.replyTo.map((email, index) => (
                               <Tag key={index} onRemove={() => removeEmail('replyTo', email)}>
@@ -1222,7 +1239,7 @@ export default function ScheduleReport() {
                             value={emailInputs.replyTo}
                             onChange={(e) => handleEmailInputChange('replyTo', e.target.value)}
                             onKeyDown={(e) => handleEmailKeyDown('replyTo', e)}
-                            placeholder="Entrez une adresse email et appuyez sur Entrée (optionnel)"
+                            placeholder={t('schedule.recipients.replyToPlaceholder', 'Entrez une adresse email et appuyez sur Entrée (optionnel)')}
                             style={{
                               width: '100%',
                               padding: '8px',
@@ -1236,30 +1253,25 @@ export default function ScheduleReport() {
                     </div>
                   )}
 
-                  {schedulingType === 'email' && <Separator title="Fréquence" />}
+                  {schedulingType === 'email' && <Separator title={t('schedule.frequency', 'Fréquence')} />}
 
                   {/* Right Column - Frequency Settings */}
                   <div>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <Text variant="headingMd" as="h2">Fréquence</Text>
-                      <HelpIcon description="Définissez la fréquence d'envoi du rapport planifié : quotidien, mensuel ou annuel, ainsi que le jour et l'heure d'exécution." />
+                      <Text variant="headingMd" as="h2">{t('schedule.frequency', 'Fréquence')}</Text>
+                      <HelpIcon description={t('schedule.help.frequency', 'Choisissez la fréquence d\'exécution du rapport.')} />
                     </span>
                     <LegacyStack vertical spacing="loose">
                       <Select
-                        label="Fréquence"
-                        options={[
-                            { label: 'Toutes les heures', value: 'hourly' },
-                          { label: 'Quotidien', value: 'daily' },
-                          { label: 'Mensuel', value: 'monthly' },
-                          { label: 'Annuel', value: 'yearly' },
-                        ]}
+                        label={t('schedule.frequency', 'Fréquence')}
+                        options={FREQUENCY_OPTIONS}
                         value={frequency}
                         onChange={setFrequency}
                       />
 
                         {frequency !== 'hourly' && (
                       <Select
-                        label="Jour d'exécution"
+                        label={t('schedule.executionDay', "Jour d'exécution")}
                         options={Array.from({ length: 31 }, (_, i) => ({
                           label: `${i + 1}`,
                           value: `${i + 1}`,
@@ -1273,7 +1285,7 @@ export default function ScheduleReport() {
                         {/* Heure d'exécution */}
                         {frequency !== 'hourly' && (
                       <Select
-                        label="Heure d'exécution"
+                        label={t('schedule.executionTime', "Heure d'exécution")}
                         options={timeOptions}
                         value={executionTime}
                         onChange={setExecutionTime}
@@ -1283,10 +1295,11 @@ export default function ScheduleReport() {
                   </div>
 
                     {frequency === 'hourly' && (
-                      <Banner tone="info" title="Planification toutes les heures">
+                      <Banner tone="info" title={t('schedule.banner.hourly', 'Planification toutes les heures')}>
                         <p>
-                          L'envoi du rapport sera effectué chaque heure, à la même minute que la planification initiale.<br />
-                          Exemple : si vous planifiez à 14:23, l'envoi se fera chaque heure à xx:23.
+                          {t('schedule.banner.hourlyExplanation', 'L\'envoi du rapport sera effectué chaque heure, à la même minute que la planification initiale.')}
+                          <br />
+                          {t('schedule.banner.hourlyExample', 'Exemple : si vous planifiez à 14:23, l\'envoi se fera chaque heure à xx:23.')}
                         </p>
                       </Banner>
                     )}
@@ -1295,21 +1308,21 @@ export default function ScheduleReport() {
                   <div style={{ marginTop: '32px' }}>
                     <LegacyStack distribution="equalSpacing">
                         <BiBtn
-                          title="Annuler"
+                          title={t('action.cancel', 'Annuler')}
                           onClick={() => navigate('/app/dashboard')}
                         />
                       <LegacyStack spacing="tight">
                         <div style={{ minWidth: 160 }}>
                           {/* Le bouton de génération redirige vers la page de génération */}
                           <BiSimpleBtn
-                            title="Générer un rapport"
+                            title={t('action.generateReport', 'Générer un rapport')}
                             icon={<Icon source={OrderIcon} tone="inherit" />}
                             onClick={() => navigate('/app/reports/manual-export')}
                           />
                         </div>
                         <div style={{ minWidth: 160 }}>
                           <BiSimpleBtn
-                            title="Planifier automatiquement"
+                            title={t('action.scheduleAutomatically', 'Planifier automatiquement')}
                             icon={<Icon source={CalendarIcon} tone="inherit" />}
                             onClick={() => {
                               setActionType('schedule');

@@ -17,6 +17,7 @@ import { useState, useCallback } from "react";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
 import type { ReportStatus as ReportStatusType, ExportFormat as ExportFormatType, Report as ReportType } from "@prisma/client";
+import { useTranslation } from 'react-i18next';
 
 // Import sécurisé de ReportStatus et ExportFormat
 const ReportStatusEnum = {
@@ -175,6 +176,7 @@ export default function ExportHistory() {
   const [toastActive, setToastActive] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [toastError, setToastError] = useState(false);
+  const { t } = useTranslation();
 
   const handlePeriodChange = useCallback((value: string) => {
     setSelectedPeriod(value);
@@ -215,18 +217,18 @@ export default function ExportHistory() {
     try {
       const downloadUrl = `/api/reports/${reportId}`;
       await downloadFileFromUrl(downloadUrl, fileName);
-      setToastMessage("Fichier téléchargé avec succès");
+      setToastMessage(t('toast.downloadSuccess', 'Fichier téléchargé avec succès'));
       setToastError(false);
       setToastActive(true);
     } catch (error) {
       console.error('Download error:', error);
-      setToastMessage("Erreur lors du téléchargement");
+      setToastMessage(t('toast.downloadError', 'Erreur lors du téléchargement'));
       setToastError(true);
       setToastActive(true);
     } finally {
       setIsDownloading(null);
     }
-  }, [isDownloading]);
+  }, [isDownloading, t]);
 
   const handleRetry = useCallback(async (reportId: string) => {
     try {
@@ -239,7 +241,7 @@ export default function ExportHistory() {
       });
 
       if (response.ok) {
-        setToastMessage("Rapport en cours de régénération");
+        setToastMessage(t('toast.retrying', 'Rapport en cours de régénération'));
         setToastError(false);
         setToastActive(true);
         // Refresh the page to show updated status
@@ -249,11 +251,11 @@ export default function ExportHistory() {
       }
     } catch (error) {
       console.error('Retry error:', error);
-      setToastMessage("Erreur lors de la régénération");
+      setToastMessage(t('toast.retryError', 'Erreur lors de la régénération'));
       setToastError(true);
       setToastActive(true);
     }
-  }, []);
+  }, [t]);
 
   // Truncate file name if too long
   const getTruncatedFileName = (fileName: string) => {
@@ -284,15 +286,15 @@ export default function ExportHistory() {
         style={{ cursor: 'pointer', width: '100%', height: '100%' }}
         onClick={() => {
           if (report.status === ReportStatusEnum.PENDING) {
-            setToastMessage("Ce rapport est encore en attente de génération.");
+            setToastMessage(t('toast.pending', 'Ce rapport est encore en attente de génération.'));
             setToastError(true);
             setToastActive(true);
           } else if (report.status === ReportStatusEnum.COMPLETED_WITH_EMPTY_DATA) {
-            setToastMessage("Ce rapport a été généré sans données. Il n'y a rien à afficher.");
+            setToastMessage(t('toast.empty', 'Ce rapport a été généré sans données. Il n\'y a rien à afficher.'));
             setToastError(true);
             setToastActive(true);
           } else if (report.status === ReportStatusEnum.ERROR) {
-            setToastMessage("Ce rapport a échoué. Impossible d'afficher la vue.");
+            setToastMessage(t('toast.failed', 'Ce rapport a échoué. Impossible d\'afficher la vue.'));
             setToastError(true);
             setToastActive(true);
           } else {
@@ -305,13 +307,25 @@ export default function ExportHistory() {
     );
 
     return [
-      clickableCell(new Date(report.createdAt).toLocaleDateString("fr-FR"), report),
+      clickableCell(new Date(report.createdAt).toLocaleDateString(), report),
       clickableCell(report.startDate && report.endDate 
-        ? `${new Date(report.startDate).toLocaleDateString("fr-FR")} → ${new Date(report.endDate).toLocaleDateString("fr-FR")}`
-        : "Calculé automatiquement", report),
-      clickableCell(report.type === "manual" ? "Manuel" : "Auto", report),
-      clickableCell(report.format.toUpperCase(), report),
-      clickableCell(<Badge tone={statusBadge.tone}>{statusBadge.content}</Badge>, report),
+        ? `${new Date(report.startDate).toLocaleDateString()} → ${new Date(report.endDate).toLocaleDateString()}`
+        : t('history.period.auto', 'Calculé automatiquement'), report),
+      clickableCell(report.type === "manual" ? t('history.type.manual', 'Manuel') : t('history.type.scheduled', 'Automatique'), report),
+      clickableCell(t(`history.format.${report.format.toLowerCase()}`, report.format.toUpperCase()), report),
+      clickableCell(
+        <Badge tone={statusBadge.tone}>
+          {(() => {
+            switch (report.status) {
+              case 'COMPLETED': return t('history.status.success', 'Succès');
+              case 'COMPLETED_WITH_EMPTY_DATA': return t('history.status.empty', 'Données vides');
+              case 'PROCESSING': return t('history.status.processing', 'En cours');
+              case 'ERROR': return t('history.status.error', 'Erreur');
+              case 'PENDING': return t('history.status.pending', 'En attente');
+              default: return t('history.status.unknown', 'Inconnu');
+            }
+          })()}
+        </Badge>, report),
       clickableCell(getTruncatedFileName(report.fileName), report),
       <LegacyStack spacing="tight">
         {report.status === ReportStatusEnum.COMPLETED && (
@@ -336,15 +350,15 @@ export default function ExportHistory() {
   });
 
   const typeOptions = [
-    { label: "Tous", value: "all" },
-    { label: "Manuel", value: "manual" },
-    { label: "Auto", value: "scheduled" },
+    { label: t('history.type.all', 'Tous'), value: 'all' },
+    { label: t('history.type.manual', 'Manuel'), value: 'manual' },
+    { label: t('history.type.scheduled', 'Auto'), value: 'scheduled' },
   ];
 
   return (
     <Page
-      title="Historique des exports"
-      subtitle="Consultez l'historique de tous vos exports"
+      title={t('history.title', 'Historique des exports')}
+      subtitle={t('history.subtitle', "Consultez l'historique de tous vos exports")}
     >
       <Layout>
         <Layout.Section>
@@ -352,38 +366,38 @@ export default function ExportHistory() {
             <LegacyStack distribution="equalSpacing" alignment="center">
               <LegacyStack spacing="tight">
                 <Select
-                  label="Période"
+                  label={t('history.period', 'Période')}
                   options={[
-                    { label: "Toutes", value: "all" },
-                    { label: "Aujourd'hui", value: "today" },
-                    { label: "Cette semaine", value: "week" },
-                    { label: "Ce mois-ci", value: "month" },
+                    { label: t('history.period.all', 'Toutes'), value: "all" },
+                    { label: t('history.period.today', "Aujourd'hui"), value: "today" },
+                    { label: t('history.period.week', "Cette semaine"), value: "week" },
+                    { label: t('history.period.month', "Ce mois-ci"), value: "month" },
                   ]}
                   value={selectedPeriod}
                   onChange={handlePeriodChange}
                 />
                 <Select
-                  label="Type de rapport"
+                  label={t('history.type', 'Type de rapport')}
                   options={typeOptions}
                   value={selectedType}
                   onChange={handleTypeChange}
                 />
                 <Select
-                  label="Statut"
+                  label={t('history.status', 'Statut')}
                   options={[
-                    { label: "Tous", value: "all" },
-                    { label: "Succès", value: ReportStatusEnum.COMPLETED },
-                    { label: "Données vides", value: ReportStatusEnum.COMPLETED_WITH_EMPTY_DATA },
-                    { label: "En cours", value: ReportStatusEnum.PROCESSING },
-                    { label: "Erreur", value: ReportStatusEnum.ERROR },
-                    { label: "En attente", value: ReportStatusEnum.PENDING },
+                    { label: t('history.status.all', 'Tous'), value: "all" },
+                    { label: t('history.status.success', 'Succès'), value: ReportStatusEnum.COMPLETED },
+                    { label: t('history.status.empty', 'Données vides'), value: ReportStatusEnum.COMPLETED_WITH_EMPTY_DATA },
+                    { label: t('history.status.processing', 'En cours'), value: ReportStatusEnum.PROCESSING },
+                    { label: t('history.status.error', 'Erreur'), value: ReportStatusEnum.ERROR },
+                    { label: t('history.status.pending', 'En attente'), value: ReportStatusEnum.PENDING },
                   ]}
                   value={selectedStatus}
                   onChange={handleStatusChange}
                 />
               </LegacyStack>
               <TextField
-                label="Recherche"
+                label={t('history.search', 'Recherche')}
                 value={searchValue}
                 onChange={handleSearchChange}
                 autoComplete="off"
@@ -396,27 +410,27 @@ export default function ExportHistory() {
         <Layout.Section>
           <Card>
             <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
-            <DataTable
-              columnContentTypes={[
-                "text",
-                "text",
-                "text",
-                "text",
-                "text",
-                "text",
-                "text",
-              ]}
-              headings={[
-                "Date d'export",
-                "Période concernée",
-                "Type",
-                "Format",
-                "Statut",
-                "Fichier",
-                "Actions",
-              ]}
-              rows={rows}
-            />
+              <DataTable
+                columnContentTypes={[
+                  "text",
+                  "text",
+                  "text",
+                  "text",
+                  "text",
+                  "text",
+                  "text",
+                ]}
+                headings={[
+                  t('history.table.exportDate', "Date d'export"),
+                  t('history.table.period', "Période concernée"),
+                  t('history.table.type', 'Type'),
+                  t('history.table.format', 'Format'),
+                  t('history.table.status', 'Statut'),
+                  t('history.table.file', 'Fichier'),
+                  t('history.table.actions', 'Actions'),
+                ]}
+                rows={rows}
+              />
             </div>
           </Card>
         </Layout.Section>

@@ -4,13 +4,12 @@ import React from "react";
 interface StatCardProps {
   title: string;
   value: string | number;
-  variation: string;
   icon: any;
-  iconBg?: string; // couleur de fond de l’icône
+  iconBg?: string; // couleur de fond de l'icône
   color?: string; // couleur principale (texte)
 }
 
-export const StatCard: React.FC<StatCardProps> = ({ title, value, variation, icon, iconBg = "#E6F0FF", color = "#0066FF" }) => {
+export const StatCard: React.FC<StatCardProps> = ({ title, value, icon, iconBg = "#E6F0FF", color = "#0066FF" }) => {
   // Responsive: détecte si mobile ou narrow
   const [isMobile, setIsMobile] = React.useState(false);
   const [isNarrow, setIsNarrow] = React.useState(false);
@@ -38,7 +37,7 @@ export const StatCard: React.FC<StatCardProps> = ({ title, value, variation, ico
       justifyContent: 'stretch',
       height: isMobile ? 'auto' : isNarrow ? 140 : 160
     }}>
-      <Card padding="0">
+      <Card>
         <div style={{
           display: "flex",
           flexDirection: "column",
@@ -61,13 +60,6 @@ export const StatCard: React.FC<StatCardProps> = ({ title, value, variation, ico
             <Text as="span" variant="heading2xl" fontWeight="bold">
               {value}
             </Text>
-          </div>
-          <div style={{ marginTop: 8, minHeight: 0 }}>
-            <span style={{ wordBreak: 'break-word', whiteSpace: 'normal', display: 'block' }}>
-              <Text as="span" variant="bodySm" tone="subdued">
-                {variation}
-              </Text>
-            </span>
           </div>
         </div>
       </Card>

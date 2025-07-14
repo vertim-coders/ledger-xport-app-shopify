@@ -1,183 +1,151 @@
-import { useEffect } from "react";
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
-import { useFetcher } from "@remix-run/react";
+import type { LoaderFunctionArgs } from "@remix-run/node";
+import { useNavigate } from "@remix-run/react";
 import {
   Page,
   Layout,
-  Text,
   Card,
-  Button,
+  Text,
   BlockStack,
+  ActionList,
+  Frame,
   Box,
-  List,
-  Link,
-  InlineStack,
-} from "@shopify/polaris";
+} from '@shopify/polaris';
+import {
+  SettingsIcon,
+  OrderIcon,
+  CalendarIcon,
+  StoreIcon
+} from '@shopify/polaris-icons';
 import { authenticate } from "../shopify.server";
+import { BiSimpleBtn } from "../components/Buttons/BiSimpleBtn";
+import Footer from '../components/Footer';
+import { useTranslation } from 'react-i18next';
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.admin(request);
-
   return null;
 };
 
-export const action = async ({ request }: ActionFunctionArgs) => {
-  const { admin } = await authenticate.admin(request);
-  const color = ["Red", "Orange", "Yellow", "Green"][
-    Math.floor(Math.random() * 4)
-  ];
-  const response = await admin.graphql(
-    `#graphql
-      mutation populateProduct($product: ProductCreateInput!) {
-        productCreate(product: $product) {
-          product {
-            id
-            title
-            handle
-            status
-            variants(first: 10) {
-              edges {
-                node {
-                  id
-                  price
-                  barcode
-                  createdAt
-                }
-              }
-            }
-          }
-        }
-      }`,
-    {
-      variables: {
-        product: {
-          title: `${color} Snowboard`,
-        },
-      },
-    },
-  );
-  const responseJson = await response.json();
-
-  const product = responseJson.data!.productCreate!.product!;
-  const variantId = product.variants.edges[0]!.node!.id!;
-
-  const variantResponse = await admin.graphql(
-    `#graphql
-    mutation shopifyRemixTemplateUpdateVariant($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
-      productVariantsBulkUpdate(productId: $productId, variants: $variants) {
-        productVariants {
-          id
-          price
-          barcode
-          createdAt
-        }
-      }
-    }`,
-    {
-      variables: {
-        productId: product.id,
-        variants: [{ id: variantId, price: "100.00" }],
-      },
-    },
-  );
-
-  const variantResponseJson = await variantResponse.json();
-
-  return {
-    product: responseJson!.data!.productCreate!.product,
-    variant:
-      variantResponseJson!.data!.productVariantsBulkUpdate!.productVariants,
-  };
-};
-
 export default function Index() {
-  const fetcher = useFetcher<typeof action>();
-
-  const isLoading =
-    ["loading", "submitting"].includes(fetcher.state) &&
-    fetcher.formMethod === "POST";
-  const productId = fetcher.data?.product?.id.replace(
-    "gid://shopify/Product/",
-    "",
-  );
-
-  useEffect(() => {
-    if (productId) {
-      // Remplace shopify.toast.show par un console.log ou une notification simple
-      console.log("Product created successfully!");
-    }
-  }, [productId]);
-  
-  const generateProduct = () => fetcher.submit({}, { method: "POST" });
+  const navigate = useNavigate();
+  const { t } = useTranslation();
 
   return (
-    <Page title="LedgerXport - Accueil">
-      <BlockStack gap="500">
+    <Frame>
+      <Page narrowWidth>
         <Layout>
+          {/* Section principale de l'application */}
           <Layout.Section>
             <Card>
-              <BlockStack gap="500">
-                <BlockStack gap="200">
-                  <Text as="h2" variant="headingMd">
-                    Bienvenue sur LedgerXport 🎉
-                  </Text>
-                  <Text variant="bodyMd" as="p">
-                    Cette application vous permet d'exporter vos données Shopify vers votre logiciel de comptabilité.
-                    Utilisez la navigation en haut pour accéder aux différentes fonctionnalités.
-                  </Text>
-                </BlockStack>
-                <BlockStack gap="200">
-                  <Text as="h3" variant="headingMd">
-                    Fonctionnalités disponibles
-                  </Text>
-                  <List type="bullet">
-                    <List.Item>Configuration fiscale de votre entreprise</List.Item>
-                    <List.Item>Exports manuels de données</List.Item>
-                    <List.Item>Planification d'exports automatiques</List.Item>
-                    <List.Item>Historique des exports</List.Item>
-                    <List.Item>Paramètres généraux</List.Item>
-                  </List>
-                </BlockStack>
-                <InlineStack gap="300">
-                  <Button loading={isLoading} onClick={generateProduct}>
-                    Tester l'API (créer un produit)
-                  </Button>
-                  {fetcher.data?.product && (
-                    <Button
-                      url={`https://${process.env.SHOPIFY_SHOP_DOMAIN}/admin/products/${productId}`}
-                      target="_blank"
-                      variant="plain"
-                    >
-                      Voir le produit
-                    </Button>
-                  )}
-                </InlineStack>
-                {fetcher.data?.product && (
-                  <>
-                    <Text as="h3" variant="headingMd">
-                      Résultat de la mutation productCreate
+              <Box padding="400">
+                {/* Message "Nouveau" comme sur l'image */}
+                <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'center' }}>
+                  <div style={{
+                    background: 'var(--p-color-bg-surface-brand, #F0F6FF)',
+                    borderRadius: 34,
+                    padding: '18px 36px',
+                    minWidth: 220,
+                    maxWidth: '100%',
+                    margin: '0 auto',
+                    boxShadow: '0 2px 8px 0 rgba(0,102,255,0.06)',
+                    whiteSpace: 'nowrap',
+                    overflowX: 'auto',
+                    textAlign: 'center',
+                  }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <span style={{ color: '#0066FF', fontSize: '14px', fontWeight: '500' }}>
+                        <span style={{ marginRight: '8px' }}>✨</span>
+                        {t('home.newVersion', 'Nouveau : La version 1.0 de LedgerXport est disponible !')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <Text as="h1" variant="heading2xl" alignment="center">
+                  {t('home.simplifyExport', "Simplifiez l'export de vos données Shopify")}
+                </Text>
+
+                <Box paddingBlockStart="600" paddingBlockEnd="800">
+                  <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+                    <Text as="p" variant="bodyLg" alignment="center" tone="subdued">
+                      {t('home.welcome', "Bienvenue sur LedgerXport 🎉 Cette application vous permet d'exporter vos données Shopify vers votre logiciel de comptabilité. Utilisez la navigation en haut pour accéder aux différentes fonctionnalités.")}
                     </Text>
-                    <Box
-                      padding="400"
-                      background="bg-surface-active"
-                      borderWidth="025"
-                      borderRadius="200"
-                      borderColor="border"
-                      overflowX="scroll"
-                    >
-                      <pre style={{ margin: 0 }}>
-                        <code>
-                          {JSON.stringify(fetcher.data.product, null, 2)}
-                        </code>
-                      </pre>
-                    </Box>
-                  </>
-                )}
-              </BlockStack>
+                  </div>
+                </Box>
+
+                {/* Bouton d'appel à l'action */}
+                <Box paddingBlockStart="400">
+                  <div style={{ textAlign: 'center' }}>
+                    <BiSimpleBtn
+                      title={t('home.cta', 'Commencer un export')}
+                      onClick={() => navigate("/app/dashboard")}
+                    />
+                  </div>
+                </Box>
+
+                <Box paddingBlockStart="400">
+                  <div style={{ textAlign: 'center' }}>
+                    <Text as="p" variant="bodySm" tone="subdued">
+                      {t('home.quickSetup', 'Essai gratuit de 14 jours - Sans engagement')}
+                    </Text>
+                  </div>
+                </Box>
+              </Box>
             </Card>
           </Layout.Section>
+
+          {/* Section des fonctionnalités */}
+          <Layout.Section>
+            <Card>
+              <Box padding="400">
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <Box paddingBlockEnd="800">
+                    <Text as="h2" variant="headingLg" alignment="center">
+                      {t('home.featuresTitle', 'Fonctionnalités disponibles')}
+                    </Text>
+                  </Box>
+                  <div style={{ width: '100%', maxWidth: 480 }}>
+                    <BlockStack gap="400">
+                      <ActionList
+                        items={[
+                          {
+                            content: t('home.feature.fiscalConfig', 'Configuration fiscale de votre entreprise'),
+                            icon: OrderIcon,
+                            onAction: () => navigate("/app/settings/general"),
+                          },
+                          {
+                            content: t('home.feature.manualExports', 'Exports manuels de données'),
+                            icon: OrderIcon,
+                            onAction: () => navigate("/app/reports/manual-export"),
+                          },
+                          {
+                            content: t('home.feature.scheduledExports', "Planification d'exports automatiques"),
+                            icon: CalendarIcon,
+                            onAction: () => navigate("/app/reports/schedule"),
+                          },
+                          {
+                            content: t('home.feature.exportHistory', 'Historique des exports'),
+                            icon: StoreIcon,
+                            onAction: () => navigate("/app/reports/history"),
+                          },
+                          {
+                            content: t('home.feature.generalSettings', 'Paramètres généraux'),
+                            icon: SettingsIcon,
+                            onAction: () => navigate("/app/settings/general"),
+                          },
+                        ]}
+                      />
+                    </BlockStack>
+                  </div>
+                </div>
+              </Box>
+            </Card>
+          </Layout.Section>
+          <Layout.Section>
+            <Footer />
+          </Layout.Section>
         </Layout>
-      </BlockStack>
-    </Page>
+      </Page>
+    </Frame>
   );
 }

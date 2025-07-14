@@ -1,6 +1,7 @@
 import React from "react";
 import { Card, Text, Icon, Divider, Box } from "@shopify/polaris";
 import { AlertCircleIcon, CheckIcon } from "@shopify/polaris-icons";
+import { useTranslation } from "react-i18next";
 
 export interface RecentFailure {
   id: string;
@@ -13,12 +14,13 @@ interface RecentFailuresListProps {
 }
 
 export const RecentFailuresList: React.FC<RecentFailuresListProps> = ({ failures }) => {
+  const { t } = useTranslation();
   return (
     <div style={{ borderRadius: 16, boxShadow: "0 2px 12px 0 rgba(0,0,0,0.06)", background: "#fff", minHeight: 240 }}>
       <Card padding="0">
         <Box paddingBlock="400" paddingInline="400">
           <Text variant="headingMd" as="h2" fontWeight="bold">
-            Échecs récents
+            {t('recentFailuresList.title')}
           </Text>
         </Box>
         <Divider />
@@ -28,12 +30,12 @@ export const RecentFailuresList: React.FC<RecentFailuresListProps> = ({ failures
               <Icon source={CheckIcon} tone="success" />
               <span style={{ display: "block", marginTop: 12 }}>
                 <Text as="span" variant="bodyMd" fontWeight="medium">
-                  Aucun échec récent
+                  {t('recentFailuresList.noRecentFailure')}
                 </Text>
               </span>
               <span style={{ display: "block" }}>
                 <Text as="span" variant="bodySm" tone="subdued">
-                  Tous vos exports ont réussi.
+                  {t('recentFailuresList.allSucceeded')}
                 </Text>
               </span>
             </div>
@@ -53,7 +55,8 @@ export const RecentFailuresList: React.FC<RecentFailuresListProps> = ({ failures
                       </span>
                       <span style={{ display: "block", marginTop: 2 }}>
                         <Text as="span" variant="bodySm" tone="subdued">
-                          {new Date(fail.failedAt).toLocaleString("fr-FR", { dateStyle: "medium", timeStyle: "short" })}
+                          {/* TODO: internationaliser la date si besoin */}
+                          {new Date(fail.failedAt).toLocaleString()}
                         </Text>
                       </span>
                     </div>
