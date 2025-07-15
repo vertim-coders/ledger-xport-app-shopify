@@ -31,11 +31,6 @@ const navigationItems = [
     url: "/app",
   },
   {
-      label: t('nav.configuration', 'Configuration'),
-    icon: SettingsIcon,
-    url: "/app/settings/company-fiscal-regime",
-  },
-  {
       label: t('nav.dashboard', 'Tableau de bord'),
     icon: ProfileIcon,
     url: "/app/dashboard",
@@ -63,11 +58,10 @@ const navigationItems = [
 ];
 
 const settingsItem = {
-    label: t('nav.generalSettings', 'Paramètres généraux'),
+  label: t('nav.generalSettings', 'Paramètres généraux'),
   icon: SettingsIcon,
   url: "/app/settings/general",
 };
-
 
 
   // Responsive: détecte si mobile et si la hauteur est faible
@@ -146,11 +140,17 @@ const settingsItem = {
           </span>
         </div>
         <Divider borderColor="border" />
+        <div style={{ padding: isVeryShort ? '4px 16px 0 16px' : isShort ? '8px 20px 0 20px' : '12px 32px 0 32px', textAlign: 'center' }}>
+          <span style={{ fontSize: 12, letterSpacing: 0.5 }}>
+            <Text as="span" variant="bodySm" tone="subdued">{t('sidebar.mainMenu', 'Menu principal')}</Text>
+          </span>
+        </div>
         {/* Menu vertical */}
         <ul style={{
           flex: 1,
           minHeight: 0,
           margin: 0,
+          marginTop: 25,
           padding: isVeryShort ? "12px 0 0 0" : isShort ? "18px 0 0 0" : "32px 0 0 0",
           listStyle: "none",
           display: "flex",
@@ -168,6 +168,7 @@ const settingsItem = {
                   color: isActive(item.url) ? "#0066FF" : "#000000",
                   display: "flex",
                   alignItems: "center",
+                  marginBottom: 5,
                   gap: isVeryShort ? 6 : isShort ? 10 : 16,
                   padding: isVeryShort ? "8px 16px" : isShort ? "12px 20px" : "18px 32px",
                   borderRadius: "10px 0px 0px 10px",
@@ -188,54 +189,68 @@ const settingsItem = {
                 }}
               >
                 <Icon source={item.icon} tone={isActive(item.url) ? "base" : "subdued"} />
-                <span style={{ flex: 1, textAlign: "left" }}>{item.label}</span>
+                <span style={{
+                  flex: 1,
+                  textAlign: "left",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  display: "block",
+                  maxWidth: "100%"
+                }}>{item.label}</span>
               </button>
             </li>
           ))}
         </ul>
-        {/* Bas : Paramètres généraux */}
-        <div style={{
-          width: "100%",
-          padding: isVeryShort ? "0 12px 6px 12px" : isShort ? "0 16px 8px 16px" : "0 24px 12px 24px",
-          flexShrink: 0,
-          marginTop: 'auto',
-          background: 'inherit',
-        }}>
-          <Divider borderColor="border" />
-          <div style={{ marginTop: isVeryShort ? 12 : isShort ? 18 : 32, display: "flex", flexDirection: "column", gap: isVeryShort ? 4 : isShort ? 6 : 8 }}>
-            <button
-              style={{
-                marginBottom: isVeryShort ? 20 : isShort ? 32 : 60,
-                width: "100%",
-                background: isActive(settingsItem.url) ? "#fff" : "none",
-                border: "none",
-                color: isActive(settingsItem.url) ? "#0066FF" : "#000000",
-                display: "flex",
-                alignItems: "center",
-                gap: isVeryShort ? 6 : isShort ? 10 : 16,
-                padding: isVeryShort ? "8px 16px" : isShort ? "12px 20px" : "18px 32px",
-                borderRadius: 8,
-                cursor: "pointer",
-                fontSize: isVeryShort ? 12 : isShort ? 14 : 15,
-                fontWeight: 500,
-                transition: "background 0.2s, color 0.2s",
-              }}
-              onClick={() => {
-                navigate(settingsItem.url);
-                if (isMobile && onClose) onClose();
-              }}
-              onMouseOver={e => {
-                if (!isActive(settingsItem.url)) e.currentTarget.style.background = "rgba(0,0,0,0.06)";
-              }}
-              onMouseOut={e => {
-                if (!isActive(settingsItem.url)) e.currentTarget.style.background = "none";
-              }}
-            >
-              <Icon source={settingsItem.icon} tone={isActive(settingsItem.url) ? "base" : "subdued"} />
-              <span style={{ flex: 1, textAlign: "left" }}>{settingsItem.label}</span>
-            </button>
-          </div>
+        {/* Séparateur et bouton Paramètres généraux */}
+        <Divider borderColor="border" />
+        <div style={{ padding: isVeryShort ? '4px 16px 0 16px' : isShort ? '8px 20px 0 20px' : '12px 32px 0 32px', textAlign: 'center' }}>
+          <span style={{ fontSize: 12, letterSpacing: 0.5 }}>
+            <Text as="span" variant="bodySm" tone="subdued">{t('sidebar.support', 'Aide et support')}</Text>
+          </span>
         </div>
+        <div style={{ marginTop: 30 }}>
+          <button
+            style={{
+              width: "100%",
+              marginBottom: 150,
+              background: isActive(settingsItem.url) ? "#fff" : "none",
+              border: "none",
+              color: isActive(settingsItem.url) ? "#0066FF" : "#000000",
+              display: "flex",
+              alignItems: "center",
+              gap: isVeryShort ? 6 : isShort ? 10 : 16,
+              padding: isVeryShort ? "8px 16px" : isShort ? "12px 20px" : "18px 32px",
+              borderRadius: "10px 0px 0px 10px",
+              cursor: "pointer",
+              fontSize: isVeryShort ? 12 : isShort ? 14 : 15,
+              fontWeight: 500,
+              transition: "background 0.2s, color 0.2s",
+            }}
+            onClick={() => {
+              navigate(settingsItem.url);
+              if (isMobile && onClose) onClose();
+            }}
+            onMouseOver={e => {
+              if (!isActive(settingsItem.url)) e.currentTarget.style.background = "rgba(0,0,0,0.06)";
+            }}
+            onMouseOut={e => {
+              if (!isActive(settingsItem.url)) e.currentTarget.style.background = "none";
+            }}
+          >
+            <Icon source={settingsItem.icon} tone={isActive(settingsItem.url) ? "base" : "subdued"} />
+            <span style={{
+              flex: 1,
+              textAlign: "left",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              display: "block",
+              maxWidth: "100%"
+            }}>{settingsItem.label}</span>
+          </button>
+        </div>
+        {/* Bas supprimé : Paramètres généraux intégré au menu principal */}
       </div>
     </>
   );

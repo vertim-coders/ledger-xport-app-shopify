@@ -18,6 +18,7 @@ import { prisma } from "../db.server";
 import fiscalRegimesData from "../data/fiscal-regimes.json";
 import Footer from "../components/Footer";
 import type { FiscalConfiguration as FiscalRegimePrismaType, ReportStatus as ReportStatusType, ExportFormat as ExportFormatType } from "@prisma/client";
+import { requireFiscalConfigOrRedirect } from "../utils/requireFiscalConfig.server";
 
 // Import sécurisé de FiscalConfiguration, ReportStatus et ExportFormat
 const FiscalRegimePrisma = {};
@@ -199,13 +200,17 @@ const HelpIcon = ({ description }: { description: string }) => {
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
-
   const shop = await prisma.shop.findUnique({
     where: { shopifyDomain: session.shop },
     include: { fiscalConfig: true }
   });
+  if (!shop?.id) {
+    return requireFiscalConfigOrRedirect("");
+  }
+  const redirectIfNoConfig = await requireFiscalConfigOrRedirect(shop.id);
+  if (redirectIfNoConfig) return redirectIfNoConfig;
 
-  if (!shop || !shop.fiscalConfig) {
+  if (!shop.fiscalConfig) {
     throw new Error("Shop or fiscal configuration not found");
   }
 
@@ -346,8 +351,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
 };
 
+// Type pour les données du loader
+type LoaderData = {
+  fiscalRegime: CombinedFiscalRegime;
+};
+
 export default function ManualExportPage() {
-  const { fiscalRegime } = useLoaderData<typeof loader>();
+  const { fiscalRegime } = useLoaderData<LoaderData>();
   const actionData = useActionData<typeof action>();
   const { t } = useTranslation();
 

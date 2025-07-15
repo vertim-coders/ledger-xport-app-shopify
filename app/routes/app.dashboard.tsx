@@ -11,6 +11,8 @@ import {
   Icon,
   EmptyState,
   Toast,
+  Modal,
+  BlockStack,
 } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
@@ -18,6 +20,7 @@ import type { ReportStatus as ReportStatusType } from "@prisma/client";
 import { ShopifyCustomerService } from "../models/ShopifyCustomer.service";
 import { ShopifyOrderService } from "../models/ShopifyOrder.service";
 import Footer from '../components/Footer';
+import { requireFiscalConfigOrRedirect } from "../utils/requireFiscalConfig.server";
 
 // Import sécurisé de ReportStatus
 const ReportStatus = {
@@ -88,6 +91,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       }
     }
   });
+
+  // Vérification de la config fiscale obligatoire
+  if (!shop?.id) {
+    return requireFiscalConfigOrRedirect("");
+  }
+  const redirectIfNoConfig = await requireFiscalConfigOrRedirect(shop.id);
+  if (redirectIfNoConfig) return redirectIfNoConfig;
 
   // Get successful and failed exports count
   const successfulExports = await prisma.report.count({
@@ -174,9 +184,20 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   });
 };
 
+// Type pour les données du loader
+interface DashboardLoaderData {
+  successfulExports: number;
+  failedExports: number;
+  customersCount: number;
+  totalRevenue: number;
+  recentReports: any[];
+  upcomingExports: any[];
+  monthlyData: { month: string; exports: number }[];
+}
+
 export default function Dashboard() {
   const { t } = useTranslation();
-  const { successfulExports, failedExports, customersCount, totalRevenue, recentReports, upcomingExports, monthlyData } = useLoaderData<typeof loader>();
+  const { successfulExports, failedExports, customersCount, totalRevenue, recentReports, upcomingExports, monthlyData } = useLoaderData<DashboardLoaderData>();
   const navigate = useNavigate();
   const [isDownloading, setIsDownloading] = useState<string | null>(null);
   const [toastActive, setToastActive] = useState(false);
@@ -186,6 +207,7 @@ export default function Dashboard() {
   const [isNarrow, setIsNarrow] = useState(false);
   const [isVeryNarrow, setIsVeryNarrow] = useState(false);
   const [isTwoCol, setIsTwoCol] = useState(false);
+  const [showCustomReportModal, setShowCustomReportModal] = useState(false);
 
   useEffect(() => {
     const check = () => {
@@ -250,7 +272,11 @@ export default function Dashboard() {
     }
   };
 
-  const rows = recentReports.map(report => [
+  const handleCustomReport = () => {
+    setShowCustomReportModal(true);
+  };
+
+  const rows = recentReports.map((report: any) => [
     <div 
       style={{ cursor: 'pointer' }} 
       onClick={() => navigate(`/app/reports/view/${report.id}`)}
@@ -369,7 +395,7 @@ export default function Dashboard() {
             <BiSimpleBtn
               title={t('action.customReport', 'Rapport personnalisé')}
               icon={<Icon source={EditIcon} tone="inherit" />}
-              onClick={() => navigate("/app/reports/custom")}
+              onClick={handleCustomReport}
             />
           </div>
         </Layout.Section>
@@ -393,7 +419,7 @@ export default function Dashboard() {
                   <Text variant="headingMd" as="h1">{t('dashboard.exportStats', 'Statistiques des exports')}</Text>
           </div>
                 <div style={{ padding: 20, paddingTop: 0 }}>
-          <MonthlyReportsChart data={monthlyData.map(item => ({ month: item.month, reports: item.exports }))} />
+          <MonthlyReportsChart data={monthlyData.map((item: { month: string; exports: number }) => ({ month: item.month, reports: item.exports }))} />
                 </div>
               </Card>
             </div>
@@ -405,7 +431,7 @@ export default function Dashboard() {
                 </div>
                 <div style={{ padding: 20, paddingTop: 0 }}>
           <RecentExportsList
-            exports={recentReports.slice(0, 5).map(r => ({
+            exports={recentReports.slice(0, 5).map((r: any) => ({
               id: r.id,
               filename: r.fileName || r.type || "Export",
               createdAt: r.createdAt,
@@ -416,7 +442,7 @@ export default function Dashboard() {
               downloadDisabled: r.type === "scheduled" && r.status !== "COMPLETED"
             }))}
                     onSeeAll={() => navigate("/app/reports/history")}
-            onView={id => navigate(`/app/reports/view/${id}`)}
+            onView={(id: string) => navigate(`/app/reports/view/${id}`)}
           />
                 </div>
               </Card>
@@ -434,7 +460,7 @@ export default function Dashboard() {
                   <div style={{ marginBottom: '16px' }}>
                     <Text variant="headingMd" as="h1">{t('dashboard.recentFailures', 'Échecs récents')}</Text>
                   </div>
-                  {recentReports && recentReports.filter(report => report.status === ReportStatus.ERROR).length > 0 ? (
+                  {recentReports && recentReports.filter((report: any) => report.status === ReportStatus.ERROR).length > 0 ? (
                     <div style={{ 
                       height: '300px',
                       overflowY: 'auto',
@@ -456,8 +482,8 @@ export default function Dashboard() {
                             'Actions',
                           ]}
                           rows={recentReports
-                            .filter(report => report.status === ReportStatus.ERROR)
-                            .map(report => [
+                            .filter((report: any) => report.status === ReportStatus.ERROR)
+                            .map((report: any) => [
                               <div style={{ cursor: 'pointer' }} onClick={() => navigate(`/app/reports/view/${report.id}`)}>{report.fileName}</div>,
                               report.type,
                               new Date(report.updatedAt).toLocaleDateString(),
@@ -514,7 +540,7 @@ export default function Dashboard() {
                             'Fréquence',
                             'Actions',
                           ]}
-                          rows={upcomingExports.map(task => {
+                          rows={upcomingExports.map((task: any) => {
                             const { date, time } = formatDateTime(task.nextRun);
                             return [
                               task.report.fileName,
@@ -561,6 +587,25 @@ export default function Dashboard() {
           <Footer />
         </Layout.Section>
       </Layout>
+      {showCustomReportModal && (
+        <Modal
+          open={showCustomReportModal}
+          onClose={() => setShowCustomReportModal(false)}
+          title={t('customReport.inProgressTitle', 'Fonctionnalité en cours de production')}
+          primaryAction={{ content: t('action.close', 'Fermer'), onAction: () => setShowCustomReportModal(false) }}
+        >
+          <Modal.Section>
+            <BlockStack gap="300">
+              <Text as="p">
+                {t('customReport.inProgress', 'La fonctionnalité Rapport personnalisé est en cours de production et sera bientôt disponible.')}
+              </Text>
+              <Text as="p" tone="subdued">
+                {t('customReport.inProgressDesc', 'Nous mettons tout en œuvre pour vous proposer prochainement cette fonctionnalité avancée. Merci de votre compréhension !')}
+              </Text>
+            </BlockStack>
+          </Modal.Section>
+        </Modal>
+      )}
       {toastActive && (
         <Toast
           content={toastMessage}

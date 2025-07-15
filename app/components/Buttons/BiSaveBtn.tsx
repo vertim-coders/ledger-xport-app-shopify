@@ -9,7 +9,7 @@ export const BiSaveBtn = ({ isLoading, title, style }: { isLoading?: boolean; ti
       style={{
         position: 'relative',
         display: 'inline-block',
-        margin: '0 auto',
+      margin: '0 auto',
         ...style,
       }}
     >
@@ -61,10 +61,10 @@ export const BiSaveBtn = ({ isLoading, title, style }: { isLoading?: boolean; ti
             zIndex: 2,
             justifyContent: 'center',
             whiteSpace: 'nowrap',
-          }}
-        >
-          {isLoading ? <LoadingGray /> : <BiSaveIcon />}
-          {title || 'Save'}
+        }}
+      >
+        {isLoading ? <LoadingGray /> : <BiSaveIcon />}
+        {title || 'Save'}
         </span>
       </button>
     </div>

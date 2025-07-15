@@ -65,7 +65,7 @@ export const BiSimpleBtn = ({ title, onClick, style, icon }: { title: string; on
                     }}
                 >
                     {icon}
-                    {title}
+                {title}
                 </span>
             </button>
         </div>

@@ -18,6 +18,7 @@ import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
 import type { ReportStatus as ReportStatusType, ExportFormat as ExportFormatType, Report as ReportType } from "@prisma/client";
 import { useTranslation } from 'react-i18next';
+import { requireFiscalConfigOrRedirect } from "../utils/requireFiscalConfig.server";
 
 // Import sécurisé de ReportStatus et ExportFormat
 const ReportStatusEnum = {
@@ -52,9 +53,12 @@ type LoaderData = {
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
-  const shop = await prisma.shop.findUnique({
-    where: { shopifyDomain: session.shop },
-  });
+  const shop = await prisma.shop.findUnique({ where: { shopifyDomain: session.shop } });
+  if (!shop?.id) {
+    return requireFiscalConfigOrRedirect("");
+  }
+  const redirectIfNoConfig = await requireFiscalConfigOrRedirect(shop.id);
+  if (redirectIfNoConfig) return redirectIfNoConfig;
 
   if (!shop) {
     return json<LoaderData>({ reports: [] });
@@ -165,7 +169,7 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export default function ExportHistory() {
-  const { reports } = useLoaderData<typeof loader>();
+  const { reports } = useLoaderData<LoaderData>();
   const submit = useSubmit();
   const navigate = useNavigate();
   const [selectedPeriod, setSelectedPeriod] = useState("all");
@@ -267,7 +271,7 @@ export default function ExportHistory() {
     return fileName.slice(0, 37) + '...'+ (ext ? ext : '');
   };
 
-  const rows = reports.map((report) => {
+  const rows = reports.map((report: any) => {
     console.log('Processing report:', { id: report.id, status: report.status });
     
     const statusBadge: { content: string; tone: "success" | "info" | "warning" | "critical" } = {
@@ -276,7 +280,7 @@ export default function ExportHistory() {
       "PROCESSING": { content: "⏳ En cours", tone: "warning" as const },
       "ERROR": { content: "❌ Échec", tone: "critical" as const },
       "PENDING": { content: "⏳ En attente", tone: "warning" as const },
-    }[report.status] || { content: "❓ Inconnu", tone: "warning" as const };
+    }[report.status as keyof typeof ReportStatusEnum] || { content: "❓ Inconnu", tone: "warning" as const };
 
     console.log('Status badge:', statusBadge);
 
@@ -311,8 +315,8 @@ export default function ExportHistory() {
       clickableCell(report.startDate && report.endDate 
         ? `${new Date(report.startDate).toLocaleDateString()} → ${new Date(report.endDate).toLocaleDateString()}`
         : t('history.period.auto', 'Calculé automatiquement'), report),
-      clickableCell(report.type === "manual" ? t('history.type.manual', 'Manuel') : t('history.type.scheduled', 'Automatique'), report),
-      clickableCell(t(`history.format.${report.format.toLowerCase()}`, report.format.toUpperCase()), report),
+      clickableCell(report.type === "manual" ? String(t('history.type.manual', 'Manuel')) : String(t('history.type.scheduled', 'Automatique')), report),
+      clickableCell(String(t(`history.format.${report.format.toLowerCase()}`, report.format.toUpperCase())), report),
       clickableCell(
         <Badge tone={statusBadge.tone}>
           {(() => {
@@ -410,17 +414,17 @@ export default function ExportHistory() {
         <Layout.Section>
           <Card>
             <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
-              <DataTable
-                columnContentTypes={[
-                  "text",
-                  "text",
-                  "text",
-                  "text",
-                  "text",
-                  "text",
-                  "text",
-                ]}
-                headings={[
+            <DataTable
+              columnContentTypes={[
+                "text",
+                "text",
+                "text",
+                "text",
+                "text",
+                "text",
+                "text",
+              ]}
+              headings={[
                   t('history.table.exportDate', "Date d'export"),
                   t('history.table.period', "Période concernée"),
                   t('history.table.type', 'Type'),
@@ -428,9 +432,9 @@ export default function ExportHistory() {
                   t('history.table.status', 'Statut'),
                   t('history.table.file', 'Fichier'),
                   t('history.table.actions', 'Actions'),
-                ]}
-                rows={rows}
-              />
+              ]}
+              rows={rows}
+            />
             </div>
           </Card>
         </Layout.Section>

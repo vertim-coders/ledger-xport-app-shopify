@@ -24,6 +24,7 @@ import { BiSimpleBtn } from "../components/Buttons/BiSimpleBtn";
 import { OrderIcon, CalendarIcon } from "@shopify/polaris-icons";
 import type { ReportStatus as ReportStatusType, ExportFormat as ExportFormatType } from "@prisma/client";
 import { useTranslation } from 'react-i18next';
+import { requireFiscalConfigOrRedirect } from "../utils/requireFiscalConfig.server";
 
 // Import sécurisé d'ReportStatus et ExportFormat
 const ReportStatus = {
@@ -158,10 +159,12 @@ const HelpIcon = ({ description }: { description: string }) => {
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
-  const shop = await prisma.shop.findUnique({
-    where: { shopifyDomain: session.shop },
-    include: { fiscalConfig: true },
-  });
+  const shop = await prisma.shop.findUnique({ where: { shopifyDomain: session.shop } });
+  if (!shop?.id) {
+    return requireFiscalConfigOrRedirect("");
+  }
+  const redirectIfNoConfig = await requireFiscalConfigOrRedirect(shop.id);
+  if (redirectIfNoConfig) return redirectIfNoConfig;
 
   const ftpConfig = await prisma.ftpConfig.findUnique({
     where: { shopId: session.shop }
@@ -600,7 +603,18 @@ async function scheduleImmediateTask(taskId: string, shopId: string, reportId: s
 }
 
 export default function ScheduleReport() {
-  const { shop, data, ftpConfig } = useLoaderData<typeof loader>();
+  // Type pour les données du loader
+  type LoaderData = {
+    shop: any;
+    ftpConfig: any;
+    data: {
+      customers: any;
+      orders: any;
+      refunds: any;
+      taxes: any;
+    };
+  };
+  const { shop, data, ftpConfig } = useLoaderData<LoaderData>();
   const actionData = useActionData<typeof action>();
   const submit = useSubmit();
   const navigate = useNavigate();
@@ -1024,6 +1038,7 @@ export default function ScheduleReport() {
 
   // Ajout des labels de fréquence traduits
   const FREQUENCY_OPTIONS = [
+    { label: t('schedule.frequency.hourly', 'Toutes les heures'), value: 'hourly' },
     { label: t('schedule.frequency.daily', 'Quotidien'), value: 'daily' },
     { label: t('schedule.frequency.weekly', 'Hebdomadaire'), value: 'weekly' },
     { label: t('schedule.frequency.monthly', 'Mensuel'), value: 'monthly' },

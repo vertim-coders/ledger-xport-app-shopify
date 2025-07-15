@@ -46,12 +46,16 @@ import type { Settings } from "../types/SettingsType";
 import ftpService from "../services/ftp.service";
 import { encrypt, decrypt } from "../utils/crypto.server";
 import { LanguageSelector } from "../components/LanguageSelector";
+import { requireFiscalConfigOrRedirect } from "../utils/requireFiscalConfig.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
-  const shop = await prisma.shop.findUnique({
-    where: { shopifyDomain: session.shop },
-  });
+  const shop = await prisma.shop.findUnique({ where: { shopifyDomain: session.shop } });
+  if (!shop?.id) {
+    return requireFiscalConfigOrRedirect("");
+  }
+  const redirectIfNoConfig = await requireFiscalConfigOrRedirect(shop.id);
+  if (redirectIfNoConfig) return redirectIfNoConfig;
 
   let fiscalConfig = null;
   let generalSettings = null;
@@ -267,9 +271,18 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
   return json({ success: true });
 };
 
+// Type pour les données du loader
+type LoaderData = {
+  settings: any;
+  generalSettings: any;
+  ftpConfig: any;
+  regimes: any[];
+  shopDetails: any;
+};
+
 export default function GeneralSettings() {
   const { t } = useTranslation();
-  const { settings, generalSettings, ftpConfig, regimes, shopDetails } = useLoaderData<typeof loader>();
+  const { settings, generalSettings, ftpConfig, regimes, shopDetails } = useLoaderData<LoaderData>();
   const submit = useSubmit();
   const navigate = useNavigate();
   const navigation = useNavigation();
@@ -606,22 +619,18 @@ export default function GeneralSettings() {
                       onChange={(value) => handleFtpChange("retryDelay", value)}
                       autoComplete="off"
                     />
-                    <LegacyStack>
-                      <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}>
-                        <BiBtn
-                          title={t('ftp.testConnection')}
-                          onClick={handleFtpTest}
-                          style={{ minWidth: 'unset', maxWidth: 'unset', margin: 0 }}
-                        />
-                      </div>
-                      <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
-                        <BiSaveBtn
-                          title={t('ftp.saveConfig')}
-                          isLoading={isSaving}
-                          style={{ minWidth: 'unset', maxWidth: 'unset', margin: 0 }}
-                        />
-                      </div>
-                    </LegacyStack>
+                    <div style={{ display: 'flex', width: '100%' }}>
+                      <BiBtn
+                        title={t('ftp.testConnection')}
+                        onClick={handleFtpTest}
+                        style={{ minWidth: 'unset', maxWidth: 'unset', margin: 0 }}
+                      />
+                      <BiSaveBtn
+                        title={t('ftp.saveConfig')}
+                        isLoading={isSaving}
+                        style={{ minWidth: 'unset', maxWidth: 'unset', margin: 0, marginLeft: 'auto' }}
+                      />
+                    </div>
                     {testStatus === "success" && (
                         <Banner title={t('ftp.successBannerTitle')} tone="success" onDismiss={() => setTestStatus('idle')} />
                     )}

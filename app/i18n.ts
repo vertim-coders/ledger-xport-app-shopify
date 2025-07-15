@@ -81,6 +81,11 @@ const resources = {
       'feedback.waitingReview': 'En attendant, vous pouvez toujours laisser un avis sur notre page App Store.',
       'feedback.goToAppStore': 'Aller sur l\'App Store',
       
+      // Custom report
+      'customReport.inProgress': 'La fonctionnalité Rapport personnalisé est en cours de production et sera bientôt disponible.',
+      'customReport.inProgressTitle': 'Fonctionnalité en cours de production',
+      'customReport.inProgressDesc': 'Nous mettons tout en œuvre pour vous proposer prochainement cette fonctionnalité avancée. Merci de votre compréhension !',
+      
       // Footer
       'footer.changelog': 'Changelog',
       'footer.featureRequest': 'Feature request',
@@ -241,6 +246,7 @@ const resources = {
       // Schedule (planification)
       'schedule.scheduling': 'Planification',
       'schedule.frequency': 'Fréquence',
+      'schedule.frequency.hourly': 'Toutes les heures',
       'schedule.frequency.daily': 'Quotidien',
       'schedule.frequency.weekly': 'Hebdomadaire',
       'schedule.frequency.monthly': 'Mensuel',
@@ -445,6 +451,11 @@ const resources = {
       'feedback.waitingReview': 'In the meantime, you can still leave a review on our App Store page.',
       'feedback.goToAppStore': 'Go to App Store',
       
+      // Custom report
+      'customReport.inProgress': 'The Custom Report feature is under development and will be available soon.',
+      'customReport.inProgressTitle': 'Feature in development',
+      'customReport.inProgressDesc': 'We are working hard to bring you this advanced feature soon. Thank you for your understanding!',
+      
       // Footer
       'footer.changelog': 'Changelog',
       'footer.featureRequest': 'Feature request',
@@ -603,6 +614,7 @@ const resources = {
       // Schedule (planification)
       'schedule.scheduling': 'Scheduling',
       'schedule.frequency': 'Frequency',
+      'schedule.frequency.hourly': 'Hourly',
       'schedule.frequency.daily': 'Daily',
       'schedule.frequency.weekly': 'Weekly',
       'schedule.frequency.monthly': 'Monthly',
@@ -918,6 +930,7 @@ const resources = {
       // Schedule (planificación)
       'schedule.scheduling': 'Planificación',
       'schedule.frequency': 'Frecuencia',
+      'schedule.frequency.hourly': 'Cada hora',
       'schedule.frequency.daily': 'Diario',
       'schedule.frequency.weekly': 'Semanal',
       'schedule.frequency.monthly': 'Mensual',
@@ -1050,7 +1063,7 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
-    lng: typeof window !== 'undefined' && window.__SHOP_LANGUAGE__ ? window.__SHOP_LANGUAGE__ : 'fr', // Détecter la langue depuis window
+    lng: 'fr', // La langue sera changée via les paramètres utilisateur
     fallbackLng: 'fr',
     interpolation: {
       escapeValue: false, // React fait déjà l'échappement
@@ -1060,9 +1073,6 @@ i18n
     },
   });
 
-// Changer la langue si elle est détectée après l'initialisation
-if (typeof window !== 'undefined' && window.__SHOP_LANGUAGE__) {
-  i18n.changeLanguage(window.__SHOP_LANGUAGE__);
-}
+// Suppression de la détection automatique de langue
 
 export default i18n; 

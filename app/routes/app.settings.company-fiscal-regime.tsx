@@ -1,4 +1,4 @@
-import { json, type LoaderFunctionArgs } from "@remix-run/node";
+import { json, type LoaderFunctionArgs, redirect } from "@remix-run/node";
 import { useLoaderData, useSubmit, useNavigate, useNavigation } from "@remix-run/react";
 import {
   Page,
@@ -32,9 +32,22 @@ const ExportFormat = {
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
-  const shop = await prisma.shop.findUnique({
+  let shop = await prisma.shop.findUnique({
     where: { shopifyDomain: session.shop },
   });
+  console.log('[company-fiscal-regime] loader session:', session);
+  console.log('[company-fiscal-regime] loader shop:', shop);
+  if (!shop) {
+    // Crée le shop sans référence à un user
+    shop = await prisma.shop.create({
+      data: {
+        id: session.shop,
+        shopifyDomain: session.shop,
+        accessToken: session.accessToken || '',
+      }
+    });
+    console.log('[company-fiscal-regime] loader shop créé:', shop);
+  }
   let fiscalConfig = null;
   if (shop) {
     fiscalConfig = await prisma.fiscalConfiguration.findUnique({ where: { shopId: shop.id } });
@@ -59,6 +72,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       fiscalConfig.exportFormats = safeParseArray(fiscalConfig.exportFormats);
     }
   }
+  console.log('[company-fiscal-regime] loader fiscalConfig:', fiscalConfig);
   return json({
     settings: fiscalConfig || null,
     regimes: fiscalRegimesData.regimes,
@@ -178,7 +192,8 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
     });
   }
 
-  return json({ success: true });
+  // Après avoir traité la config fiscale, redirige vers /app
+  return redirect("/app");
 };
 
 export default function CompanyAndFiscalRegimeSettings() {

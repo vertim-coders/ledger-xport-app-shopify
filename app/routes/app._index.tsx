@@ -1,5 +1,5 @@
 import type { LoaderFunctionArgs } from "@remix-run/node";
-import { useNavigate } from "@remix-run/react";
+import { useNavigate, useLoaderData } from "@remix-run/react";
 import {
   Page,
   Layout,
@@ -20,15 +20,41 @@ import { authenticate } from "../shopify.server";
 import { BiSimpleBtn } from "../components/Buttons/BiSimpleBtn";
 import Footer from '../components/Footer';
 import { useTranslation } from 'react-i18next';
+import { requireFiscalConfigOrRedirect } from "../utils/requireFiscalConfig.server";
+import { prisma } from "../db.server";
+import { redirect } from "@remix-run/node";
+import { useEffect } from "react";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
-  return null;
+  const { session } = await authenticate.admin(request);
+  let shop = await prisma.shop.findUnique({ where: { shopifyDomain: session.shop } });
+  if (!shop) {
+    shop = await prisma.shop.create({
+      data: {
+        id: session.shop,
+        shopifyDomain: session.shop,
+        accessToken: session.accessToken || '',
+      }
+    });
+  }
+  const fiscalConfig = await prisma.fiscalConfiguration.findUnique({ where: { shopId: shop.id } });
+  return { hasFiscalConfig: !!fiscalConfig };
 };
 
 export default function Index() {
+  const { hasFiscalConfig } = useLoaderData() as { hasFiscalConfig: boolean };
   const navigate = useNavigate();
   const { t } = useTranslation();
+
+  useEffect(() => {
+    if (!hasFiscalConfig) {
+      navigate("/app/settings/company-fiscal-regime", { replace: true });
+    }
+  }, [hasFiscalConfig, navigate]);
+
+  if (!hasFiscalConfig) {
+    return null;
+  }
 
   return (
     <Frame>
@@ -108,11 +134,6 @@ export default function Index() {
                     <BlockStack gap="400">
                       <ActionList
                         items={[
-                          {
-                            content: t('home.feature.fiscalConfig', 'Configuration fiscale de votre entreprise'),
-                            icon: OrderIcon,
-                            onAction: () => navigate("/app/settings/general"),
-                          },
                           {
                             content: t('home.feature.manualExports', 'Exports manuels de données'),
                             icon: OrderIcon,

@@ -47,9 +47,21 @@ export default function ScheduledListPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const { t } = useTranslation();
 
+  // Ajout d'une fonction utilitaire locale pour la traduction de la fréquence
+  const getFrequencyLabel = (frequency: string) => {
+    switch (frequency) {
+      case 'hourly': return t('schedule.frequency.hourly', 'Toutes les heures');
+      case 'daily': return t('schedule.frequency.daily', 'Quotidien');
+      case 'weekly': return t('schedule.frequency.weekly', 'Hebdomadaire');
+      case 'monthly': return t('schedule.frequency.monthly', 'Mensuel');
+      case 'yearly': return t('schedule.frequency.yearly', 'Annuel');
+      default: return frequency;
+    }
+  };
+
   const rows = scheduledTasks.map((task: any) => [
     <Text variant="bodyMd" as="span" key="type">{t(`dataType.${task.report?.dataType}`)}</Text>,
-    <Text variant="bodyMd" as="span" key="freq">{t(`frequency.${task.frequency}`)}</Text>,
+    <Text variant="bodyMd" as="span" key="freq">{getFrequencyLabel(task.frequency)}</Text>,
     <Text variant="bodyMd" as="span" key="time">{task.executionTime}</Text>,
     <Badge key="status" tone={statusTones[task.status] || undefined}>{t(`status.${task.status}`)}</Badge>,
     <Text variant="bodyMd" as="span" key="execs">{task.tasks.filter((t: any) => t.status === "COMPLETED").length}</Text>,

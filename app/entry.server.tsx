@@ -10,20 +10,7 @@ export default async function handleRequest(
   responseHeaders: Headers,
   remixContext: EntryContext
 ) {
-  // Détecter la langue de la boutique Shopify
-  let detectedLanguage = "fr"; // Fallback par défaut
-  
-  try {
-    // Essayer de récupérer la session Shopify pour détecter la langue
-    const { session } = await authenticate.admin(request);
-    if (session?.shop && session?.accessToken) {
-      detectedLanguage = await LanguageService.detectShopLanguage(session.shop, session.accessToken);
-      console.log('Detected language for shop:', session.shop, 'Language:', detectedLanguage);
-    }
-  } catch (error) {
-    // Si l'authentification échoue (page de login, etc.), utiliser le fallback
-    console.log("Could not detect language from session, using fallback:", error);
-  }
+  // Suppression de toute logique de détection automatique de langue
 
   const markup = renderToString(
     <RemixServer context={remixContext} url={request.url} />
@@ -32,7 +19,7 @@ export default async function handleRequest(
   // Injecter la langue détectée dans le HTML
   const htmlWithLanguage = markup.replace(
     'window.__SHOP_LANGUAGE__ = "fr"; // Remplacer par la langue détectée dynamiquement côté serveur',
-    `window.__SHOP_LANGUAGE__ = "${detectedLanguage}";`
+    `window.__SHOP_LANGUAGE__ = "fr";`
   );
 
           responseHeaders.set("Content-Type", "text/html");
