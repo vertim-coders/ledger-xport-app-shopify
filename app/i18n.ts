@@ -371,6 +371,8 @@ const resources = {
       'report.column.email': 'Email',
       'report.column.nom': 'Nom',
       'report.column.prix': 'Prix',
+      'sidebar.mainMenu': 'Menu principal',
+      'sidebar.support': 'Aide et support',
     }
   },
   en: {
@@ -739,6 +741,8 @@ const resources = {
       'report.column.email': 'Email',
       'report.column.nom': 'Name',
       'report.column.prix': 'Price',
+      'sidebar.mainMenu': 'Main menu',
+      'sidebar.support': 'Help & support',
     }
   },
   es: {
@@ -1055,6 +1059,8 @@ const resources = {
       'report.column.email': 'Email',
       'report.column.nom': 'Nombre',
       'report.column.prix': 'Precio',
+      'sidebar.mainMenu': 'Menú principal',
+      'sidebar.support': 'Ayuda y soporte',
     }
   }
 };
