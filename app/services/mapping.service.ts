@@ -236,7 +236,6 @@ export class MappingService {
 
   static mapData(item: ShopifyOrder | ShopifyCustomer | ShopifyRefund | ShopifyTax, fiscalRegime: string, dataType: string): MappedData[] {
     console.log("MappingService.mapData - item:", item, "dataType:", dataType, "fiscalRegime:", fiscalRegime);
-    console.trace("Call stack for MappingService.mapData:");
 
     let processedItem: ShopifyOrder | ShopifyCustomer | ShopifyRefund | ShopifyTax;
 

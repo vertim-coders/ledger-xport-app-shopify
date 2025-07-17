@@ -195,7 +195,7 @@ export class ReportService {
         fiscalConfig.separator,
       );
       
-      const exportDir = join(process.cwd(), "reports");
+      const exportDir = process.env.VERCEL ? "/tmp/reports" : join(process.cwd(), "reports");
       await fs.mkdir(exportDir, { recursive: true });
       const filePath = join(exportDir, report.fileName);
       await fs.writeFile(filePath, reportContent);
