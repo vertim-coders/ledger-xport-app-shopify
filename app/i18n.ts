@@ -1069,8 +1069,8 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
-    lng: 'fr', // La langue sera changée via les paramètres utilisateur
-    fallbackLng: 'fr',
+    lng: 'en', // La langue sera changée via les paramètres utilisateur
+    fallbackLng: 'en',
     interpolation: {
       escapeValue: false, // React fait déjà l'échappement
     },
