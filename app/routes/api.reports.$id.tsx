@@ -3,6 +3,7 @@ import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
 import { promises as fs } from "fs";
 import { ReportService } from "../services/report.service";
+import type { ReportStatus as ReportStatusType } from "@prisma/client";
 
 // Import sécurisé de ReportStatus
 const ReportStatus = {
@@ -42,24 +43,27 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     throw new Response("Report is not ready for download", { status: 400 });
   }
 
-  // Générer le contenu du rapport sans sauvegarder (juste pour le téléchargement)
+  // Générer le rapport à la volée (en mémoire)
   try {
     const reportService = new ReportService(admin);
     if (!report.startDate || !report.endDate) {
       throw new Response("Report dates are missing", { status: 400 });
     }
-    // On génère le contenu à la volée sans sauvegarder (pas de nouveau rapport)
-    const generated = await reportService.generateReportContent({
+    // On regénère le contenu à la volée (pas de lecture disque)
+    const generated = await reportService.generateAndSaveReport({
       shop: report.shop,
       dataType: report.dataType,
       format: report.format,
       startDate: report.startDate.toISOString(),
       endDate: report.endDate.toISOString(),
+      fileName: report.fileName,
+      type: report.type as 'manual' | 'scheduled',
     });
-    const fileContent = generated.content;
-
-    if (!fileContent) {
-      throw new Response("Report content not found", { status: 404 });
+    let fileContent = null;
+    if (generated.filePath) {
+      fileContent = await fs.readFile(generated.filePath);
+    } else {
+      throw new Response("Report file not generated", { status: 500 });
     }
 
     // Determine content type based on format
