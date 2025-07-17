@@ -328,6 +328,8 @@ const resources = {
       'toast.companySaveError': "Erreur lors de l'enregistrement des paramètres de l'entreprise",
       'toast.fiscalSaveSuccess': 'Régime fiscal enregistré avec succès',
       'toast.fiscalSaveError': "Erreur lors de l'enregistrement du régime fiscal",
+      // Ajout de la clé toast.emptyData
+      'toast.emptyData': 'Aucune donnée {{dataType}} dans la période sélectionnée',
       // Statuts génériques
       'status.scheduled': 'Planifié',
       'status.success': 'Succès',
@@ -373,6 +375,19 @@ const resources = {
       'report.column.prix': 'Prix',
       'sidebar.mainMenu': 'Menu principal',
       'sidebar.support': 'Aide et support',
+      // Régimes fiscaux (exemples)
+      'fiscalRegime.OHADA.description': 'Régime comptable OHADA pour l’Afrique de l’Ouest',
+      'fiscalRegime.OHADA.fileFormat': 'Format OHADA',
+      'fiscalRegime.OHADA.compatibleSoftware': 'Sage, Odoo, QuickBooks',
+      'fiscalRegime.FRANCE.description': 'Régime fiscal français standard',
+      'fiscalRegime.FRANCE.fileFormat': 'Format France',
+      'fiscalRegime.FRANCE.compatibleSoftware': 'Sage, Cegid, EBP',
+      'fiscalRegime.BELUX.description': 'Régime fiscal pour la Belgique et le Luxembourg',
+      'fiscalRegime.BELUX.fileFormat': 'Format BELUX',
+      'fiscalRegime.BELUX.compatibleSoftware': 'WinBooks, Sage BOB',
+      'settings.general.fileFormat': 'Format de fichier',
+      'settings.general.country': 'Pays',
+      'settings.general.compatibleSoftware': 'Logiciels compatibles',
     }
   },
   en: {
@@ -698,6 +713,8 @@ const resources = {
       'toast.companySaveError': 'Error saving company settings',
       'toast.fiscalSaveSuccess': 'Fiscal regime saved successfully',
       'toast.fiscalSaveError': 'Error saving fiscal regime',
+      // Add toast.emptyData key
+      'toast.emptyData': 'No {{dataType}} data in the selected period',
       // Estados genéricos
       'status.scheduled': 'Scheduled',
       'status.success': 'Success',
@@ -743,6 +760,19 @@ const resources = {
       'report.column.prix': 'Price',
       'sidebar.mainMenu': 'Main menu',
       'sidebar.support': 'Help & support',
+      // Fiscal regimes (examples)
+      'fiscalRegime.OHADA.description': 'OHADA accounting regime for West Africa',
+      'fiscalRegime.OHADA.fileFormat': 'OHADA format',
+      'fiscalRegime.OHADA.compatibleSoftware': 'Sage, Odoo, QuickBooks',
+      'fiscalRegime.FRANCE.description': 'Standard French fiscal regime',
+      'fiscalRegime.FRANCE.fileFormat': 'France format',
+      'fiscalRegime.FRANCE.compatibleSoftware': 'Sage, Cegid, EBP',
+      'fiscalRegime.BELUX.description': 'Fiscal regime for Belgium and Luxembourg',
+      'fiscalRegime.BELUX.fileFormat': 'BELUX format',
+      'fiscalRegime.BELUX.compatibleSoftware': 'WinBooks, Sage BOB',
+      'settings.general.fileFormat': 'File format',
+      'settings.general.country': 'Country',
+      'settings.general.compatibleSoftware': 'Compatible software',
     }
   },
   es: {
@@ -993,12 +1023,12 @@ const resources = {
       'toast.error': 'Error: {error}',
       'toast.ftpConfigRequired': 'Configuración FTP requerida',
       'toast.ftpConfigExplanation': 'Debes configurar tus parámetros FTP antes de poder',
-      'toast.ftpConfigExplanation2': 'planificar una exportación de esta manera.',
+      'toast.ftpConfigExplanation2': 'programar una exportación de esta manera.',
       'toast.ftpConfigured': 'FTP configurado',
-      'toast.ftpConfiguredExplanation': 'La configuración FTP está lista. Puedes planificar una exportación por FTP.',
+      'toast.ftpConfiguredExplanation': 'La configuración FTP está lista. Puedes programar una exportación por FTP.',
       'action.goToSettings': 'Ir a la configuración',
-      'schedule.banner.hourlyExplanation': 'El informe se enviará cada hora, en el mismo minuto que la programación inicial.',
-      'schedule.banner.hourlyExample': 'Ejemplo: si programas a las 14:23, el envío se realizará cada hora a xx:23.',
+      'schedule.banner.hourlyExplanation': 'El informe se enviará cada hora, al mismo minuto que la programación inicial.',
+      'schedule.banner.hourlyExample': 'Ejemplo: si programa a las 14:23, el envío se realizará cada hora a xx:23.',
       // Toasts complementarios
       'toast.downloadSuccess': 'Archivo descargado con éxito',
       'toast.downloadError': 'Error durante la descarga',
@@ -1016,6 +1046,8 @@ const resources = {
       'toast.companySaveError': 'Error al guardar la configuración de la empresa',
       'toast.fiscalSaveSuccess': 'Régimen fiscal guardado con éxito',
       'toast.fiscalSaveError': 'Error al guardar el régimen fiscal',
+      // Add toast.emptyData key
+      'toast.emptyData': 'No hay datos de {{dataType}} en el período seleccionado',
       // Estados genéricos
       'status.scheduled': 'Programado',
       'status.success': 'Éxito',
@@ -1061,6 +1093,19 @@ const resources = {
       'report.column.prix': 'Precio',
       'sidebar.mainMenu': 'Menú principal',
       'sidebar.support': 'Ayuda y soporte',
+      // Fiscal regimes (examples)
+      'fiscalRegime.OHADA.description': 'OHADA accounting regime for West Africa',
+      'fiscalRegime.OHADA.fileFormat': 'OHADA format',
+      'fiscalRegime.OHADA.compatibleSoftware': 'Sage, Odoo, QuickBooks',
+      'fiscalRegime.FRANCE.description': 'Standard French fiscal regime',
+      'fiscalRegime.FRANCE.fileFormat': 'France format',
+      'fiscalRegime.FRANCE.compatibleSoftware': 'Sage, Cegid, EBP',
+      'fiscalRegime.BELUX.description': 'Fiscal regime for Belgium and Luxembourg',
+      'fiscalRegime.BELUX.fileFormat': 'BELUX format',
+      'fiscalRegime.BELUX.compatibleSoftware': 'WinBooks, Sage BOB',
+      'settings.general.fileFormat': 'Formato de archivo',
+      'settings.general.country': 'País',
+      'settings.general.compatibleSoftware': 'Software compatible',
     }
   }
 };

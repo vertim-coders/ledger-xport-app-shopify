@@ -321,16 +321,25 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           fileContent = await fs.readFile(report.filePath);
         }
         if (!fileContent) {
-          throw new Error('File was not generated');
+          // Rapport vide : on ajoute quand même un résultat pour le frontend
+          results.push({
+            status: 'success',
+            dataType,
+            reportId: report.id,
+            fileName: report.fileName,
+            reportStatus: report.status, // sera 'COMPLETED_WITH_EMPTY_DATA'
+            fileContent: undefined,
+            mimeType: getMimeType(format)
+          });
+          continue;
         }
-
         results.push({
           status: 'success',
           dataType,
           reportId: report.id,
           fileName: report.fileName,
           reportStatus: report.status,
-          fileContent: Buffer.isBuffer(fileContent) ? fileContent.toString('base64') : Buffer.from(fileContent, 'utf8').toString('base64'), // Encode file content as base64
+          fileContent: Buffer.isBuffer(fileContent) ? fileContent.toString('base64') : Buffer.from(fileContent, 'utf8').toString('base64'),
           mimeType: getMimeType(format)
         });
       } catch (error: any) {
@@ -453,6 +462,18 @@ export default function ManualExportPage() {
 
       // Check if it's a success response with results
       if ('results' in actionData && actionData.results && actionData.results.length > 0) {
+        // Gestion des rapports vides
+        const emptyDataResult = actionData.results.find(
+          (r: any) => r.reportStatus === ReportStatus.COMPLETED_WITH_EMPTY_DATA
+        );
+        if (emptyDataResult) {
+          // On affiche le toast pour le premier type vide trouvé (ou tu peux boucler si tu veux un toast par type)
+          const dataTypeLabel = DATA_TYPE_LABELS[emptyDataResult.dataType as keyof typeof DATA_TYPE_LABELS] || emptyDataResult.dataType;
+          setToastMessage(t('toast.emptyData', 'Aucune donnée {{dataType}} dans la période sélectionnée', { dataType: dataTypeLabel }));
+          setToastError(true);
+          setToastActive(true);
+          return;
+        }
         if (actionData.results.length > 1) {
           downloadZipFromResults(actionData.results, "export-rapports.zip");
           setToastMessage(t('toast.success', 'Rapport(s) généré(s) et téléchargé(s) avec succès ({count} fichiers dans un ZIP)', { count: actionData.results.length }));

@@ -315,8 +315,8 @@ export default function CompanyAndFiscalRegimeSettings() {
   return (
     <Frame>
       <Page
-        title="Configuration fiscale"
-        subtitle="Configurez les informations de votre entreprise et votre régime fiscal"
+        title={t('settings.general.title', 'Paramètres généraux')}
+        subtitle={t('settings.general.subtitle', 'Configurez les paramètres généraux de votre application')}
       >
         <Layout>
           <Layout.Section>
@@ -333,7 +333,7 @@ export default function CompanyAndFiscalRegimeSettings() {
                       marginBottom: 16
                     }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 'bold', marginBottom: 4 }}>Régime Fiscal</div>
+                        <div style={{ fontWeight: 'bold', marginBottom: 4 }}>{t('settings.general.fiscalRegime', 'Régime Fiscal')}</div>
                         <Select
                           label=""
                           options={regimes.map(regime => ({
@@ -345,23 +345,20 @@ export default function CompanyAndFiscalRegimeSettings() {
                         />
                       </div>
                     </div>
-                    {selectedRegime && (
-                      <div style={{ marginTop: '8px', marginBottom: '16px' }}>
-                        <Text variant="bodyMd" as="p">
-                          {regimes.find(r => r.code === selectedRegime)?.description}
-                        </Text>
-                        <p style={{ color: '#637381', margin: '4px 0' }}>
-                          Pays: {regimes.find(r => r.code === selectedRegime)?.countries.join(', ')}
-                        </p>
-                        <p style={{ color: '#637381', margin: '4px 0' }}>
-                          Format de fichier: {regimes.find(r => r.code === selectedRegime)?.fileFormat}
-                        </p>
-                        <p style={{ color: '#637381', margin: '4px 0' }}>
-                          Logiciels compatibles: {regimes.find(r => r.code === selectedRegime)?.compatibleSoftware.join(', ')}
-                        </p>
-                      </div>
-                    )}
-
+                    <div style={{ marginTop: '8px', marginBottom: '16px' }}>
+                      <Text variant="bodyMd" as="p">
+                        {t(`fiscalRegime.${selectedRegime}.description`, regimes.find(r => r.code === selectedRegime)?.description || '')}
+                      </Text>
+                      <p style={{ color: '#637381', margin: '4px 0' }}>
+                        {t('settings.general.country', 'Pays')}: {regimes.find(r => r.code === selectedRegime)?.countries.join(', ')}
+                      </p>
+                      <p style={{ color: '#637381', margin: '4px 0' }}>
+                        {t('settings.general.fileFormat', 'Format de fichier')}: {t(`fiscalRegime.${selectedRegime}.fileFormat`, regimes.find(r => r.code === selectedRegime)?.fileFormat || '')}
+                      </p>
+                      <p style={{ color: '#637381', margin: '4px 0' }}>
+                        {t('settings.general.compatibleSoftware', 'Logiciels compatibles')}: {t(`fiscalRegime.${selectedRegime}.compatibleSoftware`, regimes.find(r => r.code === selectedRegime)?.compatibleSoftware.join(', ') || '')}
+                      </p>
+                    </div>
                     <div style={{
                       display: 'flex',
                       flexDirection: isMobile ? 'column' : 'row',
@@ -370,7 +367,7 @@ export default function CompanyAndFiscalRegimeSettings() {
                       marginBottom: 16
                     }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 'bold', marginBottom: 4 }}>Nom de l'entreprise</div>
+                        <div style={{ fontWeight: 'bold', marginBottom: 4 }}>{t('form.company.name', "Nom de l'entreprise")}</div>
                         <TextField
                           label=""
                           name="companyName"
@@ -380,7 +377,7 @@ export default function CompanyAndFiscalRegimeSettings() {
                         />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 'bold', marginBottom: 4 }}>Taux de TVA (%)</div>
+                        <div style={{ fontWeight: 'bold', marginBottom: 4 }}>{t('settings.general.vatRate', 'Taux de TVA (%)')}</div>
                         <TextField
                           label=""
                           name="vatRate"
@@ -402,7 +399,7 @@ export default function CompanyAndFiscalRegimeSettings() {
                       marginBottom: 16
                     }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 'bold', marginBottom: 4 }}>Devise</div>
+                        <div style={{ fontWeight: 'bold', marginBottom: 4 }}>{t('form.currency', 'Devise')}</div>
                         <Select
                           label=""
                           name="currency"
@@ -413,25 +410,22 @@ export default function CompanyAndFiscalRegimeSettings() {
                           value={companyFormData.currency}
                           onChange={value => handleCompanyChange("currency", value)}
                           disabled={!selectedRegime}
-                          helpText={selectedRegime ? `Devise recommandée pour ${regimes.find(r => r.code === selectedRegime)?.name}: ${regimes.find(r => r.code === selectedRegime)?.currency}` : ''}
+                          helpText={selectedRegime ? t('settings.general.currencyHelp', 'Devise recommandée pour {regime}: {currency}', { regime: regimes.find(r => r.code === selectedRegime)?.name, currency: regimes.find(r => r.code === selectedRegime)?.currency }) : ''}
                         />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 'bold', marginBottom: 4 }}>Compte de vente</div>
+                        <div style={{ fontWeight: 'bold', marginBottom: 4 }}>{t('settings.general.salesAccount', 'Compte de vente')}</div>
                         <TextField
                           label=""
                           name="salesAccount"
                           value={companyFormData.salesAccount}
                           onChange={value => handleCompanyChange("salesAccount", value)}
                           autoComplete="off"
-                          helpText="Code du compte de vente dans votre plan comptable (ex: 701)"
+                          helpText={t('settings.general.salesAccountHelp', 'Code du compte de vente dans votre plan comptable (ex: 701)')}
                         />
                       </div>
                     </div>
-
-                    <div style={{ marginTop: '32px', textAlign: 'center' }}>
-                      <BiSaveBtn title="Sauvegarder cette configuration fiscale" isLoading={isSaving} />
-                    </div>
+                    <BiSaveBtn title={t('action.save', 'Sauvegarder cette configuration fiscale')} isLoading={isSaving} />
                   </FormLayout>
                 </LegacyStack>
               </form>
