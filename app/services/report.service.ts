@@ -83,12 +83,25 @@ export class ReportService {
     dataType: string,
     separator: string = ","
   ): string | Buffer {
+    // Defensive: if dataArray is null or not an array, return empty result
+    if (!Array.isArray(dataArray) || dataArray.length === 0) {
+      return format === ExportFormat.XLSX ? Buffer.from("") : "";
+    }
     // Map data to the required format
     const mappedData = dataArray.flatMap(item => {
-      console.log(`Processing item for ${dataType} report:`, item);
-      const mapped = MappingService.mapData(item, fiscalRegime, dataType);
-      return Array.isArray(mapped) ? mapped : [mapped];
+      if (!item) return [];
+      try {
+        const mapped = MappingService.mapData(item, fiscalRegime, dataType);
+        return Array.isArray(mapped) ? mapped : [mapped];
+      } catch (e) {
+        console.error("Error in MappingService.mapData for item", item, e);
+        return [];
+      }
     });
+
+    if (!mappedData || mappedData.length === 0) {
+      return format === ExportFormat.XLSX ? Buffer.from("") : "";
+    }
 
     // Format dates in the mapped data
     const formattedData = mappedData.map(entry => {
