@@ -316,7 +316,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         });
         
         // Utiliser le contenu généré en mémoire
-        let fileContent: string | Buffer | null = report.content;
+        let fileContent: string | Buffer | null = null;
+        if (report.filePath) {
+          fileContent = await fs.readFile(report.filePath);
+        }
         if (!fileContent) {
           throw new Error('File was not generated');
         }
