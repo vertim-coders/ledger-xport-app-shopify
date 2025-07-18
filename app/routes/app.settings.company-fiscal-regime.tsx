@@ -425,7 +425,9 @@ export default function CompanyAndFiscalRegimeSettings() {
                         />
                       </div>
                     </div>
-                    <BiSaveBtn title={t('action.save', 'Sauvegarder cette configuration fiscale')} isLoading={isSaving} />
+                    <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                      <BiSaveBtn title={t('action.save', 'Sauvegarder cette configuration fiscale')} isLoading={isSaving} />
+                    </div>
                   </FormLayout>
                 </LegacyStack>
               </form>

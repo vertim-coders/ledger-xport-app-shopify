@@ -20,7 +20,7 @@ const resources = {
       'nav.sidebarSubtext': 'Sales Management Dashboard',
       
       // Actions
-      'action.save': 'Enregistrer',
+      'action.save': 'Sauvegarder cette configuration fiscale',
       'action.cancel': 'Annuler',
       'action.generate': 'Générer',
       'action.schedule': 'Planifier',
@@ -407,7 +407,7 @@ const resources = {
       'nav.sidebarSubtext': 'Sales Management Dashboard',
       
       // Actions
-      'action.save': 'Save',
+      'action.save': 'Save this fiscal configuration',
       'action.cancel': 'Cancel',
       'action.generate': 'Generate',
       'action.schedule': 'Schedule',
@@ -792,7 +792,7 @@ const resources = {
       'nav.sidebarSubtext': 'Panel de gestión de ventas',
       
       // Actions
-      'action.save': 'Guardar',
+      'action.save': 'Guardar esta configuración fiscal',
       'action.cancel': 'Cancelar',
       'action.generate': 'Generar',
       'action.schedule': 'Programar',
