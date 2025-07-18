@@ -1,5 +1,5 @@
 import { json, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
-import { useLoaderData, useFetcher } from "@remix-run/react";
+import { useLoaderData, useFetcher, useNavigate } from "@remix-run/react";
 import { listScheduledTasks, updateScheduledTaskStatus, deleteScheduledTask } from "../services/scheduledTask.service";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
@@ -46,6 +46,7 @@ export default function ScheduledListPage() {
   const fetcher = useFetcher();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   // Ajout d'une fonction utilitaire locale pour la traduction de la fréquence
   const getFrequencyLabel = (frequency: string) => {
@@ -92,7 +93,7 @@ export default function ScheduledListPage() {
         <BiSimpleBtn
           title={t('scheduledList.planReport')}
           icon={<Icon source={CalendarIcon} tone="inherit" />}
-          onClick={() => window.location.assign('/app/reports/schedule')}
+          onClick={() => navigate("/app/reports/schedule")}
         />
       </div>
       <Card>
