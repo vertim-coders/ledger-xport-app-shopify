@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next';
 // Personnalisation facile : couleurs, textes, icônes
 const SIDEBAR_BG = "#D3D3D3"; // Couleur principale
 const SIDEBAR_WIDTH = 260;
-const LOGO_SRC = "/assets/LedgerXportLogo.png";
+const LOGO_SRC = "/assets/LedgerXport_logo.png";
 const LOGO_ALT = "LedgerXport Logo";
 export function AppNavbar({ open = true, onClose }: { open?: boolean; onClose?: () => void }) {
   const { t } = useTranslation();
