@@ -3,7 +3,7 @@
 client_id = "ccaacf222c00d0facec545663195a20c"
 name = "ledgerxport-prod"
 handle = "ledgerxport-prod"
-application_url = "https://ledger-xport.vercel.app/"
+application_url = "https://ledger-xport-app-shopify-eh8z.vercel.app/"
 embedded = true
 
 [build]
@@ -29,9 +29,9 @@ scopes = "read_orders,write_orders,read_products,read_customers,read_shopify_pay
 
 [auth]
 redirect_urls = [
-  "https://ledger-xport.vercel.app/auth/callback",
-  "https://ledger-xport.vercel.app/auth/shopify/callback",
-  "https://ledger-xport.vercel.app/api/auth/callback"
+  "https://ledger-xport-app-shopify-eh8z.vercel.app/auth/callback",
+  "https://ledger-xport-app-shopify-eh8z.vercel.app/auth/shopify/callback",
+  "https://ledger-xport-app-shopify-eh8z.vercel.app/api/auth/callback"
 ]
 
 [pos]
