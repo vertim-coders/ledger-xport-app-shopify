@@ -11,7 +11,6 @@ const footerLinks = [
     { name: t('footer.featureRequest', 'Feature request'), href: "/feature-request", icon: CollectionFeaturedIcon },
     { name: t('footer.docs', 'Docs'), href: "/docs", icon: DockSideIcon },
     { name: t('footer.affiliateProgram', 'Affiliate program'), href: "/affiliate", icon: ChannelsIcon },
-    { name: t('footer.demos', 'Demos'), href: "/demos", icon: ViewIcon },
 ];
 
   return (

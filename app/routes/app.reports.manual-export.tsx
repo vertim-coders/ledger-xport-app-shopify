@@ -1,4 +1,4 @@
-import { json, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
+import { json, type LoaderFunctionArgs, type ActionFunctionArgs, redirect } from "@remix-run/node";
 import { useLoaderData, useSubmit, useNavigate, useActionData } from "@remix-run/react";
 import {
   Page,
@@ -200,21 +200,32 @@ const HelpIcon = ({ description }: { description: string }) => {
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
-  const shop = await prisma.shop.findUnique({
+  const shop = await prisma.shop.findUnique({ where: { shopifyDomain: session.shop } });
+  // Vérification de la période d'essai et du statut d'abonnement
+  const now = new Date();
+  if (
+    shop &&
+    ((shop.subscriptionStatus === 'TRIAL' && shop.trialEndDate && now > shop.trialEndDate) ||
+      shop.subscriptionStatus === 'EXPIRED' ||
+      shop.subscriptionStatus === 'CANCELLED')
+  ) {
+    return redirect('/app/subscribe');
+  }
+  const shopWithFiscalConfig = await prisma.shop.findUnique({
     where: { shopifyDomain: session.shop },
     include: { fiscalConfig: true }
   });
-  if (!shop?.id) {
+  if (!shopWithFiscalConfig?.id) {
     return requireFiscalConfigOrRedirect("");
   }
-  const redirectIfNoConfig = await requireFiscalConfigOrRedirect(shop.id);
+  const redirectIfNoConfig = await requireFiscalConfigOrRedirect(shopWithFiscalConfig.id);
   if (redirectIfNoConfig) return redirectIfNoConfig;
 
-  if (!shop.fiscalConfig) {
+  if (!shopWithFiscalConfig.fiscalConfig) {
     throw new Error("Shop or fiscal configuration not found");
   }
 
-  const fiscalConfig = shop.fiscalConfig;
+  const fiscalConfig = shopWithFiscalConfig.fiscalConfig;
 
   const matchingFiscalRegimeData = fiscalRegimesData.regimes.find(
     (fr: FiscalRegimeData) => fr.code === fiscalConfig.code

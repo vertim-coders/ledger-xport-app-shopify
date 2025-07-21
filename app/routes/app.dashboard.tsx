@@ -1,4 +1,4 @@
-import { json, type LoaderFunctionArgs } from "@remix-run/node";
+import { json, type LoaderFunctionArgs, redirect } from "@remix-run/node";
 import { useLoaderData, useNavigate } from "@remix-run/react";
 import {
   Page,
@@ -13,6 +13,7 @@ import {
   Toast,
   Modal,
   BlockStack,
+  Banner,
 } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
@@ -91,6 +92,18 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       }
     }
   });
+
+  // Vérification de la période d'essai et du statut d'abonnement
+  const now = new Date();
+  if (
+    shop &&
+    ((shop.subscriptionStatus === 'TRIAL' && shop.trialEndDate && now > shop.trialEndDate) ||
+      shop.subscriptionStatus === 'EXPIRED' ||
+      shop.subscriptionStatus === 'CANCELLED')
+  ) {
+    // Redirige vers la page d'abonnement
+    return redirect('/app/subscribe');
+  }
 
   // Vérification de la config fiscale obligatoire
   if (!shop?.id) {
@@ -173,6 +186,15 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     totalRevenue = 0;
   }
 
+  // Ajout du calcul du statut d'abonnement et jours restants
+  let subscriptionStatus = shop?.subscriptionStatus || 'TRIAL';
+  let daysLeft = 0;
+  if (shop?.trialEndDate) {
+    const now = new Date();
+    const diff = shop.trialEndDate.getTime() - now.getTime();
+    daysLeft = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  }
+
   return json({
     successfulExports,
     failedExports,
@@ -180,7 +202,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     totalRevenue,
     recentReports: shop?.reports || [],
     upcomingExports: shop?.scheduledTasks || [],
-    monthlyData
+    monthlyData,
+    subscriptionStatus,
+    daysLeft
   });
 };
 
@@ -193,11 +217,13 @@ interface DashboardLoaderData {
   recentReports: any[];
   upcomingExports: any[];
   monthlyData: { month: string; exports: number }[];
+  subscriptionStatus: string;
+  daysLeft: number;
 }
 
 export default function Dashboard() {
   const { t } = useTranslation();
-  const { successfulExports, failedExports, customersCount, totalRevenue, recentReports, upcomingExports, monthlyData } = useLoaderData<DashboardLoaderData>();
+  const { successfulExports, failedExports, customersCount, totalRevenue, recentReports, upcomingExports, monthlyData, subscriptionStatus, daysLeft } = useLoaderData<DashboardLoaderData>();
   const navigate = useNavigate();
   const [isDownloading, setIsDownloading] = useState<string | null>(null);
   const [toastActive, setToastActive] = useState(false);
@@ -319,6 +345,33 @@ export default function Dashboard() {
 
   return (
     <Page title={t('page.dashboard.title', 'Tableau de bord')}>
+      <div style={{ marginBottom: 24 }}>
+        {subscriptionStatus === 'TRIAL' && daysLeft > 0 && (
+          <Banner tone="info" title={t('subscription.trial.title')}>
+            <p dangerouslySetInnerHTML={{ __html: t('subscription.trial.remaining', { daysLeft }) }} />
+          </Banner>
+        )}
+        {subscriptionStatus === 'ACTIVE' && (
+          <Banner tone="success" title={t('subscription.active.title')}>
+            <p>{t('subscription.active.message')}</p>
+          </Banner>
+        )}
+        {subscriptionStatus === 'TRIAL' && daysLeft === 0 && (
+          <Banner tone="critical" title={t('subscription.expired.trial.title')}>
+            <p>{t('subscription.expired.trial.message')}</p>
+          </Banner>
+        )}
+        {subscriptionStatus === 'EXPIRED' && (
+          <Banner tone="critical" title={t('subscription.expired.title')}>
+            <p>{t('subscription.expired.message')}</p>
+          </Banner>
+        )}
+        {subscriptionStatus === 'CANCELLED' && (
+          <Banner tone="warning" title={t('subscription.cancelled.title')}>
+            <p>{t('subscription.cancelled.message')}</p>
+          </Banner>
+        )}
+      </div>
       <Layout>
         {/* Export Statistics */}
         <Layout.Section>

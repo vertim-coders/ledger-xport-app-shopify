@@ -1,4 +1,4 @@
-import { json, type LoaderFunctionArgs } from "@remix-run/node";
+import { json, type LoaderFunctionArgs, redirect } from "@remix-run/node";
 import { useLoaderData, useSubmit, useNavigate } from "@remix-run/react";
 import {
   Page,
@@ -54,6 +54,16 @@ type LoaderData = {
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await prisma.shop.findUnique({ where: { shopifyDomain: session.shop } });
+  // Vérification de la période d'essai et du statut d'abonnement
+  const now = new Date();
+  if (
+    shop &&
+    ((shop.subscriptionStatus === 'TRIAL' && shop.trialEndDate && now > shop.trialEndDate) ||
+      shop.subscriptionStatus === 'EXPIRED' ||
+      shop.subscriptionStatus === 'CANCELLED')
+  ) {
+    return redirect('/app/subscribe');
+  }
   if (!shop?.id) {
     return requireFiscalConfigOrRedirect("");
   }

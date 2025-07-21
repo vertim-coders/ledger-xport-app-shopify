@@ -1,4 +1,4 @@
-import { json, type LoaderFunctionArgs } from "@remix-run/node";
+import { json, type LoaderFunctionArgs, redirect } from "@remix-run/node";
 import { useLoaderData, useSubmit, useNavigate, useActionData } from "@remix-run/react";
 import {
   Page,
@@ -160,6 +160,16 @@ const HelpIcon = ({ description }: { description: string }) => {
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
   const shop = await prisma.shop.findUnique({ where: { shopifyDomain: session.shop } });
+  // Vérification de la période d'essai et du statut d'abonnement
+  const now = new Date();
+  if (
+    shop &&
+    ((shop.subscriptionStatus === 'TRIAL' && shop.trialEndDate && now > shop.trialEndDate) ||
+      shop.subscriptionStatus === 'EXPIRED' ||
+      shop.subscriptionStatus === 'CANCELLED')
+  ) {
+    return redirect('/app/subscribe');
+  }
   if (!shop?.id) {
     return requireFiscalConfigOrRedirect("");
   }
@@ -1120,8 +1130,6 @@ export default function ScheduleReport() {
                     options={[
                       { label: t('schedule.deliveryType.email', 'Email'), value: 'email' },
                       { label: t('schedule.deliveryType.ftp', 'FTP'), value: 'ftp' },
-                      { label: t('schedule.deliveryType.drive', 'Drive'), value: 'drive' },
-                      { label: t('schedule.deliveryType.sheet', 'Sheet'), value: 'sheet' },
                     ]}
                     value={schedulingType}
                     onChange={handleSchedulingTypeChange}

@@ -69,22 +69,16 @@ const FeedbackSection: React.FC = () => {
                 {t('feedback.startChat', 'Démarrer un chat en direct')}
               </Button>
               <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: 8,
+                display: 'flex',
+                flexDirection: 'row',
+                gap: 16,
                 marginTop: 8,
-                marginLeft: 35
+                justifyContent: 'center',
               }}>
                 <Link url="mailto:support@ledgerxport.com" external>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                     <Icon source={EmailIcon} tone="base" />
                     {t('feedback.sendEmail', 'Envoyez-nous un email')}
-                  </span>
-                </Link>
-                <Link url="/demo">
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <Icon source={PlayIcon} tone="base" />
-                    {t('feedback.accessDemo', 'Accéder à la démo')}
                   </span>
                 </Link>
                 <Link url="https://help.ledgerxport.com" external>
@@ -93,7 +87,9 @@ const FeedbackSection: React.FC = () => {
                     {t('feedback.visitHelp', 'Visitez le centre d\'aide')}
                   </span>
                 </Link>
-                <Link url="/plans">
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
+                <Link url="/app/subscribe">
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                     <Icon source={CalendarIcon} tone="base" />
                     {t('feedback.accessPlan', 'Accéder au plan')}

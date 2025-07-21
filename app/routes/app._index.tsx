@@ -29,13 +29,28 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   let shop = await prisma.shop.findUnique({ where: { shopifyDomain: session.shop } });
   if (!shop) {
+    const now = new Date();
+    const trialEnd = new Date(now.getTime() + 15 * 24 * 60 * 60 * 1000); // +15 jours
     shop = await prisma.shop.create({
       data: {
         id: session.shop,
         shopifyDomain: session.shop,
         accessToken: session.accessToken || '',
+        trialStartDate: now,
+        trialEndDate: trialEnd,
+        subscriptionStatus: 'TRIAL',
       }
     });
+  }
+  // Vérification de la période d'essai et du statut d'abonnement
+  const now = new Date();
+  if (
+    shop &&
+    ((shop.subscriptionStatus === 'TRIAL' && shop.trialEndDate && now > shop.trialEndDate) ||
+      shop.subscriptionStatus === 'EXPIRED' ||
+      shop.subscriptionStatus === 'CANCELLED')
+  ) {
+    return redirect('/app/subscribe');
   }
   const fiscalConfig = await prisma.fiscalConfiguration.findUnique({ where: { shopId: shop.id } });
   return { hasFiscalConfig: !!fiscalConfig };
@@ -112,7 +127,7 @@ export default function Index() {
                 <Box paddingBlockStart="400">
                   <div style={{ textAlign: 'center' }}>
                     <Text as="p" variant="bodySm" tone="subdued">
-                      {t('home.quickSetup', 'Essai gratuit de 14 jours - Sans engagement')}
+                      {t('home.quickSetup', 'Essai gratuit de 15 jours - Sans engagement')}
                     </Text>
                   </div>
                 </Box>

@@ -38,6 +38,9 @@ model Shop {
   scheduledTasks  ScheduledTask[]      @relation("ShopToScheduledTask")
   tasks           Task[]               @relation("ShopToTask")
   ftpConfig       FtpConfig?
+  trialStartDate    DateTime? @map("trial_start_date")
+  trialEndDate      DateTime? @map("trial_end_date")
+  subscriptionStatus SubscriptionStatus @default(TRIAL) @map("subscription_status")
 }
 
 model FiscalConfiguration {
@@ -199,4 +202,11 @@ enum ExportFormat {
   XML
   TXT
   XLSX
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  EXPIRED
+  CANCELLED
 }

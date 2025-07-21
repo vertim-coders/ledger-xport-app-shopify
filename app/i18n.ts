@@ -120,7 +120,7 @@ const resources = {
       'home.simplifyExport': "Simplifiez l'export de vos données Shopify",
       'home.welcome': "Bienvenue sur LedgerXport 🎉 Cette application vous permet d'exporter vos données Shopify vers votre logiciel de comptabilité. Utilisez la navigation en haut pour accéder aux différentes fonctionnalités.",
       'home.cta': 'Commencer un export',
-      'home.quickSetup': 'Essai gratuit de 14 jours - Sans engagement',
+      'home.quickSetup': 'Essai gratuit de 15 jours - Sans engagement',
       'home.featuresTitle': 'Fonctionnalités disponibles',
       'home.feature.fiscalConfig': 'Configuration fiscale de votre entreprise',
       'home.feature.manualExports': 'Exports manuels de données',
@@ -310,7 +310,7 @@ const resources = {
       'toast.ftpConfiguredExplanation': 'La configuration FTP est prête. Vous pouvez lancer la planification d\'un export par FTP.',
       'action.goToSettings': 'Aller aux paramètres',
       'schedule.banner.hourlyExplanation': "L'envoi du rapport sera effectué chaque heure, à la même minute que la planification initiale.",
-      'schedule.banner.hourlyExample': "Exemple : si vous planifiez à 14:23, l'envoi se fera chaque heure à xx:23.",
+      'schedule.banner.hourlyExample': "Exemple : si vous planifiez à 15:23, l'envoi se fera chaque heure à xx:23.",
       // Toasts complémentaires
       'toast.downloadSuccess': 'Fichier téléchargé avec succès',
       'toast.downloadError': 'Erreur lors du téléchargement',
@@ -330,6 +330,7 @@ const resources = {
       'toast.fiscalSaveError': "Erreur lors de l'enregistrement du régime fiscal",
       // Ajout de la clé toast.emptyData
       'toast.emptyData': 'Aucune donnée {{dataType}} dans la période sélectionnée',
+      'recentExportsList.noRecentExport': 'Aucun export récent',
       // Statuts génériques
       'status.scheduled': 'Planifié',
       'status.success': 'Succès',
@@ -388,6 +389,24 @@ const resources = {
       'settings.general.fileFormat': 'Format de fichier',
       'settings.general.country': 'Pays',
       'settings.general.compatibleSoftware': 'Logiciels compatibles',
+
+      // Abonnement
+      'subscription.trial.title': 'Essai gratuit en cours',
+      'subscription.trial.remaining': 'Il vous reste <b>{{daysLeft}}</b> jour(s) d\'essai gratuit.',
+      'subscription.active.title': 'Abonnement actif',
+      'subscription.active.message': 'Votre abonnement est actif. Merci !',
+      'subscription.expired.trial.title': 'Essai expiré',
+      'subscription.expired.trial.message': 'Votre période d\'essai est terminée. Veuillez souscrire pour continuer à utiliser l\'application.',
+      'subscription.expired.title': 'Abonnement expiré',
+      'subscription.expired.message': 'Votre abonnement a expiré. Veuillez renouveler pour continuer à utiliser l\'application.',
+      'subscription.cancelled.title': 'Abonnement annulé',
+      'subscription.cancelled.message': 'Votre abonnement a été annulé. Veuillez souscrire à nouveau pour réactiver l\'accès.',
+      'subscription.page.title': 'Abonnement requis',
+      'subscription.page.required': 'Abonnement requis',
+      'subscription.page.trialEnded': 'Votre période d\'essai est terminée. Pour continuer à utiliser l\'application, veuillez souscrire au plan à <b>19 $/mois</b>.',
+      'subscription.plan.name': 'Abonnement LedgerXport',
+      'subscription.plan.details': '19 $/mois, sans engagement. 15 jours d\'essai gratuit à l\'installation.',
+      'subscription.plan.subscribe': 'S\'abonner maintenant'
     }
   },
   en: {
@@ -505,7 +524,7 @@ const resources = {
       'home.simplifyExport': 'Simplify your Shopify data export',
       'home.welcome': 'Welcome to LedgerXport 🎉 This app lets you export your Shopify data to your accounting software. Use the top navigation to access features.',
       'home.cta': 'Start an export',
-      'home.quickSetup': '14-day free trial - No commitment',
+      'home.quickSetup': '15-day free trial - No commitment',
       'home.featuresTitle': 'Available features',
       'home.feature.fiscalConfig': 'Your company fiscal configuration',
       'home.feature.manualExports': 'Manual data exports',
@@ -695,7 +714,7 @@ const resources = {
       'toast.ftpConfiguredExplanation': 'FTP configuration is ready. You can schedule an export via FTP.',
       'action.goToSettings': 'Go to settings',
       'schedule.banner.hourlyExplanation': 'The report will be sent every hour, at the same minute as the initial scheduling.',
-      'schedule.banner.hourlyExample': 'Example: if you schedule at 14:23, the sending will be done every hour at xx:23.',
+      'schedule.banner.hourlyExample': 'Example: if you schedule at 15:23, the sending will be done every hour at xx:23.',
       // Toasts complémentaires
       'toast.downloadSuccess': 'File downloaded successfully',
       'toast.downloadError': 'Error during download',
@@ -715,6 +734,7 @@ const resources = {
       'toast.fiscalSaveError': 'Error saving fiscal regime',
       // Add toast.emptyData key
       'toast.emptyData': 'No {{dataType}} data in the selected period',
+      'recentExportsList.noRecentExport': 'No recent exports',
       // Estados genéricos
       'status.scheduled': 'Scheduled',
       'status.success': 'Success',
@@ -773,6 +793,24 @@ const resources = {
       'settings.general.fileFormat': 'File format',
       'settings.general.country': 'Country',
       'settings.general.compatibleSoftware': 'Compatible software',
+      
+      // Subscription
+      'subscription.trial.title': 'Free trial in progress',
+      'subscription.trial.remaining': 'You have <b>{{daysLeft}}</b> day(s) of free trial remaining.',
+      'subscription.active.title': 'Active subscription',
+      'subscription.active.message': 'Your subscription is active. Thank you!',
+      'subscription.expired.trial.title': 'Trial expired',
+      'subscription.expired.trial.message': 'Your trial period is over. Please subscribe to continue using the app.',
+      'subscription.expired.title': 'Subscription expired',
+      'subscription.expired.message': 'Your subscription has expired. Please renew to continue using the app.',
+      'subscription.cancelled.title': 'Subscription cancelled',
+      'subscription.cancelled.message': 'Your subscription has been cancelled. Please subscribe again to reactivate access.',
+      'subscription.page.title': 'Subscription required',
+      'subscription.page.required': 'Subscription required',
+      'subscription.page.trialEnded': 'Your trial period is over. To continue using the app, please subscribe to the <b>$19/month</b> plan.',
+      'subscription.plan.name': 'LedgerXport Subscription',
+      'subscription.plan.details': '$19/month, no commitment. 15-day free trial upon installation.',
+      'subscription.plan.subscribe': 'Subscribe now'
     }
   },
   es: {
@@ -838,7 +876,7 @@ const resources = {
       'home.simplifyExport': 'Simplifica la exportación de tus datos de Shopify',
       'home.welcome': 'Bienvenido a LedgerXport 🎉 Esta aplicación te permite exportar tus datos de Shopify a tu software de contabilidad. Usa la navegación superior para acceder a las funciones.',
       'home.cta': 'Comenzar una exportación',
-      'home.quickSetup': 'Prueba gratuita de 14 días - Sin compromiso',
+      'home.quickSetup': 'Prueba gratuita de 15 días - Sin compromiso',
       'home.featuresTitle': 'Funciones disponibles',
       'home.feature.fiscalConfig': 'Configuración fiscal de tu empresa',
       'home.feature.manualExports': 'Exportaciones manuales de datos',
@@ -1028,7 +1066,7 @@ const resources = {
       'toast.ftpConfiguredExplanation': 'La configuración FTP está lista. Puedes programar una exportación por FTP.',
       'action.goToSettings': 'Ir a la configuración',
       'schedule.banner.hourlyExplanation': 'El informe se enviará cada hora, al mismo minuto que la programación inicial.',
-      'schedule.banner.hourlyExample': 'Ejemplo: si programa a las 14:23, el envío se realizará cada hora a xx:23.',
+      'schedule.banner.hourlyExample': 'Ejemplo: si programa a las 15:23, el envío se realizará cada hora a xx:23.',
       // Toasts complementarios
       'toast.downloadSuccess': 'Archivo descargado con éxito',
       'toast.downloadError': 'Error durante la descarga',
@@ -1048,6 +1086,7 @@ const resources = {
       'toast.fiscalSaveError': 'Error al guardar el régimen fiscal',
       // Add toast.emptyData key
       'toast.emptyData': 'No hay datos de {{dataType}} en el período seleccionado',
+      'recentExportsList.noRecentExport': 'No hay exportaciones recientes',
       // Estados genéricos
       'status.scheduled': 'Programado',
       'status.success': 'Éxito',
@@ -1106,6 +1145,24 @@ const resources = {
       'settings.general.fileFormat': 'Formato de archivo',
       'settings.general.country': 'País',
       'settings.general.compatibleSoftware': 'Software compatible',
+
+      // Subscription
+      'subscription.trial.title': 'Prueba gratuita en curso',
+      'subscription.trial.remaining': 'Te quedan <b>{{daysLeft}}</b> día(s) de prueba gratuita.',
+      'subscription.active.title': 'Suscripción activa',
+      'subscription.active.message': 'Tu suscripción está activa. ¡Gracias!',
+      'subscription.expired.trial.title': 'Prueba expirada',
+      'subscription.expired.trial.message': 'Tu período de prueba ha terminado. Por favor, suscríbete para seguir usando la aplicación.',
+      'subscription.expired.title': 'Suscripción expirada',
+      'subscription.expired.message': 'Tu suscripción ha expirado. Por favor, renueva para seguir usando la aplicación.',
+      'subscription.cancelled.title': 'Suscripción cancelada',
+      'subscription.cancelled.message': 'Tu suscripción ha sido cancelada. Por favor, suscríbete de nuevo para reactivar el acceso.',
+      'subscription.page.title': 'Se requiere suscripción',
+      'subscription.page.required': 'Se requiere suscripción',
+      'subscription.page.trialEnded': 'Tu período de prueba ha terminado. Para seguir usando la aplicación, suscríbete al plan de <b>19 $/mes</b>.',
+      'subscription.plan.name': 'Suscripción LedgerXport',
+      'subscription.plan.details': '19 $/mes, sin compromiso. 15 días de prueba gratuita con la instalación.',
+      'subscription.plan.subscribe': 'Suscríbete ahora'
     }
   }
 };

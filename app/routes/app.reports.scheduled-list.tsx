@@ -1,4 +1,4 @@
-import { json, type LoaderFunctionArgs, type ActionFunctionArgs } from "@remix-run/node";
+import { json, type LoaderFunctionArgs, redirect, type ActionFunctionArgs } from "@remix-run/node";
 import { useLoaderData, useFetcher, useNavigate } from "@remix-run/react";
 import { listScheduledTasks, updateScheduledTaskStatus, deleteScheduledTask } from "../services/scheduledTask.service";
 import { authenticate } from "../shopify.server";
@@ -14,6 +14,16 @@ import { useTranslation } from "react-i18next";
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = await prisma.shop.findUnique({ where: { shopifyDomain: session.shop } });
+  // Vérification de la période d'essai et du statut d'abonnement
+  const now = new Date();
+  if (
+    shop &&
+    ((shop.subscriptionStatus === 'TRIAL' && shop.trialEndDate && now > shop.trialEndDate) ||
+      shop.subscriptionStatus === 'EXPIRED' ||
+      shop.subscriptionStatus === 'CANCELLED')
+  ) {
+    return redirect('/app/subscribe');
+  }
   if (!shop) throw new Response("Shop not found", { status: 404 });
   const scheduledTasks = await listScheduledTasks(shop.id);
   return json({ scheduledTasks });
