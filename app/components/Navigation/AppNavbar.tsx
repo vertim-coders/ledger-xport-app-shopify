@@ -7,6 +7,7 @@ import {
   OrderIcon,
   ProfileIcon,
   StoreIcon,
+  EditIcon,
 } from "@shopify/polaris-icons";
 import { useNavigate, useLocation } from "@remix-run/react";
 import { useTranslation } from 'react-i18next';
@@ -44,6 +45,11 @@ const navigationItems = [
       label: t('nav.scheduledExports', 'Exports planifiés'),
     icon: CalendarIcon,
     url: "/app/reports/schedule",
+  },
+  {
+    label: t('nav.customAIReport', 'Rapport personnalisé (IA)'),
+    icon: EditIcon,
+    url: "/app/reports/custom-ai",
   },
   {
       label: t('nav.allSchedules', 'Toutes les planifications'),
@@ -131,7 +137,7 @@ const settingsItem = {
           <img
             src={LOGO_SRC}
             alt={LOGO_ALT}
-            style={{ maxHeight: isVeryShort ? 28 : isShort ? 36 : 48, width: "auto", objectFit: "contain", marginBottom: isVeryShort ? 2 : isShort ? 4 : 8 }}
+            style={{ maxHeight: isVeryShort ? 40 : isShort ? 52 : 64, width: "auto", objectFit: "contain", marginBottom: isVeryShort ? 2 : isShort ? 4 : 8 }}
           />
           <span style={{ color: "#e0e7ef", fontSize: isVeryShort ? 10 : isShort ? 12 : undefined }}>
             <Text as="span" variant="bodySm" tone="subdued" alignment="center">
@@ -213,7 +219,7 @@ const settingsItem = {
           <button
             style={{
               width: "100%",
-              marginBottom: 150,
+              marginBottom: 100,
               background: isActive(settingsItem.url) ? "#fff" : "none",
               border: "none",
               color: isActive(settingsItem.url) ? "#0066FF" : "#000000",

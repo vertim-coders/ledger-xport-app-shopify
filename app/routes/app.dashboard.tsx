@@ -273,7 +273,7 @@ export default function Dashboard() {
   };
 
   const handleCustomReport = () => {
-    setShowCustomReportModal(true);
+    navigate("/app/reports/custom-ai");
   };
 
   const rows = recentReports.map((report: any) => [
@@ -587,25 +587,6 @@ export default function Dashboard() {
           <Footer />
         </Layout.Section>
       </Layout>
-      {showCustomReportModal && (
-        <Modal
-          open={showCustomReportModal}
-          onClose={() => setShowCustomReportModal(false)}
-          title={t('customReport.inProgressTitle', 'Fonctionnalité en cours de production')}
-          primaryAction={{ content: t('action.close', 'Fermer'), onAction: () => setShowCustomReportModal(false) }}
-        >
-          <Modal.Section>
-            <BlockStack gap="300">
-              <Text as="p">
-                {t('customReport.inProgress', 'La fonctionnalité Rapport personnalisé est en cours de production et sera bientôt disponible.')}
-              </Text>
-              <Text as="p" tone="subdued">
-                {t('customReport.inProgressDesc', 'Nous mettons tout en œuvre pour vous proposer prochainement cette fonctionnalité avancée. Merci de votre compréhension !')}
-              </Text>
-            </BlockStack>
-          </Modal.Section>
-        </Modal>
-      )}
       {toastActive && (
         <Toast
           content={toastMessage}
