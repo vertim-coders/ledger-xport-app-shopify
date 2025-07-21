@@ -1,13 +1,7 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
-// Note that some adapters may set a maximum length for the String type by default, please ensure your strings are long
-// enough when changing adapters.
-// See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -32,54 +26,153 @@ model Session {
 }
 
 model Shop {
-  id              String                @id @default(cuid())
-  shopifyDomain   String                @unique
+  id              String               @id @default(cuid())
+  shopifyDomain   String               @unique
   accessToken     String
-  language        String                @default("fr")
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  language        String               @default("fr")
   fiscalConfig    FiscalConfiguration?
-  reports         Report[]
   generalSettings GeneralSettings?
+  reports         Report[]
+  scheduledTasks  ScheduledTask[]      @relation("ShopToScheduledTask")
+  tasks           Task[]               @relation("ShopToTask")
   ftpConfig       FtpConfig?
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  scheduledTasks  ScheduledTask[]     @relation("ShopToScheduledTask")
-  tasks           Task[]              @relation("ShopToTask")
 }
 
 model FiscalConfiguration {
-  id                String   @id @default(cuid())
-  shopId           String   @unique
-  code             String   // OHADA, SYSCOHADA, etc.
-  name             String
-  description      String
-  countries        String[]
-  currency         String
-  fileFormat       String
-  encoding         String
-  separator        String
-  requiredColumns  String[] // Array of required columns
-  taxRates         Json     // JSON object for tax rates
-  compatibleSoftware String[] // Array of compatible software
-  exportFormats    String[] // Array of export formats
-  notes            String
-  companyName      String?
-  country          String?
-  vatRate          Float?
-  defaultFormat    ExportFormat?
-  salesAccount     String   @default("701")
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  shop             Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  id                 String        @id @default(cuid())
+  shopId             String        @unique
+  companyName        String?
+  country            String?
+  currency           String
+  vatRate            Float?
+  defaultFormat      ExportFormat?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  code               String
+  countries          String[]
+  description        String
+  encoding           String
+  fileFormat         String
+  name               String
+  notes              String
+  separator          String
+  salesAccount       String        @default("701")
+  compatibleSoftware String[]
+  exportFormats      String[]
+  requiredColumns    String[]
+  taxRates           Json
+  shop               Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
 
   @@index([shopId])
+}
+
+model Report {
+  id                String             @id @default(cuid())
+  shopId            String
+  startDate         DateTime?
+  endDate           DateTime?
+  filePath          String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  errorMessage      String?
+  fileSize          Int
+  type              String
+  format            ExportFormat
+  status            ReportStatus
+  fileName          String
+  dataType          String
+  deliveryMethod    String             @default("EMAIL")
+  ftpDeliveryStatus FtpDeliveryStatus?
+  shop              Shop               @relation(fields: [shopId], references: [id])
+  scheduledTasks    ScheduledTask[]    @relation("ReportToScheduledTask")
+  tasks             Task[]             @relation("ReportToTask")
+
+  @@index([shopId])
+}
+
+model ScheduledTask {
+  id            String    @id @default(cuid())
+  reportId      String
+  shopId        String
+  frequency     String
+  executionDay  Int
+  executionTime String
+  emailConfig   String
+  lastRun       DateTime?
+  nextRun       DateTime
+  status        String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  report        Report    @relation("ReportToScheduledTask", fields: [reportId], references: [id])
+  shop          Shop      @relation("ShopToScheduledTask", fields: [shopId], references: [id])
+  tasks         Task[]    @relation("ScheduledTaskToTask")
+
+  @@index([shopId])
+  @@index([reportId])
+}
+
+model Task {
+  id              String        @id @default(cuid())
+  scheduledTaskId String
+  shopId          String
+  reportId        String
+  status          String
+  scheduledFor    DateTime
+  startedAt       DateTime?
+  completedAt     DateTime?
+  emailConfig     String
+  errorMessage    String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  report          Report        @relation("ReportToTask", fields: [reportId], references: [id])
+  scheduledTask   ScheduledTask @relation("ScheduledTaskToTask", fields: [scheduledTaskId], references: [id])
+  shop            Shop          @relation("ShopToTask", fields: [shopId], references: [id])
+
+  @@index([scheduledTaskId])
+  @@index([shopId])
+  @@index([reportId])
+}
+
+model GeneralSettings {
+  id           String   @id @default(cuid())
+  shopId       String   @unique
+  timezone     String   @default("UTC")
+  language     String   @default("fr")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  salesAccount String   @default("701")
+  shop         Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId])
+}
+
+model FtpConfig {
+  id          String   @id @default(cuid())
+  shopId      String   @unique
+  host        String
+  port        Int      @default(21)
+  protocol    Protocol @default(SFTP)
+  username    String
+  password    String
+  directory   String   @default("/")
+  passiveMode Boolean  @default(false)
+  retryDelay  Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  shop        Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId])
+  @@map("ftp_configs")
 }
 
 enum ReportStatus {
   PENDING
   PROCESSING
   COMPLETED
-  COMPLETED_WITH_EMPTY_DATA
   ERROR
+  COMPLETED_WITH_EMPTY_DATA
 }
 
 enum Protocol {
@@ -91,29 +184,6 @@ enum FtpDeliveryStatus {
   PENDING
   SUCCESS
   FAILED
-}
-
-model Report {
-  id            String   @id @default(cuid())
-  type          String   // manual, scheduled
-  dataType      String   // orders, customers, refunds, taxes
-  status        ReportStatus
-  format        ExportFormat
-  startDate     DateTime?
-  endDate       DateTime?
-  shopId        String
-  fileSize      Int
-  fileName      String
-  filePath      String?
-  errorMessage  String?
-  deliveryMethod String   @default("EMAIL") // EMAIL or FTP
-  ftpDeliveryStatus FtpDeliveryStatus?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  shop          Shop     @relation(fields: [shopId], references: [id])
-  scheduledTasks ScheduledTask[] @relation("ReportToScheduledTask")
-  tasks         Task[]           @relation("ReportToTask")
-  @@index([shopId])
 }
 
 enum UserRole {
@@ -129,77 +199,4 @@ enum ExportFormat {
   XML
   TXT
   XLSX
-}
-
-model ScheduledTask {
-  id            String   @id @default(cuid())
-  reportId      String
-  shopId        String
-  frequency     String   // daily, monthly, yearly
-  executionDay  Int      // Day of month for monthly/yearly tasks
-  executionTime String   // HH:mm format
-  emailConfig   String   // JSON string containing email configuration
-  lastRun       DateTime?
-  nextRun       DateTime
-  status        String   // ACTIVE, PAUSED, COMPLETED
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  report        Report   @relation("ReportToScheduledTask", fields: [reportId], references: [id])
-  shop          Shop     @relation("ShopToScheduledTask", fields: [shopId], references: [id])
-  tasks         Task[]   @relation("ScheduledTaskToTask")
-  @@index([shopId])
-  @@index([reportId])
-}
-
-model Task {
-  id              String   @id @default(cuid())
-  scheduledTaskId String
-  shopId          String
-  reportId        String
-  status          String   // PENDING, PROCESSING, COMPLETED, FAILED
-  scheduledFor    DateTime
-  startedAt       DateTime?
-  completedAt     DateTime?
-  emailConfig     String   // JSON string containing email configuration
-  errorMessage    String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  scheduledTask   ScheduledTask @relation("ScheduledTaskToTask", fields: [scheduledTaskId], references: [id])
-  shop            Shop          @relation("ShopToTask", fields: [shopId], references: [id])
-  report          Report        @relation("ReportToTask", fields: [reportId], references: [id])
-  @@index([scheduledTaskId])
-  @@index([shopId])
-  @@index([reportId])
-}
-
-model GeneralSettings {
-  id           String   @id @default(cuid())
-  shopId       String   @unique
-  timezone     String   @default("UTC")
-  language     String   @default("fr")
-  salesAccount String   @default("701")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  shop         Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
-
-  @@index([shopId])
-}
-
-model FtpConfig {
-  id            String   @id @default(cuid())
-  shopId        String   @unique
-  host          String
-  port          Int      @default(21)
-  protocol      Protocol @default(SFTP)
-  username      String
-  password      String
-  directory     String   @default("/")
-  passiveMode   Boolean  @default(false)
-  retryDelay    Int?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  shop          Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
-
-  @@map("ftp_configs")
-  @@index([shopId])
 }
