@@ -406,7 +406,18 @@ const resources = {
       'subscription.page.trialEnded': 'Votre période d\'essai est terminée. Pour continuer à utiliser l\'application, veuillez souscrire au plan à <b>19 $/mois</b>.',
       'subscription.plan.name': 'Abonnement LedgerXport',
       'subscription.plan.details': '19 $/mois, sans engagement. 15 jours d\'essai gratuit à l\'installation.',
-      'subscription.plan.subscribe': 'S\'abonner maintenant'
+      'subscription.plan.subscribe': 'S\'abonner maintenant',
+      'subscription.mostPopular': 'Le plus populaire',
+      'subscription.pricingTitle': 'Tarification simple et transparente',
+      'subscription.pricingSubtitle': 'Commencez votre essai gratuit aujourd\'hui. Aucun frais caché, annulez à tout moment.',
+      'subscription.feature.unlimitedExports': 'Exports illimités',
+      'subscription.feature.allFormats': 'Tous les formats de fichiers (CSV, Excel, PDF)',
+      'subscription.feature.advancedFiltering': 'Filtres et tris avancés',
+      'subscription.feature.automatedScheduling': 'Planification automatisée',
+      'subscription.feature.prioritySupport': 'Support email prioritaire',
+      'subscription.feature.security': 'Chiffrement et sécurité des données',
+      'subscription.cancelAnytime': 'Annulez à tout moment. Sans engagement.',
+      'subscription.trustedBy': 'Déjà adopté par des milliers d\'entreprises'
     }
   },
   en: {
@@ -742,7 +753,7 @@ const resources = {
       'status.active': 'Active',
       'status.paused': 'Paused',
 
-      // Scheduled list columns
+      // Columnas de la lista de planificaciones
       'scheduledList.type': 'Type',
       'scheduledList.frequency': 'Frequency',
       'scheduledList.time': 'Time',
@@ -810,7 +821,18 @@ const resources = {
       'subscription.page.trialEnded': 'Your trial period is over. To continue using the app, please subscribe to the <b>$19/month</b> plan.',
       'subscription.plan.name': 'LedgerXport Subscription',
       'subscription.plan.details': '$19/month, no commitment. 15-day free trial upon installation.',
-      'subscription.plan.subscribe': 'Subscribe now'
+      'subscription.plan.subscribe': 'Subscribe now',
+      'subscription.mostPopular': 'Most Popular',
+      'subscription.pricingTitle': 'Simple, Transparent Pricing',
+      'subscription.pricingSubtitle': 'Start your free trial today. No hidden fees, cancel anytime.',
+      'subscription.feature.unlimitedExports': 'Unlimited exports',
+      'subscription.feature.allFormats': 'All file formats (CSV, Excel, PDF)',
+      'subscription.feature.advancedFiltering': 'Advanced filtering & sorting',
+      'subscription.feature.automatedScheduling': 'Automated scheduling',
+      'subscription.feature.prioritySupport': 'Priority email support',
+      'subscription.feature.security': 'Data encryption & security',
+      'subscription.cancelAnytime': 'Cancel anytime. No questions asked.',
+      'subscription.trustedBy': 'Trusted by 10,000+ businesses worldwide'
     }
   },
   es: {
@@ -1161,8 +1183,19 @@ const resources = {
       'subscription.page.required': 'Se requiere suscripción',
       'subscription.page.trialEnded': 'Tu período de prueba ha terminado. Para seguir usando la aplicación, suscríbete al plan de <b>19 $/mes</b>.',
       'subscription.plan.name': 'Suscripción LedgerXport',
-      'subscription.plan.details': '19 $/mes, sin compromiso. 15 días de prueba gratuita con la instalación.',
-      'subscription.plan.subscribe': 'Suscríbete ahora'
+      'subscription.plan.details': 'Sin compromiso. 15 días de prueba gratuita con la instalación.',
+      'subscription.plan.subscribe': 'Comenzar prueba gratuita',
+      'subscription.mostPopular': 'Más popular',
+      'subscription.pricingTitle': 'Precios simples y transparentes',
+      'subscription.pricingSubtitle': 'Comienza tu prueba gratuita hoy. Sin cargos ocultos, cancela cuando quieras.',
+      'subscription.feature.unlimitedExports': 'Exportaciones ilimitadas',
+      'subscription.feature.allFormats': 'Todos los formatos de archivo (CSV, Excel, PDF)',
+      'subscription.feature.advancedFiltering': 'Filtrado y orden avanzado',
+      'subscription.feature.automatedScheduling': 'Programación automatizada',
+      'subscription.feature.prioritySupport': 'Soporte prioritario por email',
+      'subscription.feature.security': 'Cifrado y seguridad de datos',
+      'subscription.cancelAnytime': 'Cancela en cualquier momento. Sin compromiso.',
+      'subscription.trustedBy': 'Confiado por miles de empresas en todo el mundo'
     }
   }
 };

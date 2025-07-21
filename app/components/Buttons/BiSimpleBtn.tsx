@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { PlusIcon } from "@shopify/polaris-icons";
 
-export const BiSimpleBtn = ({ title, onClick, style, icon }: { title: string; onClick?: () => void; style?: React.CSSProperties; icon?: React.ReactNode }) => {
+export const BiSimpleBtn = ({ title, onClick, style, icon, type = "button" }: { title: string; onClick?: () => void; style?: React.CSSProperties; icon?: React.ReactNode; type?: "button" | "submit" }) => {
     const [hover, setHover] = useState(false);
     return (
         <div
@@ -15,7 +15,7 @@ export const BiSimpleBtn = ({ title, onClick, style, icon }: { title: string; on
             }}
         >
             <button
-                type="button"
+                type={type}
                 onClick={onClick}
                 style={{
                     fontSize: 17,
