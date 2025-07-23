@@ -68,7 +68,7 @@ const resources = {
       
       // Section feedback
       'feedback.shareFeedback': 'Partagez vos commentaires',
-      'feedback.shareExperience': 'Partagez votre expérience avec {appName} en laissant un avis sur l\'App Store.',
+      'feedback.shareExperience': 'Partagez votre expérience avec {{appName}} en laissant un avis sur l\'App Store.',
       'feedback.rateApp': 'Donner un avis sur l\'app',
       'feedback.getInTouch': 'Entrer en contact',
       'feedback.startChat': 'Démarrer un chat en direct',
@@ -85,6 +85,7 @@ const resources = {
       'customReport.inProgress': 'La fonctionnalité Rapport personnalisé est en cours de production et sera bientôt disponible.',
       'customReport.inProgressTitle': 'Fonctionnalité en cours de production',
       'customReport.inProgressDesc': 'Nous mettons tout en œuvre pour vous proposer prochainement cette fonctionnalité avancée. Merci de votre compréhension !',
+      'customReport.featureRequest': 'Exprimez votre besoin ou suggestion sur notre centre de demandes de fonctionnalités',
       
       // Footer
       'footer.changelog': 'Changelog',
@@ -93,7 +94,7 @@ const resources = {
       'footer.affiliateProgram': 'Affiliate program',
       'footer.demos': 'Demos',
       'footer.usefulLinks': 'Liens utiles et ressources',
-      'footer.copyright': '© {year}. LedgerXport. All rights reserved.',
+      'footer.copyright': '© {{year}}. LedgerXport. All rights reserved.',
       
 
       
@@ -300,7 +301,7 @@ const resources = {
       'schedule.fileFormat': 'Format du fichier',
       'schedule.help.fileFormat': "Choisissez le format de fichier pour l'exportation : CSV, Excel, JSON ou XML.",
       // Toasts
-      'toast.success': 'Rapport(s) généré(s) et téléchargé(s) avec succès ({count} fichiers dans un ZIP)',
+      'toast.success': 'Rapport(s) généré(s) et téléchargé(s) avec succès ({{count}} fichiers dans un ZIP)',
       'toast.noReport': 'Aucun rapport généré',
       'toast.error': 'Erreur: {error}',
       'toast.ftpConfigRequired': 'Configuration FTP requise',
@@ -485,7 +486,7 @@ const resources = {
       
       // Section feedback
       'feedback.shareFeedback': 'Share your feedback',
-      'feedback.shareExperience': 'Share your experience with {appName} by leaving a review on the App Store.',
+      'feedback.shareExperience': 'Share your experience with {{appName}} by leaving a review on the App Store.',
       'feedback.rateApp': 'Rate the app',
       'feedback.getInTouch': 'Get in touch',
       'feedback.startChat': 'Start live chat',
@@ -502,6 +503,7 @@ const resources = {
       'customReport.inProgress': 'The Custom Report feature is under development and will be available soon.',
       'customReport.inProgressTitle': 'Feature in development',
       'customReport.inProgressDesc': 'We are working hard to bring you this advanced feature soon. Thank you for your understanding!',
+      'customReport.featureRequest': 'Express your need or suggestion on our feature request center',
       
       // Footer
       'footer.changelog': 'Changelog',
@@ -510,7 +512,7 @@ const resources = {
       'footer.affiliateProgram': 'Affiliate program',
       'footer.demos': 'Demos',
       'footer.usefulLinks': 'Useful links and resources',
-      'footer.copyright': '© {year}. LedgerXport. All rights reserved.',
+      'footer.copyright': '© {{year}}. LedgerXport. All rights reserved.',
       
       // Formulaires
       'form.company.name': 'Company name',
@@ -715,7 +717,7 @@ const resources = {
       'schedule.fileFormat': 'File format',
       'schedule.help.fileFormat': 'Choose the file format for export: CSV, Excel, JSON, or XML.',
       // Toasts
-      'toast.success': 'Report(s) generated and downloaded successfully ({count} files in a ZIP)',
+      'toast.success': 'Report(s) generated and downloaded successfully ({{count}} files in a ZIP)',
       'toast.noReport': 'No report generated',
       'toast.error': 'Error: {error}',
       'toast.ftpConfigRequired': 'FTP configuration required',
@@ -837,6 +839,44 @@ const resources = {
   },
   es: {
     translation: {
+      // --- MISSING TRANSLATIONS ADDED BELOW ---
+      'feedback.shareFeedback': 'Comparte tus comentarios',
+      'feedback.shareExperience': 'Comparte tu experiencia con {{appName}} dejando una reseña en la App Store.',
+      'feedback.rateApp': 'Valora la aplicación',
+      'feedback.getInTouch': 'Ponerse en contacto',
+      'feedback.startChat': 'Iniciar chat en vivo',
+      'feedback.sendEmail': 'Envíanos un correo electrónico',
+      'feedback.accessDemo': 'Acceder a la demo',
+      'feedback.visitHelp': 'Visita el centro de ayuda',
+      'feedback.accessPlan': 'Acceder al plan',
+      'feedback.featureInDev': 'Funcionalidad en desarrollo',
+      'feedback.featureInDevDesc': 'Estamos trabajando en la integración de la API de Reseñas de Shopify App Bridge para ofrecerte una experiencia de evaluación fluida directamente en la interfaz de administración.',
+      'feedback.waitingReview': 'Mientras tanto, aún puedes dejar una reseña en nuestra página de la App Store.',
+      'feedback.goToAppStore': 'Ir a la App Store',
+      'customReport.inProgress': 'La función de Informe personalizado está en desarrollo y estará disponible pronto.',
+      'customReport.inProgressTitle': 'Funcionalidad en desarrollo',
+      'customReport.inProgressDesc': 'Estamos trabajando arduamente para ofrecerte esta función avanzada pronto. ¡Gracias por tu comprensión!',
+      'customReport.featureRequest': 'Expresa tu necesidad o sugerencia en nuestro centro de solicitudes de funcionalidades',
+      'footer.changelog': 'Registro de cambios',
+      'footer.featureRequest': 'Solicitud de funcionalidad',
+      'footer.docs': 'Documentación',
+      'footer.affiliateProgram': 'Programa de afiliados',
+      'footer.demos': 'Demos',
+      'footer.usefulLinks': 'Enlaces útiles y recursos',
+      'footer.copyright': '© {{year}}. LedgerXport. Todos los derechos reservados.',
+      'subscription.plan.details': 'Sin compromiso. 15 días de prueba gratuita con la instalación.',
+      'subscription.plan.subscribe': 'Comenzar prueba gratuita',
+      'subscription.mostPopular': 'Más popular',
+      'subscription.pricingTitle': 'Precios simples y transparentes',
+      'subscription.pricingSubtitle': 'Comienza tu prueba gratuita hoy. Sin cargos ocultos, cancela cuando quieras.',
+      'subscription.feature.unlimitedExports': 'Exportaciones ilimitadas',
+      'subscription.feature.allFormats': 'Todos los formatos de archivo (CSV, Excel, PDF)',
+      'subscription.feature.advancedFiltering': 'Filtrado y orden avanzado',
+      'subscription.feature.automatedScheduling': 'Programación automatizada',
+      'subscription.feature.prioritySupport': 'Soporte prioritario por email',
+      'subscription.feature.security': 'Cifrado y seguridad de datos',
+      'subscription.cancelAnytime': 'Cancela en cualquier momento. Sin compromiso.',
+      'subscription.trustedBy': 'Confiado por miles de empresas en todo el mundo',
       // Navigation
       'nav.home': 'Inicio',
       'nav.dashboard': 'Panel',
@@ -1078,7 +1118,7 @@ const resources = {
       'schedule.fileFormat': 'Formato de archivo',
       'schedule.help.fileFormat': 'Elige el formato de archivo para la exportación: CSV, Excel, JSON o XML.',
       // Toasts
-      'toast.success': 'Informe(s) generado(s) y descargado(s) con éxito ({count} archivos en un ZIP)',
+      'toast.success': 'Informe(s) generado(s) y descargado(s) con éxito ({{count}} archivos en un ZIP)',
       'toast.noReport': 'No se generó ningún informe',
       'toast.error': 'Error: {error}',
       'toast.ftpConfigRequired': 'Configuración FTP requerida',
@@ -1183,19 +1223,6 @@ const resources = {
       'subscription.page.required': 'Se requiere suscripción',
       'subscription.page.trialEnded': 'Tu período de prueba ha terminado. Para seguir usando la aplicación, suscríbete al plan de <b>19 $/mes</b>.',
       'subscription.plan.name': 'Suscripción LedgerXport',
-      'subscription.plan.details': 'Sin compromiso. 15 días de prueba gratuita con la instalación.',
-      'subscription.plan.subscribe': 'Comenzar prueba gratuita',
-      'subscription.mostPopular': 'Más popular',
-      'subscription.pricingTitle': 'Precios simples y transparentes',
-      'subscription.pricingSubtitle': 'Comienza tu prueba gratuita hoy. Sin cargos ocultos, cancela cuando quieras.',
-      'subscription.feature.unlimitedExports': 'Exportaciones ilimitadas',
-      'subscription.feature.allFormats': 'Todos los formatos de archivo (CSV, Excel, PDF)',
-      'subscription.feature.advancedFiltering': 'Filtrado y orden avanzado',
-      'subscription.feature.automatedScheduling': 'Programación automatizada',
-      'subscription.feature.prioritySupport': 'Soporte prioritario por email',
-      'subscription.feature.security': 'Cifrado y seguridad de datos',
-      'subscription.cancelAnytime': 'Cancela en cualquier momento. Sin compromiso.',
-      'subscription.trustedBy': 'Confiado por miles de empresas en todo el mundo'
     }
   }
 };

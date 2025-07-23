@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next';
 // import { ConversationIcon } from '@shopify/polaris-icons';
 // import { MessageIcon } from '@shopify/polaris-icons';
 
-const APP_NAME = 'Ledger Xport'; // À personnaliser si besoin
+const APP_NAME = 'LedgerXport'; // À personnaliser si besoin
 
 const FeedbackSection: React.FC = () => {
   const { t } = useTranslation();
@@ -51,7 +51,7 @@ const FeedbackSection: React.FC = () => {
             <BlockStack gap="200">
               <Text as="h3" variant="headingMd">{t('feedback.shareFeedback', 'Partagez vos commentaires')}</Text>
               <Text as="p" variant="bodyMd" tone="subdued">
-                {t('feedback.shareExperience', 'Partagez votre expérience avec {appName} en laissant un avis sur l\'App Store.', { appName: APP_NAME })}
+                {t('feedback.shareExperience', 'Partagez votre expérience avec {{appName}} en laissant un avis sur l\'App Store.', { appName: APP_NAME })}
               </Text>
               <Button onClick={handleAppReview} icon={<Icon source={NoteIcon} />}>
                 {t('feedback.rateApp', 'Donner un avis sur l\'app')}

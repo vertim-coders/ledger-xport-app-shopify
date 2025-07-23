@@ -1,23 +1,33 @@
-import { json, type LoaderFunctionArgs, type ActionFunctionArgs, redirect } from "@remix-run/node";
-import { useLoaderData, useSubmit, useNavigate, useActionData } from "@remix-run/react";
+import type { ExportFormat as ExportFormatType } from "@prisma/client";
+import { type ActionFunctionArgs, json, type LoaderFunctionArgs, redirect } from "@remix-run/node";
+import { useActionData, useLoaderData, useSubmit } from "@remix-run/react";
 import {
-  Page,
-  Layout,
+  BlockStack,
   Card,
   DatePicker,
-  Select,
-  TextField,
-  Text,
-  BlockStack,
   InlineStack,
+  Layout,
+  Page,
+  Select,
+  Text,
+  TextField,
   Toast,
 } from "@shopify/polaris";
-import { useState, useCallback, useEffect } from "react";
-import { authenticate } from "../shopify.server";
-import { prisma } from "../db.server";
-import fiscalRegimesData from "../data/fiscal-regimes.json";
+import { promises as fs } from "fs";
+import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { BiSaveBtn } from "../components/Buttons/BiSaveBtn";
+import { BluePolarisCheckbox } from "../components/Buttons/BluePolarisCheckbox";
 import Footer from "../components/Footer";
-import type { FiscalConfiguration as FiscalRegimePrismaType, ReportStatus as ReportStatusType, ExportFormat as ExportFormatType } from "@prisma/client";
+import fiscalRegimesData from "../data/fiscal-regimes.json";
+import { prisma } from "../db.server";
+import { ReportService } from "../services/report.service";
+import { authenticate } from "../shopify.server";
+import type { ColumnMapping } from "../types/ColumnMappingType";
+import type { CombinedFiscalRegime } from "../types/CombinedFiscalRegimeType";
+import type { DateRange } from "../types/DateRangeType";
+import type { FiscalRegimeData } from "../types/FiscalRegimeDataType";
+import { downloadFilesFromResults, downloadZipFromResults, getMimeType } from "../utils/download";
 import { requireFiscalConfigOrRedirect } from "../utils/requireFiscalConfig.server";
 
 // Import sécurisé de FiscalConfiguration, ReportStatus et ExportFormat
@@ -37,28 +47,6 @@ const ExportFormat = {
   JSON: "JSON" as const,
   XML: "XML" as const
 };
-import { promises as fs } from "fs";
-import { join } from "path";
-import * as XLSX from 'xlsx';
-import { BiSaveBtn } from "../components/Buttons/BiSaveBtn";
-import { ShopifyCustomerService } from "../models/ShopifyCustomer.service";
-import { ShopifyOrderService } from "../models/ShopifyOrder.service";
-import { ShopifyRefundService } from "../models/ShopifyRefund.service";
-import { ShopifyTaxService } from "../models/ShopifyTax.service";
-import { MappingService } from "../services/mapping.service";
-import { ReportService } from "../services/report.service";
-import JSZip from "jszip";
-import { ArrowDownIcon, RefreshIcon, EmailIcon } from "@shopify/polaris-icons";
-import type { DateRange } from "../types/DateRangeType";
-import type { FiscalRegimeData } from "../types/FiscalRegimeDataType";
-import type { FiscalRegimesData } from "../types/FiscalRegimesDataType";
-import type { CombinedFiscalRegime } from "../types/CombinedFiscalRegimeType";
-import type { ColumnMapping } from "../types/ColumnMappingType";
-import type { ReportMapping } from "../types/ReportMappingType";
-import { getMimeType, downloadFilesFromResults, downloadZipFromResults } from "../utils/download";
-import React from 'react';
-import { BluePolarisCheckbox } from "../components/Buttons/BluePolarisCheckbox";
-import { useTranslation } from 'react-i18next';
 
 // Frontend helper functions for display purposes (mirroring backend logic)
 const defaultMappingsFrontend: Record<string, Record<string, string>> = {
@@ -487,13 +475,13 @@ export default function ManualExportPage() {
         }
         if (actionData.results.length > 1) {
           downloadZipFromResults(actionData.results, "export-rapports.zip");
-          setToastMessage(t('toast.success', 'Rapport(s) généré(s) et téléchargé(s) avec succès ({count} fichiers dans un ZIP)', { count: actionData.results.length }));
+          setToastMessage(t('toast.success', 'Rapport(s) généré(s) et téléchargé(s) avec succès ({{count}} fichiers dans un ZIP)', { count: actionData.results.length }));
           setToastError(false);
           setToastActive(true);
         } else {
         const downloadedCount = downloadFilesFromResults(actionData.results);
         if (downloadedCount > 0) {
-          setToastMessage(t('toast.success', 'Rapport(s) généré(s) et téléchargé(s) avec succès ({count} fichier(s))', { count: downloadedCount }));
+          setToastMessage(t('toast.success', 'Rapport(s) généré(s) et téléchargé(s) avec succès ({{count}} fichier(s))', { count: downloadedCount }));
           setToastError(false);
           setToastActive(true);
         } else {

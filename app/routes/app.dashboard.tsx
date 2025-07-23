@@ -1,26 +1,44 @@
 import { json, type LoaderFunctionArgs, redirect } from "@remix-run/node";
 import { useLoaderData, useNavigate } from "@remix-run/react";
 import {
-  Page,
-  Layout,
-  Card,
-  Text,
-  Button as PolarisButton,
-  Button,
-  DataTable,
-  Icon,
-  EmptyState,
-  Toast,
-  Modal,
-  BlockStack,
   Banner,
+  BlockStack,
+  Button,
+  Card,
+  DataTable,
+  EmptyState,
+  Icon,
+  Layout,
+  Link,
+  Modal,
+  Page,
+  Button as PolarisButton,
+  Text,
+  Toast,
 } from "@shopify/polaris";
-import { authenticate } from "../shopify.server";
+import { CalendarIcon, CashDollarIcon, CheckIcon, EditIcon, ExternalIcon, OrderIcon, ProfileIcon, XCircleIcon } from "@shopify/polaris-icons";
+import {
+  BarElement,
+  CategoryScale,
+  Chart as ChartJS,
+  Legend,
+  LinearScale,
+  Title,
+  Tooltip,
+} from 'chart.js';
+import { useEffect, useState } from "react";
+import { useTranslation } from 'react-i18next';
+import { BiSimpleBtn } from "../components/Buttons/BiSimpleBtn";
+import FeedbackSection from "../components/FeedbackSection";
+import Footer from '../components/Footer';
+import { MonthlyReportsChart } from "../components/Navigation/MonthlyReportsChart";
+import { RecentExportsList } from "../components/Navigation/RecentExportsList";
+import { StatCard } from "../components/Navigation/StatCard";
 import { prisma } from "../db.server";
-import type { ReportStatus as ReportStatusType } from "@prisma/client";
 import { ShopifyCustomerService } from "../models/ShopifyCustomer.service";
 import { ShopifyOrderService } from "../models/ShopifyOrder.service";
-import Footer from '../components/Footer';
+import { authenticate } from "../shopify.server";
+import { downloadFileFromUrl } from "../utils/download";
 import { requireFiscalConfigOrRedirect } from "../utils/requireFiscalConfig.server";
 
 // Import sécurisé de ReportStatus
@@ -31,31 +49,6 @@ const ReportStatus = {
   COMPLETED_WITH_EMPTY_DATA: "COMPLETED_WITH_EMPTY_DATA" as const,
   ERROR: "ERROR" as const
 };
-import { BiSimpleBtn } from "../components/Buttons/BiSimpleBtn";
-import { PlusIcon, OrderIcon, CalendarIcon, EditIcon } from "@shopify/polaris-icons";
-import { downloadFileFromUrl } from "../utils/download";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js';
-import { Bar } from 'react-chartjs-2';
-import { useState, useEffect } from "react";
-import { StatCard } from "../components/Navigation/StatCard";
-import {
-  CheckIcon,
-  XCircleIcon,
-  ProfileIcon,
-  CashDollarIcon,
-} from "@shopify/polaris-icons";
-import { MonthlyReportsChart } from "../components/Navigation/MonthlyReportsChart";
-import { RecentExportsList } from "../components/Navigation/RecentExportsList";
-import FeedbackSection from "../components/FeedbackSection";
-import { useTranslation } from 'react-i18next';
 
 ChartJS.register(
   CategoryScale,
@@ -240,7 +233,12 @@ export default function Dashboard() {
       setIsMobile(window.innerWidth <= 900);
       setIsNarrow(window.innerWidth <= 1366);
       setIsVeryNarrow(window.innerWidth <= 600);
-      setIsTwoCol(window.innerWidth <= 1140 && window.innerWidth > 600);
+      // On force 4x1 si width <= 1607 et > 1140
+      if (window.innerWidth <= 1607 && window.innerWidth > 1140) {
+        setIsTwoCol(false);
+      } else {
+        setIsTwoCol(window.innerWidth <= 1140 && window.innerWidth > 600);
+      }
     };
     check();
     window.addEventListener("resize", check);
@@ -377,13 +375,16 @@ export default function Dashboard() {
         <Layout.Section>
           <div style={{
             display: "grid",
-            gridTemplateColumns: isVeryNarrow
-              ? "1fr"
-              : isTwoCol
-              ? "1fr 1fr"
-              : isNarrow
-              ? "1fr 1fr"
-              : "repeat(4, 1fr)",
+            gridTemplateColumns:
+              isVeryNarrow
+                ? "1fr"
+                : (window.innerWidth <= 1607 && window.innerWidth > 1140)
+                  ? "repeat(4, 1fr)"
+                  : isTwoCol
+                  ? "1fr 1fr"
+                  : isNarrow
+                  ? "1fr 1fr"
+                  : "repeat(4, 1fr)",
             gap: 24,
             marginBottom: 20,
             width: "100%"
@@ -652,6 +653,12 @@ export default function Dashboard() {
               <Text as="p">
                 {t('customReport.inProgress', 'La fonctionnalité Rapport personnalisé est en cours de production et sera bientôt disponible.')}
               </Text>
+              <Link url="https://help.ledgerxport.com" external>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <Icon source={ExternalIcon} tone="base" />
+                  {t('customReport.featureRequest', 'Exprimez votre besoin ou suggestion sur notre centre de demandes de fonctionnalités')}
+                </span>
+              </Link>
               <Text as="p" tone="subdued">
                 {t('customReport.inProgressDesc', 'Nous mettons tout en œuvre pour vous proposer prochainement cette fonctionnalité avancée. Merci de votre compréhension !')}
               </Text>
