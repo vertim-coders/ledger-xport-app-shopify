@@ -1,26 +1,44 @@
 import { json, type LoaderFunctionArgs, redirect } from "@remix-run/node";
 import { useLoaderData, useNavigate } from "@remix-run/react";
 import {
-  Page,
-  Layout,
-  Card,
-  Text,
-  Button as PolarisButton,
-  Button,
-  DataTable,
-  Icon,
-  EmptyState,
-  Toast,
-  Modal,
-  BlockStack,
   Banner,
+  BlockStack,
+  Button,
+  Card,
+  DataTable,
+  EmptyState,
+  Icon,
+  Layout,
+  Link,
+  Modal,
+  Page,
+  Button as PolarisButton,
+  Text,
+  Toast,
 } from "@shopify/polaris";
-import { authenticate } from "../shopify.server";
+import { CalendarIcon, CashDollarIcon, CheckIcon, CollectionFeaturedIcon, EditIcon, OrderIcon, ProfileIcon, XCircleIcon } from "@shopify/polaris-icons";
+import {
+  BarElement,
+  CategoryScale,
+  Chart as ChartJS,
+  Legend,
+  LinearScale,
+  Title,
+  Tooltip,
+} from 'chart.js';
+import { useEffect, useState } from "react";
+import { useTranslation } from 'react-i18next';
+import { BiSimpleBtn } from "../components/Buttons/BiSimpleBtn";
+import FeedbackSection from "../components/FeedbackSection";
+import Footer from '../components/Footer';
+import { MonthlyReportsChart } from "../components/Navigation/MonthlyReportsChart";
+import { RecentExportsList } from "../components/Navigation/RecentExportsList";
+import { StatCard } from "../components/Navigation/StatCard";
 import { prisma } from "../db.server";
-import type { ReportStatus as ReportStatusType } from "@prisma/client";
 import { ShopifyCustomerService } from "../models/ShopifyCustomer.service";
 import { ShopifyOrderService } from "../models/ShopifyOrder.service";
-import Footer from '../components/Footer';
+import { authenticate } from "../shopify.server";
+import { downloadFileFromUrl } from "../utils/download";
 import { requireFiscalConfigOrRedirect } from "../utils/requireFiscalConfig.server";
 
 // Import sécurisé de ReportStatus
@@ -31,31 +49,6 @@ const ReportStatus = {
   COMPLETED_WITH_EMPTY_DATA: "COMPLETED_WITH_EMPTY_DATA" as const,
   ERROR: "ERROR" as const
 };
-import { BiSimpleBtn } from "../components/Buttons/BiSimpleBtn";
-import { PlusIcon, OrderIcon, CalendarIcon, EditIcon } from "@shopify/polaris-icons";
-import { downloadFileFromUrl } from "../utils/download";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js';
-import { Bar } from 'react-chartjs-2';
-import { useState, useEffect } from "react";
-import { StatCard } from "../components/Navigation/StatCard";
-import {
-  CheckIcon,
-  XCircleIcon,
-  ProfileIcon,
-  CashDollarIcon,
-} from "@shopify/polaris-icons";
-import { MonthlyReportsChart } from "../components/Navigation/MonthlyReportsChart";
-import { RecentExportsList } from "../components/Navigation/RecentExportsList";
-import FeedbackSection from "../components/FeedbackSection";
-import { useTranslation } from 'react-i18next';
 
 ChartJS.register(
   CategoryScale,
@@ -652,6 +645,12 @@ export default function Dashboard() {
               <Text as="p">
                 {t('customReport.inProgress', 'La fonctionnalité Rapport personnalisé est en cours de production et sera bientôt disponible.')}
               </Text>
+              <Link url="https://help.ledgerxport.com" external>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <Icon source={CollectionFeaturedIcon} tone="base" />
+                    {t('customReport.suggestionsWelcome', 'Nous sommes à l’écoute de vos suggestions pour façonner cette fonctionnalité selon vos besoins professionnels. Partagez-nous vos idées !')}
+                  </span>
+              </Link>
               <Text as="p" tone="subdued">
                 {t('customReport.inProgressDesc', 'Nous mettons tout en œuvre pour vous proposer prochainement cette fonctionnalité avancée. Merci de votre compréhension !')}
               </Text>

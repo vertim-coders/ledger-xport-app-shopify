@@ -5,6 +5,7 @@ import { initReactI18next } from 'react-i18next';
 const resources = {
   fr: {
     translation: {
+      'customReport.suggestionsWelcome': 'Nous sommes à l’écoute de vos suggestions pour façonner cette fonctionnalité selon vos besoins professionnels. Partagez-nous vos idées !',
       // Navigation
       'nav.home': 'Accueil',
       'nav.dashboard': 'Tableau de bord',
@@ -423,6 +424,7 @@ const resources = {
   },
   en: {
     translation: {
+      'customReport.suggestionsWelcome': 'We welcome your suggestions to shape this feature according to your professional needs. Share your ideas with us!',
       // Navigation
       'nav.home': 'Home',
       'nav.dashboard': 'Dashboard',
@@ -839,6 +841,7 @@ const resources = {
   },
   es: {
     translation: {
+      'customReport.suggestionsWelcome': 'Estamos abiertos a sus sugerencias para adaptar esta funcionalidad a sus necesidades profesionales. ¡Compártanos sus ideas!',
       // --- MISSING TRANSLATIONS ADDED BELOW ---
       'feedback.shareFeedback': 'Comparte tus comentarios',
       'feedback.shareExperience': 'Comparte tu experiencia con {{appName}} dejando una reseña en la App Store.',
