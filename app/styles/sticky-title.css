@@ -1,0 +1,23 @@
+/* Rendre sticky tout le header Polaris */
+.Polaris-Page-Header {
+  position: sticky;
+  top: 0;
+  z-index: 21;
+  background: #fff;
+  box-shadow: 0 2px 8px 0 rgba(0,0,0,0.04);
+}
+/* Centrage horizontal et sticky du titre Polaris */
+.Polaris-Page-Header__TitleWrapper {
+  justify-content: center !important;
+}
+
+.Polaris-Header-Title {
+  text-align: center !important;
+  width: 100%;
+  position: sticky;
+  top: 0;
+  background: inherit;
+  z-index: 20;
+  padding-bottom: 8px;
+  margin-bottom: 0;
+}

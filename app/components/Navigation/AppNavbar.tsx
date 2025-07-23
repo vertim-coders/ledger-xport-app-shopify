@@ -1,14 +1,14 @@
-import React from "react";
-import { Box, BlockStack, Text, Icon, Divider } from "@shopify/polaris";
+import { useLocation, useNavigate } from "@remix-run/react";
+import { Divider, Icon, Text } from "@shopify/polaris";
 import {
-  HomeIcon,
-  SettingsIcon,
   CalendarIcon,
+  HomeIcon,
   OrderIcon,
   ProfileIcon,
+  SettingsIcon,
   StoreIcon,
 } from "@shopify/polaris-icons";
-import { useNavigate, useLocation } from "@remix-run/react";
+import React from "react";
 import { useTranslation } from 'react-i18next';
 
 // Personnalisation facile : couleurs, textes, icônes
@@ -131,7 +131,7 @@ const settingsItem = {
           <img
             src={LOGO_SRC}
             alt={LOGO_ALT}
-            style={{ maxHeight: isVeryShort ? 28 : isShort ? 36 : 48, width: "auto", objectFit: "contain", marginBottom: isVeryShort ? 2 : isShort ? 4 : 8 }}
+            style={{ maxHeight: isVeryShort ? 42 : isShort ? 54 : 70, width: "auto", objectFit: "contain", marginBottom: isVeryShort ? 9 : isShort ? 11 : 15 }}
           />
           <span style={{ color: "#e0e7ef", fontSize: isVeryShort ? 10 : isShort ? 12 : undefined }}>
             <Text as="span" variant="bodySm" tone="subdued" alignment="center">

@@ -330,7 +330,7 @@ const resources = {
       'toast.fiscalSaveSuccess': 'Régime fiscal enregistré avec succès',
       'toast.fiscalSaveError': "Erreur lors de l'enregistrement du régime fiscal",
       // Ajout de la clé toast.emptyData
-      'toast.emptyData': 'Aucune donnée {{dataType}} dans la période sélectionnée',
+      'toast.emptyData': 'Attention: Aucune donnée {{dataType}} dans la période sélectionnée. Décochez {{dataType}} et générez à nouveau.',
       'recentExportsList.noRecentExport': 'Aucun export récent',
       // Statuts génériques
       'status.scheduled': 'Planifié',
@@ -746,7 +746,7 @@ const resources = {
       'toast.fiscalSaveSuccess': 'Fiscal regime saved successfully',
       'toast.fiscalSaveError': 'Error saving fiscal regime',
       // Add toast.emptyData key
-      'toast.emptyData': 'No {{dataType}} data in the selected period',
+      'toast.emptyData': 'Warning: No {{dataType}} data in the selected period. Uncheck {{dataType}} and generate again.',
       'recentExportsList.noRecentExport': 'No recent exports',
       // Estados genéricos
       'status.scheduled': 'Scheduled',
@@ -1147,7 +1147,7 @@ const resources = {
       'toast.fiscalSaveSuccess': 'Régimen fiscal guardado con éxito',
       'toast.fiscalSaveError': 'Error al guardar el régimen fiscal',
       // Add toast.emptyData key
-      'toast.emptyData': 'No hay datos de {{dataType}} en el período seleccionado',
+      'toast.emptyData': 'Advertencia: No hay datos de {{dataType}} en el período seleccionado. Desmarque {{dataType}} y vuelva a generar.',
       'recentExportsList.noRecentExport': 'No hay exportaciones recientes',
       // Estados genéricos
       'status.scheduled': 'Programado',

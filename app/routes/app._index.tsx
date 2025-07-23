@@ -1,29 +1,27 @@
 import type { LoaderFunctionArgs } from "@remix-run/node";
-import { useNavigate, useLoaderData } from "@remix-run/react";
+import { redirect } from "@remix-run/node";
+import { useLoaderData, useNavigate } from "@remix-run/react";
 import {
-  Page,
-  Layout,
-  Card,
-  Text,
-  BlockStack,
   ActionList,
-  Frame,
   Box,
+  Card,
+  Frame,
+  Layout,
+  Page,
+  Text
 } from '@shopify/polaris';
 import {
-  SettingsIcon,
-  OrderIcon,
   CalendarIcon,
+  OrderIcon,
+  SettingsIcon,
   StoreIcon
 } from '@shopify/polaris-icons';
-import { authenticate } from "../shopify.server";
+import { useEffect } from "react";
+import { useTranslation } from 'react-i18next';
 import { BiSimpleBtn } from "../components/Buttons/BiSimpleBtn";
 import Footer from '../components/Footer';
-import { useTranslation } from 'react-i18next';
-import { requireFiscalConfigOrRedirect } from "../utils/requireFiscalConfig.server";
 import { prisma } from "../db.server";
-import { redirect } from "@remix-run/node";
-import { useEffect } from "react";
+import { authenticate } from "../shopify.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -113,7 +111,6 @@ export default function Index() {
                     </Text>
                   </div>
                 </Box>
-
                 {/* Bouton d'appel à l'action */}
                 <Box paddingBlockStart="400">
                   <div style={{ textAlign: 'center' }}>
@@ -123,7 +120,6 @@ export default function Index() {
                     />
                   </div>
                 </Box>
-
                 <Box paddingBlockStart="400">
                   <div style={{ textAlign: 'center' }}>
                     <Text as="p" variant="bodySm" tone="subdued">
@@ -132,46 +128,52 @@ export default function Index() {
                   </div>
                 </Box>
               </Box>
-            </Card>
-          </Layout.Section>
-
-          {/* Section des fonctionnalités */}
-          <Layout.Section>
-            <Card>
               <Box padding="400">
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <Box paddingBlockEnd="800">
-                    <Text as="h2" variant="headingLg" alignment="center">
+                    <Text as="h1" variant="headingLg" alignment="center">
                       {t('home.featuresTitle', 'Fonctionnalités disponibles')}
                     </Text>
                   </Box>
                   <div style={{ width: '100%', maxWidth: 480 }}>
-                    <BlockStack gap="400">
-                      <ActionList
-                        items={[
-                          {
-                            content: t('home.feature.manualExports', 'Exports manuels de données'),
-                            icon: OrderIcon,
-                            onAction: () => navigate("/app/reports/manual-export"),
-                          },
-                          {
-                            content: t('home.feature.scheduledExports', "Planification d'exports automatiques"),
-                            icon: CalendarIcon,
-                            onAction: () => navigate("/app/reports/schedule"),
-                          },
-                          {
-                            content: t('home.feature.exportHistory', 'Historique des exports'),
-                            icon: StoreIcon,
-                            onAction: () => navigate("/app/reports/history"),
-                          },
-                          {
-                            content: t('home.feature.generalSettings', 'Paramètres généraux'),
-                            icon: SettingsIcon,
-                            onAction: () => navigate("/app/settings/general"),
-                          },
-                        ]}
-                      />
-                    </BlockStack>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: 24,
+                    }}>
+                      <div>
+                        <ActionList
+                          items={[
+                            {
+                              content: t('home.feature.manualExports', 'Exports manuels de données'),
+                              icon: OrderIcon,
+                              onAction: () => navigate("/app/reports/manual-export"),
+                            },
+                            {
+                              content: t('home.feature.scheduledExports', "Planification d'exports automatiques"),
+                              icon: CalendarIcon,
+                              onAction: () => navigate("/app/reports/schedule"),
+                            },
+                          ]}
+                        />
+                      </div>
+                      <div>
+                        <ActionList
+                          items={[
+                            {
+                              content: t('home.feature.exportHistory', 'Historique des exports'),
+                              icon: StoreIcon,
+                              onAction: () => navigate("/app/reports/history"),
+                            },
+                            {
+                              content: t('home.feature.generalSettings', 'Paramètres généraux'),
+                              icon: SettingsIcon,
+                              onAction: () => navigate("/app/settings/general"),
+                            },
+                          ]}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </Box>

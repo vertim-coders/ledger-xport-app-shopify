@@ -475,13 +475,13 @@ export default function ManualExportPage() {
         }
         if (actionData.results.length > 1) {
           downloadZipFromResults(actionData.results, "export-rapports.zip");
-          setToastMessage(t('toast.success', 'Rapport(s) généré(s) et téléchargé(s) avec succès ({{count}} fichiers dans un ZIP)', { count: actionData.results.length }));
+          setToastMessage(t('toast.success', 'Rapport(s) généré(s) et téléchargé(s) avec succès ({count} fichiers dans un ZIP)', { count: actionData.results.length }));
           setToastError(false);
           setToastActive(true);
         } else {
         const downloadedCount = downloadFilesFromResults(actionData.results);
         if (downloadedCount > 0) {
-          setToastMessage(t('toast.success', 'Rapport(s) généré(s) et téléchargé(s) avec succès ({{count}} fichier(s))', { count: downloadedCount }));
+          setToastMessage(t('toast.success', 'Rapport(s) généré(s) et téléchargé(s) avec succès ({count} fichier(s))', { count: downloadedCount }));
           setToastError(false);
           setToastActive(true);
         } else {
@@ -704,7 +704,7 @@ export default function ManualExportPage() {
               )}
 
                 <div className="p-4" style={{ marginTop: 32, display: 'flex', justifyContent: 'center' }}>
-                   <BiSaveBtn title={t('manualExport.generate', "Générer et télécharger l'export")} isLoading={isGenerating} />
+                  <BiSaveBtn title={t('manualExport.generate', "Générer et télécharger l'export")} isLoading={isGenerating} />
                 </div>
             </form>
           </Card>

@@ -6,6 +6,7 @@ import {
   ScrollRestoration,
 } from "@remix-run/react";
 import "./styles/polaris-overrides.css";
+import "./styles/sticky-title.css";
 //import Footer from './components/Footer';
 import { useEffect } from "react";
 // Ajout de l'import Crisp
