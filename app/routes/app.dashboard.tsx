@@ -373,9 +373,9 @@ export default function Dashboard() {
             gridTemplateColumns: isVeryNarrow
               ? "1fr"
               : isTwoCol
-              ? "1fr 1fr"
+              ? "4 1fr"
               : isNarrow
-              ? "1fr 1fr"
+              ? "4 1fr"
               : "repeat(4, 1fr)",
             gap: 24,
             marginBottom: 20,
