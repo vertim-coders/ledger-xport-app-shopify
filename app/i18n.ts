@@ -5,10 +5,11 @@ import { initReactI18next } from 'react-i18next';
 const resources = {
   fr: {
     translation: {
-      'customReport.suggestionsWelcome': 'Nous sommes à l’écoute de vos suggestions pour façonner cette fonctionnalité selon vos besoins professionnels. Partagez-nous vos idées !',
+      'customReport.suggestionsWelcome': 'Nous sommes à l\'écoute de vos suggestions pour façonner cette fonctionnalité selon vos besoins professionnels. Partagez-nous vos idées !',
       // Navigation
       'nav.home': 'Accueil',
       'nav.dashboard': 'Tableau de bord',
+      'nav.invoice': 'Factures et Clients',
       'nav.settings': 'Paramètres',
       'nav.reports': 'Rapports',
       'nav.schedule': 'Planification',
@@ -36,6 +37,7 @@ const resources = {
       'action.newReport': 'Générer un nouveau rapport',
       'action.scheduleReport': 'Planifier un rapport',
       'action.customReport': 'Rapport personnalisé',
+      'action.invoice': 'Factures et Clients',
       'action.close': 'Fermer',
       'action.retry': 'Réessayer',
       'action.modify': 'Modifier',
@@ -234,10 +236,10 @@ const resources = {
       'report.deleteSuccess': 'Rapport supprimé avec succès',
       'report.deleteError': 'Erreur lors de la suppression du rapport',
       'report.back': 'Rapports',
-      'report.notFound': 'Ce rapport n’existe pas ou le fichier est introuvable.',
-      'report.error': 'Une erreur est survenue lors de l’affichage du rapport.',
+      'report.notFound': 'Ce rapport n\'existe pas ou le fichier est introuvable.',
+      'report.error': 'Une erreur est survenue lors de l\'affichage du rapport.',
       'report.notFoundTitle': 'Rapport introuvable',
-      'report.backHistory': 'Retour à l’historique',
+      'report.backHistory': 'Retour à l\'historique',
 
       // Planification d'exports
       'schedule.title': 'Planifier un rapport',
@@ -379,7 +381,7 @@ const resources = {
       'sidebar.mainMenu': 'Menu principal',
       'sidebar.support': 'Aide et support',
       // Régimes fiscaux (exemples)
-      'fiscalRegime.OHADA.description': 'Régime comptable OHADA pour l’Afrique de l’Ouest',
+      'fiscalRegime.OHADA.description': 'Régime comptable OHADA pour l\'Afrique de l\'Ouest',
       'fiscalRegime.OHADA.fileFormat': 'Format OHADA',
       'fiscalRegime.OHADA.compatibleSoftware': 'Sage, Odoo, QuickBooks',
       'fiscalRegime.FRANCE.description': 'Régime fiscal français standard',
@@ -419,7 +421,115 @@ const resources = {
       'subscription.feature.prioritySupport': 'Support email prioritaire',
       'subscription.feature.security': 'Chiffrement et sécurité des données',
       'subscription.cancelAnytime': 'Annulez à tout moment. Sans engagement.',
-      'subscription.trustedBy': 'Déjà adopté par des milliers d\'entreprises'
+      'subscription.trustedBy': 'Déjà adopté par des milliers d\'entreprises',
+
+      // Invoice Export
+      'invoice.export.title': 'Export de Factures',
+      'invoice.export.invoiceExport': 'Export de factures',
+      'invoice.export.customerExport': 'Export de clients',
+      'invoice.template.chooseTemplate': 'Choisissez un modèle de facture',
+      'invoice.template.chooseTemplateHelp': 'Sélectionnez un modèle de facture parmi les 9 disponibles. Chaque modèle a un design unique adapté à différents types d\'entreprises.',
+      'invoice.template.viewSelectedTemplate': 'Voir le modèle sélectionné',
+      'invoice.export.parameters': 'Paramètres d\'export',
+      'invoice.export.parametersHelp': 'Configurez les paramètres pour l\'export de vos factures selon vos besoins.',
+      'invoice.export.dateRange': 'Période',
+      'invoice.export.predefinedPeriods': 'Périodes prédéfinies',
+      'invoice.export.last7Days': '7 derniers jours',
+      'invoice.export.last30Days': '30 derniers jours',
+      'invoice.export.last3Months': '3 derniers mois',
+      'invoice.export.last6Months': '6 derniers mois',
+      'invoice.export.lastYear': '1 an',
+      'invoice.export.from': 'Du',
+      'invoice.export.to': 'Au',
+      'invoice.export.selectedPeriod': 'Période sélectionnée',
+      'invoice.export.status': 'Statut',
+      'invoice.export.statusHelp': 'Filtrez les factures selon leur statut de paiement.',
+      'invoice.export.all': 'Tous',
+      'invoice.export.paid': 'Payé',
+      'invoice.export.unpaid': 'Non payé',
+      'invoice.export.draft': 'Brouillon',
+      'invoice.export.client': 'Client',
+      'invoice.export.clientHelp': 'Recherchez des factures par nom de client.',
+      'invoice.export.enterClient': 'Entrez un client',
+      'invoice.export.format': 'Format',
+      'invoice.export.formatHelp': 'Choisissez le format d\'export pour vos factures.',
+      'invoice.export.exporting': 'Export en cours...',
+      'invoice.export.exportInvoices': 'Exporter les factures',
+      'invoice.export.summaryWithDates': 'Vous allez exporter les factures du {{from}} au {{to}}.',
+      'invoice.export.summaryPartialDates': 'Vous allez exporter les factures {{#if hasFrom}}à partir du {{from}}{{/if}}{{#if hasFrom}}{{#if hasTo}} et {{/if}}{{/if}}{{#if hasTo}}jusqu\'au {{to}}{{/if}}.',
+      'invoice.export.summaryNoDates': 'Vous allez exporter toutes les factures selon les filtres sélectionnés.',
+      'invoice.export.success': '✅ Export des factures terminé avec succès !',
+      'invoice.export.error.selectPeriod': '❌ Veuillez sélectionner une période (date de début et/ou date de fin)',
+      'invoice.export.error.clientNameMinLength': '❌ Le nom du client doit contenir au moins 2 caractères',
+      'invoice.export.error.unknown': 'Erreur inconnue lors de l\'export',
+
+      // Customer Export
+      'customer.export.periodSelector': 'Sélecteur de période',
+      'customer.export.last7Days': '7 derniers jours',
+      'customer.export.last30Days': '30 derniers jours',
+      'customer.export.last3Months': '3 derniers mois',
+      'customer.export.last6Months': '6 derniers mois',
+      'customer.export.lastYear': '1 an',
+      'customer.export.registrationDateStart': 'Date d\'inscription (début)',
+      'customer.export.registrationDateEnd': 'Date d\'inscription (fin)',
+      'customer.export.selectedPeriod': 'Période sélectionnée',
+      'customer.export.searchByNameOrEmail': 'Recherche par nom ou email',
+      'customer.export.searchByNameOrEmailHelp': 'Recherchez des clients par leur nom ou adresse email. La recherche est sensible à la casse et recherche dans les correspondances partielles.',
+      'customer.export.enterNameOrEmail': 'Entrez un nom ou email...',
+      'customer.export.exportFormat': 'Format d\'export',
+      'customer.export.exportFormatHelp': 'Choisissez le format de fichier pour votre export. CSV pour Excel, XLSX pour des données structurées, ou JSON pour l\'intégration avec d\'autres systèmes.',
+      'customer.export.columnsToExport': 'Colonnes à exporter',
+      'customer.export.columnsToExportHelp': 'Sélectionnez les colonnes que vous souhaitez inclure dans votre export. Vous pouvez tout sélectionner ou choisir uniquement les colonnes nécessaires.',
+      'customer.export.selectAll': 'Tout sélectionner',
+      'customer.export.reset': 'Réinitialiser',
+      'customer.export.columnOrder': 'Ordre des colonnes',
+      'customer.export.columnOrderHelp': 'Glissez-déposez les colonnes pour les réorganiser selon vos besoins. L\'ordre défini ici sera respecté dans l\'export.',
+      'customer.export.selectedColumns': 'colonne(s) sélectionnée(s)',
+      'customer.export.removeColumn': 'Retirer cette colonne',
+      'customer.export.selectColumnsToReorder': 'Sélectionnez des colonnes ci-dessus pour les réorganiser ici',
+      'customer.export.dataPreview': 'Aperçu des données',
+      'customer.export.dataPreviewHelp': 'Aperçu des données qui seront exportées selon l\'ordre des colonnes défini ci-dessus.',
+      'customer.export.exampleRows': 'ligne(s) d\'exemple',
+      'customer.export.exporting': 'Export en cours...',
+      'customer.export.exportNow': 'Exporter maintenant',
+      'customer.export.summaryWithDates': 'Vous allez exporter les clients créés entre {{from}} et {{to}}.',
+      'customer.export.summaryPartialDates': 'Vous allez exporter les clients créés {{#if hasFrom}}à partir du {{from}}{{/if}}{{#if hasFrom}}{{#if hasTo}} et {{/if}}{{/if}}{{#if hasTo}}jusqu\'au {{to}}{{/if}}.',
+      'customer.export.summaryNoDates': 'Vous allez exporter tous les clients selon les filtres sélectionnés.',
+      'customer.export.search': 'Recherche',
+      'customer.export.format': 'Format',
+      'customer.export.error.selectColumns': '❌ Veuillez sélectionner au moins une colonne à exporter',
+
+      // Customer Columns
+      'customer.columns.firstName': 'Prénom',
+      'customer.columns.lastName': 'Nom',
+      'customer.columns.email': 'Email',
+      'customer.columns.phone': 'Téléphone',
+      'customer.columns.createdAt': 'Date d\'inscription',
+      'customer.columns.totalSpent': 'Total dépensé',
+      'customer.columns.ordersCount': 'Nombre de commandes',
+      'customer.columns.lastOrder': 'Dernière commande',
+      'customer.columns.tags': 'Tags',
+      'customer.columns.defaultAddress': 'Adresse',
+      'customer.columns.id': 'ID client',
+      'customer.columns.note': 'Note',
+      'customer.columns.taxExempt': 'Exemption de taxe',
+
+      // Customer Sample Data
+      'customer.sample.firstName1': 'Jean',
+      'customer.sample.lastName1': 'Dupont',
+      'customer.sample.tagVIP': 'VIP',
+      'customer.sample.tagLoyal': 'Fidèle',
+      'customer.sample.address1': '123 Rue de la Paix, Paris, France',
+      'customer.sample.note1': 'Client fidèle',
+      'customer.sample.firstName2': 'Marie',
+      'customer.sample.lastName2': 'Martin',
+      'customer.sample.tagNew': 'Nouveau',
+      'customer.sample.address2': '456 Avenue des Champs, Lyon, France',
+
+      // Common
+      'common.help': 'Aide',
+      'common.yes': 'Oui',
+      'common.no': 'Non'
     }
   },
   en: {
@@ -428,6 +538,7 @@ const resources = {
       // Navigation
       'nav.home': 'Home',
       'nav.dashboard': 'Dashboard',
+      'nav.invoice': 'Invoices & Customers',
       'nav.settings': 'Settings',
       'nav.reports': 'Reports',
       'nav.schedule': 'Schedule',
@@ -455,6 +566,7 @@ const resources = {
       'action.newReport': 'Generate new report',
       'action.scheduleReport': 'Schedule a report',
       'action.customReport': 'Custom report',
+      'action.invoice': 'Invoices & Customers',
       'action.close': 'Close',
       'action.retry': 'Retry',
       'action.modify': 'Modify',
@@ -836,7 +948,115 @@ const resources = {
       'subscription.feature.prioritySupport': 'Priority email support',
       'subscription.feature.security': 'Data encryption & security',
       'subscription.cancelAnytime': 'Cancel anytime. No questions asked.',
-      'subscription.trustedBy': 'Trusted by 10,000+ businesses worldwide'
+      'subscription.trustedBy': 'Trusted by 10,000+ businesses worldwide',
+
+      // Invoice Export
+      'invoice.export.title': 'Invoice Export',
+      'invoice.export.invoiceExport': 'Invoice export',
+      'invoice.export.customerExport': 'Customer export',
+      'invoice.template.chooseTemplate': 'Choose an invoice template',
+      'invoice.template.chooseTemplateHelp': 'Select an invoice template from the 9 available. Each template has a unique design adapted to different types of businesses.',
+      'invoice.template.viewSelectedTemplate': 'View selected template',
+      'invoice.export.parameters': 'Export parameters',
+      'invoice.export.parametersHelp': 'Configure the parameters for your invoice export according to your needs.',
+      'invoice.export.dateRange': 'Period',
+      'invoice.export.predefinedPeriods': 'Predefined periods',
+      'invoice.export.last7Days': 'Last 7 days',
+      'invoice.export.last30Days': 'Last 30 days',
+      'invoice.export.last3Months': 'Last 3 months',
+      'invoice.export.last6Months': 'Last 6 months',
+      'invoice.export.lastYear': '1 year',
+      'invoice.export.from': 'From',
+      'invoice.export.to': 'To',
+      'invoice.export.selectedPeriod': 'Selected period',
+      'invoice.export.status': 'Status',
+      'invoice.export.statusHelp': 'Filter invoices by their payment status.',
+      'invoice.export.all': 'All',
+      'invoice.export.paid': 'Paid',
+      'invoice.export.unpaid': 'Unpaid',
+      'invoice.export.draft': 'Draft',
+      'invoice.export.client': 'Client',
+      'invoice.export.clientHelp': 'Search for invoices by client name.',
+      'invoice.export.enterClient': 'Enter a client',
+      'invoice.export.format': 'Format',
+      'invoice.export.formatHelp': 'Choose the export format for your invoices.',
+      'invoice.export.exporting': 'Exporting...',
+      'invoice.export.exportInvoices': 'Export invoices',
+      'invoice.export.summaryWithDates': 'You will export invoices from {{from}} to {{to}}.',
+      'invoice.export.summaryPartialDates': 'You will export invoices {{#if hasFrom}}from {{from}}{{/if}}{{#if hasFrom}}{{#if hasTo}} and {{/if}}{{/if}}{{#if hasTo}}until {{to}}{{/if}}.',
+      'invoice.export.summaryNoDates': 'You will export all invoices according to the selected filters.',
+      'invoice.export.success': '✅ Invoice export completed successfully!',
+      'invoice.export.error.selectPeriod': '❌ Please select a period (start date and/or end date)',
+      'invoice.export.error.clientNameMinLength': '❌ Client name must contain at least 2 characters',
+      'invoice.export.error.unknown': 'Unknown error during export',
+
+      // Customer Export
+      'customer.export.periodSelector': 'Period selector',
+      'customer.export.last7Days': 'Last 7 days',
+      'customer.export.last30Days': 'Last 30 days',
+      'customer.export.last3Months': 'Last 3 months',
+      'customer.export.last6Months': 'Last 6 months',
+      'customer.export.lastYear': 'Last year',
+      'customer.export.registrationDateStart': 'Registration date (start)',
+      'customer.export.registrationDateEnd': 'Registration date (end)',
+      'customer.export.selectedPeriod': 'Selected period',
+      'customer.export.searchByNameOrEmail': 'Search by name or email',
+      'customer.export.searchByNameOrEmailHelp': 'Search for customers by their name or email address. The search is case-sensitive and looks for partial matches.',
+      'customer.export.enterNameOrEmail': 'Enter a name or email...',
+      'customer.export.exportFormat': 'Export format',
+      'customer.export.exportFormatHelp': 'Choose the file format for your export. CSV for Excel, XLSX for structured data, or JSON for integration with other systems.',
+      'customer.export.columnsToExport': 'Columns to export',
+      'customer.export.columnsToExportHelp': 'Select the columns you want to include in your export. You can select all or choose only the necessary columns.',
+      'customer.export.selectAll': 'Select all',
+      'customer.export.reset': 'Reset',
+      'customer.export.columnOrder': 'Column order',
+      'customer.export.columnOrderHelp': 'Drag and drop columns to reorganize them according to your needs. The order defined here will be respected in the export.',
+      'customer.export.selectedColumns': 'selected column(s)',
+      'customer.export.removeColumn': 'Remove this column',
+      'customer.export.selectColumnsToReorder': 'Select columns above to reorganize them here',
+      'customer.export.dataPreview': 'Data preview',
+      'customer.export.dataPreviewHelp': 'Preview of the data that will be exported according to the column order defined above.',
+      'customer.export.exampleRows': 'example row(s)',
+      'customer.export.exporting': 'Exporting...',
+      'customer.export.exportNow': 'Export now',
+      'customer.export.summaryWithDates': 'You will export customers created between {{from}} and {{to}}.',
+      'customer.export.summaryPartialDates': 'You will export customers created {{#if hasFrom}}from {{from}}{{/if}}{{#if hasFrom}}{{#if hasTo}} and {{/if}}{{/if}}{{#if hasTo}}until {{to}}{{/if}}.',
+      'customer.export.summaryNoDates': 'You will export all customers according to the selected filters.',
+      'customer.export.search': 'Search',
+      'customer.export.format': 'Format',
+      'customer.export.error.selectColumns': '❌ Please select at least one column to export',
+
+      // Customer Columns
+      'customer.columns.firstName': 'First name',
+      'customer.columns.lastName': 'Last name',
+      'customer.columns.email': 'Email',
+      'customer.columns.phone': 'Phone',
+      'customer.columns.createdAt': 'Registration date',
+      'customer.columns.totalSpent': 'Total spent',
+      'customer.columns.ordersCount': 'Orders count',
+      'customer.columns.lastOrder': 'Last order',
+      'customer.columns.tags': 'Tags',
+      'customer.columns.defaultAddress': 'Address',
+      'customer.columns.id': 'Customer ID',
+      'customer.columns.note': 'Note',
+      'customer.columns.taxExempt': 'Tax exempt',
+
+      // Customer Sample Data
+      'customer.sample.firstName1': 'John',
+      'customer.sample.lastName1': 'Doe',
+      'customer.sample.tagVIP': 'VIP',
+      'customer.sample.tagLoyal': 'Loyal',
+      'customer.sample.address1': '123 Peace Street, New York, USA',
+      'customer.sample.note1': 'Loyal customer',
+      'customer.sample.firstName2': 'Jane',
+      'customer.sample.lastName2': 'Smith',
+      'customer.sample.tagNew': 'New',
+      'customer.sample.address2': '456 Avenue of the Fields, Los Angeles, USA',
+
+      // Common
+      'common.help': 'Help',
+      'common.yes': 'Yes',
+      'common.no': 'No'
     }
   },
   es: {
@@ -883,6 +1103,7 @@ const resources = {
       // Navigation
       'nav.home': 'Inicio',
       'nav.dashboard': 'Panel',
+      'nav.invoice': 'Facturas y Clientes',
       'nav.settings': 'Configuración',
       'nav.reports': 'Informes',
       'nav.schedule': 'Programación',
@@ -907,6 +1128,17 @@ const resources = {
       'actions.pause': 'Pausar',
       'actions.delete': 'Eliminar',
       'actions.cancel': 'Cancelar',
+      'action.newReport': 'Generar nuevo informe',
+      'action.scheduleReport': 'Programar un informe',
+      'action.customReport': 'Informe personalizado',
+      'action.invoice': 'Facturas y Clientes',
+      'action.close': 'Cerrar',
+      'action.retry': 'Reintentar',
+      'action.modify': 'Modificar',
+      'action.back': 'Volver',
+      'action.generateReport': 'Generar un informe',
+      'action.scheduleAutomatically': 'Programar automáticamente',
+      'action.goToSettings': 'Ir a configuración',
 
       // Messages
       'message.loading': 'Cargando...',
@@ -917,6 +1149,23 @@ const resources = {
       'page.dashboard.title': 'Panel',
       'page.settings.title': 'Configuración general',
       'page.reports.title': 'Informes',
+      
+      // Estadísticas
+      'stats.totalExports': 'Total de exportaciones',
+      'stats.failedExports': 'Exportaciones fallidas',
+      'stats.customers': 'Clientes',
+      'stats.revenue': 'Ingresos',
+      
+      // Secciones del dashboard
+      'dashboard.exportStats': 'Estadísticas de exportaciones',
+      'dashboard.recentReports': 'Informes generados recientemente',
+      'dashboard.recentFailures': 'Fallos recientes',
+      'dashboard.upcomingExports': 'Próximas exportaciones',
+      'dashboard.noFailures': 'Sin fallos recientes',
+      'dashboard.noFailuresDesc': 'Todas tus exportaciones han tenido éxito.',
+      'dashboard.noScheduled': 'Sin exportaciones programadas',
+      'dashboard.noScheduledDesc': 'Las exportaciones programadas aparecerán aquí.',
+      'dashboard.scheduleExport': 'Programar una exportación',
       
       // Formulaires
       'form.company.name': 'Nombre de la empresa',
@@ -993,7 +1242,7 @@ const resources = {
       // Manual export
       'manualExport.title': 'Exportación manual',
       'manualExport.period': 'Período de exportación',
-      'manualExport.periodHelp': 'Elige el período para el que deseas generar una exportación. No se permiten fechas futuras.',
+      'manualExport.periodHelp': 'Elige el período sobre el que quieres generar una exportación. Las fechas futuras no están permitidas.',
       'manualExport.dataTypes': 'Tipos de datos',
       'manualExport.dataTypesHelp': 'Selecciona los tipos de datos a exportar: ventas, clientes, reembolsos o impuestos. Puedes elegir varios.',
       'manualExport.fileName': 'Nombre del archivo',
@@ -1002,9 +1251,42 @@ const resources = {
       'manualExport.exportFormat': 'Formato de exportación',
       'manualExport.exportFormatHelp': 'Elige el formato de archivo para la exportación: CSV, Excel, JSON o XML.',
       'manualExport.compatibleSoftware': 'Software compatible',
-      'manualExport.compatibleSoftwareHelp': 'Selecciona el software de destino para el que la exportación será compatible (ej: Sage, Odoo, QuickBooks, etc.).',
-      'manualExport.generate': 'Generar y descargar exportación',
-      'action.back': 'Volver',
+      'manualExport.compatibleSoftwareHelp': 'Selecciona el software objetivo para el que será compatible la exportación (ej: Sage, Odoo, QuickBooks, etc.).',
+      'manualExport.generate': 'Generar y descargar la exportación',
+
+      // Tipos de datos
+      'dataType.ventes': 'Ventas',
+      'dataType.clients': 'Clientes',
+      'dataType.remboursements': 'Reembolsos',
+      'dataType.taxes': 'Impuestos',
+
+      // Toasts
+      'toast.success': 'Informe(s) generado(s) y descargado(s) con éxito ({{count}} archivos en un ZIP)',
+      'toast.noReport': 'Ningún informe generado',
+      'toast.error': 'Error: {error}',
+      'toast.ftpConfigRequired': 'Configuración FTP requerida',
+      'toast.ftpConfigExplanation': 'Debes configurar tus parámetros FTP antes de poder',
+      'toast.ftpConfigExplanation2': 'programar una exportación por este medio.',
+      'toast.ftpConfigured': 'FTP configurado',
+      'toast.ftpConfiguredExplanation': 'La configuración FTP está lista. Puedes lanzar la programación de una exportación por FTP.',
+      'toast.downloadSuccess': 'Archivo descargado con éxito',
+      'toast.downloadError': 'Error al descargar',
+      'toast.retrying': 'Informe en proceso de regeneración',
+      'toast.retryError': 'Error al regenerar',
+      'toast.pending': 'Este informe aún está pendiente de generación.',
+      'toast.empty': 'Este informe se generó sin datos. No hay nada que mostrar.',
+      'toast.failed': 'Este informe falló. No se puede mostrar la vista.',
+      'toast.saveSuccess': 'Parámetros guardados con éxito',
+      'toast.saveError': 'Error al guardar los parámetros',
+      'toast.ftpTestSuccess': '¡Conexión FTP exitosa!',
+      'toast.ftpTestError': 'Fallo de conexión FTP: {error}',
+      'toast.ftpSaveSuccess': '¡Configuración FTP guardada con éxito!',
+      'toast.companySaveSuccess': 'Parámetros de la empresa guardados con éxito',
+      'toast.companySaveError': 'Error al guardar los parámetros de la empresa',
+      'toast.fiscalSaveSuccess': 'Régimen fiscal guardado con éxito',
+      'toast.fiscalSaveError': 'Error al guardar el régimen fiscal',
+      'toast.emptyData': 'Advertencia: No hay datos de {{dataType}} en el período seleccionado. Desmarca {{dataType}} y vuelve a generar.',
+      
 
       // Export history
       'history.title': 'Historial de exportaciones',
@@ -1088,12 +1370,6 @@ const resources = {
       'upcomingExports.plan': 'Programar una exportación',
       'upcomingExports.modify': 'Modificar',
 
-      // Tipos de datos
-      'dataType.ventes': 'Ventas',
-      'dataType.clients': 'Clientes',
-      'dataType.remboursements': 'Reembolsos',
-      'dataType.taxes': 'Impuestos',
-
       // Schedule (planificación) - complementos
       'schedule.reportName': 'Nombre del informe (planificación)',
       'schedule.help.reportName': 'Nombre del archivo generado durante una exportación programada. Puedes personalizarlo.',
@@ -1114,43 +1390,14 @@ const resources = {
       'schedule.recipients.replyTo': 'Responder a (Reply To) - Opcional',
       'schedule.recipients.replyToPlaceholder': 'Introduce una dirección de email y pulsa Enter (opcional)',
       // Acciones complementarias
-      'action.generateReport': 'Generar informe',
-      'action.scheduleAutomatically': 'Planificar automáticamente',
       'schedule.executionDay': 'Día de ejecución',
       'schedule.executionTime': 'Hora de ejecución',
       'schedule.fileFormat': 'Formato de archivo',
       'schedule.help.fileFormat': 'Elige el formato de archivo para la exportación: CSV, Excel, JSON o XML.',
       // Toasts
-      'toast.success': 'Informe(s) generado(s) y descargado(s) con éxito ({{count}} archivos en un ZIP)',
-      'toast.noReport': 'No se generó ningún informe',
-      'toast.error': 'Error: {error}',
-      'toast.ftpConfigRequired': 'Configuración FTP requerida',
-      'toast.ftpConfigExplanation': 'Debes configurar tus parámetros FTP antes de poder',
-      'toast.ftpConfigExplanation2': 'programar una exportación de esta manera.',
-      'toast.ftpConfigured': 'FTP configurado',
-      'toast.ftpConfiguredExplanation': 'La configuración FTP está lista. Puedes programar una exportación por FTP.',
-      'action.goToSettings': 'Ir a la configuración',
       'schedule.banner.hourlyExplanation': 'El informe se enviará cada hora, al mismo minuto que la programación inicial.',
       'schedule.banner.hourlyExample': 'Ejemplo: si programa a las 15:23, el envío se realizará cada hora a xx:23.',
-      // Toasts complementarios
-      'toast.downloadSuccess': 'Archivo descargado con éxito',
-      'toast.downloadError': 'Error durante la descarga',
-      'toast.retrying': 'El informe se está regenerando',
-      'toast.retryError': 'Error durante la regeneración',
-      'toast.pending': 'Este informe aún está pendiente de generación.',
-      'toast.empty': 'Este informe se generó sin datos. Nada que mostrar.',
-      'toast.failed': 'Este informe falló. No se puede mostrar la vista.',
-      'toast.saveSuccess': 'Configuración guardada con éxito',
-      'toast.saveError': 'Error al guardar la configuración',
-      'toast.ftpTestSuccess': '¡Conexión FTP exitosa!',
-      'toast.ftpTestError': 'Error de conexión FTP: {error}',
-      'toast.ftpSaveSuccess': '¡Configuración FTP guardada con éxito!',
-      'toast.companySaveSuccess': 'Configuración de la empresa guardada con éxito',
-      'toast.companySaveError': 'Error al guardar la configuración de la empresa',
-      'toast.fiscalSaveSuccess': 'Régimen fiscal guardado con éxito',
-      'toast.fiscalSaveError': 'Error al guardar el régimen fiscal',
       // Add toast.emptyData key
-      'toast.emptyData': 'Advertencia: No hay datos de {{dataType}} en el período seleccionado. Desmarque {{dataType}} y vuelva a generar.',
       'recentExportsList.noRecentExport': 'No hay exportaciones recientes',
       // Estados genéricos
       'status.scheduled': 'Programado',
@@ -1226,6 +1473,114 @@ const resources = {
       'subscription.page.required': 'Se requiere suscripción',
       'subscription.page.trialEnded': 'Tu período de prueba ha terminado. Para seguir usando la aplicación, suscríbete al plan de <b>19 $/mes</b>.',
       'subscription.plan.name': 'Suscripción LedgerXport',
+
+      // Invoice Export
+      'invoice.export.title': 'Exportación de Facturas',
+      'invoice.export.invoiceExport': 'Exportación de facturas',
+      'invoice.export.customerExport': 'Exportación de clientes',
+      'invoice.template.chooseTemplate': 'Elige una plantilla de factura',
+      'invoice.template.chooseTemplateHelp': 'Selecciona una plantilla de factura entre las 9 disponibles. Cada plantilla tiene un diseño único adaptado a diferentes tipos de empresas.',
+      'invoice.template.viewSelectedTemplate': 'Ver la plantilla seleccionada',
+      'invoice.export.parameters': 'Parámetros de exportación',
+      'invoice.export.parametersHelp': 'Configura los parámetros para la exportación de tus facturas según tus necesidades.',
+      'invoice.export.dateRange': 'Período',
+      'invoice.export.predefinedPeriods': 'Períodos predefinidos',
+      'invoice.export.last7Days': 'Últimos 7 días',
+      'invoice.export.last30Days': 'Últimos 30 días',
+      'invoice.export.last3Months': 'Últimos 3 meses',
+      'invoice.export.last6Months': 'Últimos 6 meses',
+      'invoice.export.lastYear': '1 año',
+      'invoice.export.from': 'Desde',
+      'invoice.export.to': 'Hasta',
+      'invoice.export.selectedPeriod': 'Período seleccionado',
+      'invoice.export.status': 'Estado',
+      'invoice.export.statusHelp': 'Filtra las facturas según su estado de pago.',
+      'invoice.export.all': 'Todos',
+      'invoice.export.paid': 'Pagado',
+      'invoice.export.unpaid': 'No pagado',
+      'invoice.export.draft': 'Borrador',
+      'invoice.export.client': 'Cliente',
+      'invoice.export.clientHelp': 'Busca facturas por nombre de cliente.',
+      'invoice.export.enterClient': 'Introduce un cliente',
+      'invoice.export.format': 'Formato',
+      'invoice.export.formatHelp': 'Elige el formato de exportación para tus facturas.',
+      'invoice.export.exporting': 'Exportando...',
+      'invoice.export.exportInvoices': 'Exportar las facturas',
+      'invoice.export.summaryWithDates': 'Vas a exportar las facturas del {{from}} al {{to}}.',
+      'invoice.export.summaryPartialDates': 'Vas a exportar las facturas {{#if hasFrom}}desde el {{from}}{{/if}}{{#if hasFrom}}{{#if hasTo}} y {{/if}}{{/if}}{{#if hasTo}}hasta el {{to}}{{/if}}.',
+      'invoice.export.summaryNoDates': 'Vas a exportar todas las facturas según los filtros seleccionados.',
+      'invoice.export.success': '✅ Exportación de facturas completada con éxito !',
+      'invoice.export.error.selectPeriod': '❌ Por favor, selecciona un período (fecha de inicio y/o fecha de fin)',
+      'invoice.export.error.clientNameMinLength': '❌ El nombre del cliente debe contener al menos 2 caracteres',
+      'invoice.export.error.unknown': 'Error desconocido durante la exportación',
+
+      // Customer Export
+      'customer.export.periodSelector': 'Selector de período',
+      'customer.export.last7Days': 'Últimos 7 días',
+      'customer.export.last30Days': 'Últimos 30 días',
+      'customer.export.last3Months': 'Últimos 3 meses',
+      'customer.export.last6Months': 'Últimos 6 meses',
+      'customer.export.lastYear': '1 año',
+      'customer.export.registrationDateStart': 'Fecha de registro (inicio)',
+      'customer.export.registrationDateEnd': 'Fecha de registro (fin)',
+      'customer.export.selectedPeriod': 'Período seleccionado',
+      'customer.export.searchByNameOrEmail': 'Búsqueda por nombre o email',
+      'customer.export.searchByNameOrEmailHelp': 'Busca clientes por su nombre o dirección de email. La búsqueda es sensible a mayúsculas y busca coincidencias parciales.',
+      'customer.export.enterNameOrEmail': 'Introduce un nombre o email...',
+      'customer.export.exportFormat': 'Formato de exportación',
+      'customer.export.exportFormatHelp': 'Elige el formato de archivo para tu exportación. CSV para Excel, XLSX para datos estructurados, o JSON para integración con otros sistemas.',
+      'customer.export.columnsToExport': 'Columnas a exportar',
+      'customer.export.columnsToExportHelp': 'Selecciona las columnas que quieres incluir en tu exportación. Puedes seleccionar todo o elegir solo las columnas necesarias.',
+      'customer.export.selectAll': 'Seleccionar todo',
+      'customer.export.reset': 'Restablecer',
+      'customer.export.columnOrder': 'Orden de las columnas',
+      'customer.export.columnOrderHelp': 'Arrastra y suelta las columnas para reorganizarlas según tus necesidades. El orden definido aquí se respetará en la exportación.',
+      'customer.export.selectedColumns': 'columna(s) seleccionada(s)',
+      'customer.export.removeColumn': 'Quitar esta columna',
+      'customer.export.selectColumnsToReorder': 'Selecciona columnas arriba para reorganizarlas aquí',
+      'customer.export.dataPreview': 'Vista previa de datos',
+      'customer.export.dataPreviewHelp': 'Vista previa de los datos que se exportarán según el orden de columnas definido arriba.',
+      'customer.export.exampleRows': 'fila(s) de ejemplo',
+      'customer.export.exporting': 'Exportando...',
+      'customer.export.exportNow': 'Exportar ahora',
+      'customer.export.summaryWithDates': 'Vas a exportar los clientes creados entre {{from}} y {{to}}.',
+      'customer.export.summaryPartialDates': 'Vas a exportar los clientes creados {{#if hasFrom}}desde el {{from}}{{/if}}{{#if hasFrom}}{{#if hasTo}} y {{/if}}{{/if}}{{#if hasTo}}hasta el {{to}}{{/if}}.',
+      'customer.export.summaryNoDates': 'Vas a exportar todos los clientes según los filtros seleccionados.',
+      'customer.export.search': 'Buscar',
+      'customer.export.format': 'Formato',
+      'customer.export.error.selectColumns': '❌ Por favor, selecciona al menos una columna para exportar',
+
+      // Customer Columns
+      'customer.columns.firstName': 'Nombre',
+      'customer.columns.lastName': 'Apellido',
+      'customer.columns.email': 'Email',
+      'customer.columns.phone': 'Teléfono',
+      'customer.columns.createdAt': 'Fecha de registro',
+      'customer.columns.totalSpent': 'Total gastado',
+      'customer.columns.ordersCount': 'Número de pedidos',
+      'customer.columns.lastOrder': 'Último pedido',
+      'customer.columns.tags': 'Etiquetas',
+      'customer.columns.defaultAddress': 'Dirección',
+      'customer.columns.id': 'ID del cliente',
+      'customer.columns.note': 'Nota',
+      'customer.columns.taxExempt': 'Exención de impuestos',
+
+      // Customer Sample Data
+      'customer.sample.firstName1': 'Juan',
+      'customer.sample.lastName1': 'García',
+      'customer.sample.tagVIP': 'VIP',
+      'customer.sample.tagLoyal': 'Fiel',
+      'customer.sample.address1': '123 Calle de la Paz, Madrid, España',
+      'customer.sample.note1': 'Cliente fiel',
+      'customer.sample.firstName2': 'María',
+      'customer.sample.lastName2': 'López',
+      'customer.sample.tagNew': 'Nuevo',
+      'customer.sample.address2': '456 Avenida de los Campos, Barcelona, España',
+
+      // Common
+      'common.help': 'Ayuda',
+      'common.yes': 'Sí',
+      'common.no': 'No'
     }
   }
 };
@@ -1234,7 +1589,7 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
-    lng: 'en', // La langue sera changée via les paramètres utilisateur
+    lng: 'en', // Default language in English
     fallbackLng: 'en',
     interpolation: {
       escapeValue: false, // React fait déjà l'échappement
@@ -1244,6 +1599,30 @@ i18n
     },
   });
 
-// Suppression de la détection automatique de langue
+// Détection automatique de la langue au démarrage
+const detectLanguage = () => {
+  // Vérifier d'abord le localStorage
+  if (typeof window !== 'undefined') {
+    const savedLanguage = localStorage.getItem('app_language');
+    if (savedLanguage && savedLanguage in resources) {
+      return savedLanguage as keyof typeof resources;
+    }
+  }
+  
+  // Vérifier la langue du navigateur
+  if (typeof window !== 'undefined') {
+    const browserLang = navigator.language.split('-')[0];
+    if (browserLang in resources) {
+      return browserLang as keyof typeof resources;
+    }
+  }
+  
+  // Langue par défaut
+  return 'en' as keyof typeof resources;
+};
+
+// Initialiser avec la langue détectée
+const detectedLang = detectLanguage();
+i18n.changeLanguage(detectedLang);
 
 export default i18n; 

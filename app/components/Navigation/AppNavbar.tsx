@@ -6,6 +6,7 @@ import {
   OrderIcon,
   ProfileIcon,
   SettingsIcon,
+  BillIcon,
   StoreIcon,
 } from "@shopify/polaris-icons";
 import React from "react";
@@ -44,6 +45,11 @@ const navigationItems = [
       label: t('nav.scheduledExports', 'Exports planifiés'),
     icon: CalendarIcon,
     url: "/app/reports/schedule",
+  },
+  {
+      label: t('nav.invoice', 'Factures et Clients'),
+    icon: BillIcon,
+    url: "/app/reports/invoice",
   },
   {
       label: t('nav.allSchedules', 'Toutes les planifications'),
@@ -213,7 +219,7 @@ const settingsItem = {
           <button
             style={{
               width: "100%",
-              marginBottom: 150,
+              marginBottom: 80,
               background: isActive(settingsItem.url) ? "#fff" : "none",
               border: "none",
               color: isActive(settingsItem.url) ? "#0066FF" : "#000000",

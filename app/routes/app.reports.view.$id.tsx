@@ -1,26 +1,25 @@
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
 import { useLoaderData, useNavigate } from "@remix-run/react";
 import {
-  Page,
-  Layout,
-  Card,
-  Button,
-  DataTable,
-  Text,
-  Banner,
   BlockStack,
+  Button,
+  Card,
+  DataTable,
   InlineStack,
-  Box,
-  Toast,
+  Layout,
+  Page,
+  Text,
+  Toast
 } from "@shopify/polaris";
-import { authenticate } from "../shopify.server";
-import { prisma } from "../db.server";
-import { formatDate } from "../utils/date";
-import fs from "fs/promises";
 import { parse } from "csv-parse/sync";
 import { XMLParser } from "fast-xml-parser";
+import fs from "fs/promises";
+import { useState } from "react";
 import * as XLSX from "xlsx";
-import type { ReportStatus as ReportStatusType } from "@prisma/client";
+import { prisma } from "../db.server";
+import { authenticate } from "../shopify.server";
+import { formatDate } from "../utils/date";
+import { downloadFileFromUrl } from "../utils/download";
 
 // Import sécurisé de ReportStatus
 const ReportStatus = {
@@ -30,8 +29,6 @@ const ReportStatus = {
   COMPLETED_WITH_EMPTY_DATA: "COMPLETED_WITH_EMPTY_DATA" as const,
   ERROR: "ERROR" as const
 };
-import { useState } from "react";
-import { downloadFileFromUrl } from "../utils/download";
 
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
@@ -264,73 +261,93 @@ export default function ReportView() {
   });
 
   return (
-    <Page
-      title={report.fileName}
-      backAction={{ content: "Reports", url: "/app/reports/history" }}
-    >
-      <Layout>
-        <Layout.Section>
-          <Card>
-            <BlockStack gap="400">
-              <Text as="h2" variant="headingMd">
-                Détails du rapport
-              </Text>
-              <InlineStack gap="400">
-                <Text as="p" variant="bodyMd">
-                  Période: {report.startDate && report.endDate 
-                    ? `${formatDate(report.startDate)} au ${formatDate(report.endDate)}`
-                    : "Calculé automatiquement selon la fréquence"
-                  }
-                </Text>
-              </InlineStack>
-            </BlockStack>
-          </Card>
-        </Layout.Section>
-
-        <Layout.Section>
-          <Card>
-            <BlockStack gap="400">
-              <InlineStack align="space-between">
+    <>
+      <style>{`
+        .Polaris-Page--fullWidth,
+        .Polaris-Page__Content,
+        .Polaris-Layout,
+        .Polaris-Layout__Section,
+        .Polaris-Card {
+          max-width: 100% !important;
+          width: 100% !important;
+        }
+        .Polaris-Layout,
+        .Polaris-Layout__Section {
+          padding-left: 0 !important;
+          padding-right: 0 !important;
+          margin-left: 0 !important;
+          margin-right: 0 !important;
+        }
+      `}</style>
+      <Page
+        fullWidth
+        title={report.fileName}
+        backAction={{ content: "Reports", url: "/app/reports/history" }}
+      >
+        <Layout>
+          <Layout.Section>
+            <Card>
+              <BlockStack gap="400">
                 <Text as="h2" variant="headingMd">
-                  Rapport de données
+                  Détails du rapport
                 </Text>
-                <InlineStack gap="200">
-                  <Button 
-                    onClick={handleDownload}
-                    disabled={report.status !== ReportStatus.COMPLETED || isDownloading}
-                    loading={isDownloading}
-                  >
-                    Télécharger
-                  </Button>
-                  <Button onClick={handleRegenerate}>Re-générer</Button>
-                  <Button tone="critical" onClick={handleDelete}>
-                    Supprimer
-                  </Button>
+                <InlineStack gap="400">
+                  <Text as="p" variant="bodyMd">
+                    Période: {report.startDate && report.endDate 
+                      ? `${formatDate(report.startDate)} au ${formatDate(report.endDate)}`
+                      : "Calculé automatiquement selon la fréquence"
+                    }
+                  </Text>
                 </InlineStack>
-              </InlineStack>
+              </BlockStack>
+            </Card>
+          </Layout.Section>
 
-              {reportData.length > 0 ? (
-                <DataTable
-                  columnContentTypes={headings.map(() => "text")}
-                  headings={headings}
-                  rows={rows}
-                />
-              ) : (
-                <Text as="p" variant="bodyMd">
-                  Aucune donnée disponible dans ce rapport.
-                </Text>
-              )}
-            </BlockStack>
-          </Card>
-        </Layout.Section>
-      </Layout>
-      {toastActive && (
-        <Toast
-          content={toastMessage}
-          onDismiss={() => setToastActive(false)}
-          error={toastError}
-        />
-      )}
-    </Page>
+          <Layout.Section>
+            <Card>
+              <BlockStack gap="400">
+                <InlineStack align="space-between">
+                  <Text as="h2" variant="headingMd">
+                    Rapport de données
+                  </Text>
+                  <InlineStack gap="200">
+                    <Button 
+                      onClick={handleDownload}
+                      disabled={report.status !== ReportStatus.COMPLETED || isDownloading}
+                      loading={isDownloading}
+                    >
+                      Télécharger
+                    </Button>
+                    <Button onClick={handleRegenerate}>Re-générer</Button>
+                    <Button tone="critical" onClick={handleDelete}>
+                      Supprimer
+                    </Button>
+                  </InlineStack>
+                </InlineStack>
+
+                {reportData.length > 0 ? (
+                  <DataTable
+                    columnContentTypes={headings.map(() => "text")}
+                    headings={headings}
+                    rows={rows}
+                  />
+                ) : (
+                  <Text as="p" variant="bodyMd">
+                    Aucune donnée disponible dans ce rapport.
+                  </Text>
+                )}
+              </BlockStack>
+            </Card>
+          </Layout.Section>
+        </Layout>
+        {toastActive && (
+          <Toast
+            content={toastMessage}
+            onDismiss={() => setToastActive(false)}
+            error={toastError}
+          />
+        )}
+      </Page>
+    </>
   );
-} 
+}

@@ -613,10 +613,31 @@ export default function ManualExportPage() {
         .Polaris-DatePicker__Day--inRange:hover {
           background-color: #BBDEFB !important;
         }
+      `}
+      </style>
+      <style>{`
+        /* Forcer la page d'export manuel à prendre toute la largeur, y compris les sections et cards */
+        .Polaris-Page--fullWidth,
+        .Polaris-Page__Content,
+        .Polaris-Layout,
+        .Polaris-Layout__Section,
+        .Polaris-Card {
+          max-width: 100% !important;
+          width: 100% !important;
+        }
+        /* Optionnel : enlever les marges latérales sur le Layout et les Sections */
+        .Polaris-Layout,
+        .Polaris-Layout__Section {
+          padding-left: 0 !important;
+          padding-right: 0 !important;
+          margin-left: 0 !important;
+          margin-right: 0 !important;
+        }
       `}</style>
     <Page
+      fullWidth
       title={t('manualExport.title', 'Export manuel')}
-      backAction={{ content: t('action.back', 'Retour'), url: "/app" }}
+      backAction={{ content: t('action.back', 'Retour'), url: "/app/dashboard" }}
     >
       <Layout>
         <Layout.Section>

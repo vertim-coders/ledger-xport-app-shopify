@@ -16,7 +16,7 @@ import {
   Text,
   Toast,
 } from "@shopify/polaris";
-import { CalendarIcon, CashDollarIcon, CheckIcon, CollectionFeaturedIcon, EditIcon, OrderIcon, ProfileIcon, XCircleIcon } from "@shopify/polaris-icons";
+import { BillIcon, CalendarIcon, CashDollarIcon, CheckIcon, CollectionFeaturedIcon, EditIcon, OrderIcon, ProfileIcon, XCircleIcon } from "@shopify/polaris-icons";
 import {
   BarElement,
   CategoryScale,
@@ -337,145 +337,169 @@ export default function Dashboard() {
   };
 
   return (
-    <Page title={t('page.dashboard.title', 'Tableau de bord')}>
-      <div style={{ marginBottom: 24 }}>
-        {subscriptionStatus === 'TRIAL' && daysLeft > 0 && (
-          <Banner tone="info" title={t('subscription.trial.title')}>
-            <p dangerouslySetInnerHTML={{ __html: t('subscription.trial.remaining', { daysLeft }) }} />
-          </Banner>
-        )}
-        {subscriptionStatus === 'ACTIVE' && (
-          <Banner tone="success" title={t('subscription.active.title')}>
-            <p>{t('subscription.active.message')}</p>
-          </Banner>
-        )}
-        {subscriptionStatus === 'TRIAL' && daysLeft === 0 && (
-          <Banner tone="critical" title={t('subscription.expired.trial.title')}>
-            <p>{t('subscription.expired.trial.message')}</p>
-          </Banner>
-        )}
-        {subscriptionStatus === 'EXPIRED' && (
-          <Banner tone="critical" title={t('subscription.expired.title')}>
-            <p>{t('subscription.expired.message')}</p>
-          </Banner>
-        )}
-        {subscriptionStatus === 'CANCELLED' && (
-          <Banner tone="warning" title={t('subscription.cancelled.title')}>
-            <p>{t('subscription.cancelled.message')}</p>
-          </Banner>
-        )}
-      </div>
-      <Layout>
-        {/* Export Statistics */}
-        <Layout.Section>
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: isVeryNarrow
-              ? "1fr"
-              : isTwoCol
-              ? "4 1fr"
-              : isNarrow
-              ? "4 1fr"
-              : "repeat(4, 1fr)",
-            gap: 24,
-            marginBottom: 20,
-            width: "100%"
-          }}>
-            <StatCard
-              title={t('stats.totalExports', 'Total des exports')}
-              value={successfulExports}
-              icon={CheckIcon}
-              iconBg="#E6F7F1"
-              color="#009A6B"
-            />
-            <StatCard
-              title={t('stats.failedExports', 'Exports échoués')}
-              value={failedExports}
-              icon={XCircleIcon}
-              iconBg="#FFF4E6"
-              color="#FF8A65"
-            />
-            <StatCard
-              title={t('stats.customers', 'Clients')}
-              value={customersCount}
-              icon={ProfileIcon}
-              iconBg="#E6F0FF"
-              color="#0066FF"
-            />
-            <StatCard
-              title={t('stats.revenue', 'Revenus')}
-              value={`$${totalRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
-              icon={CashDollarIcon}
-              iconBg="#E6F0FF"
-              color="#0066FF"
-            />
-          </div>
-        </Layout.Section>
-
-        {/* New Report Button */}
-        <Layout.Section>
-          <div
-            style={{
-              marginBottom: '0px',
-              display: 'flex',
-              flexDirection: isVeryNarrow ? 'column' : 'row',
-              gap: isVeryNarrow ? 12 : 32,
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '100%',
-              overflowX: isVeryNarrow ? undefined : 'auto',
-              flexWrap: isVeryNarrow ? 'nowrap' : 'wrap',
-              minWidth: 0
-            }}
-          >
-            <BiSimpleBtn 
-              title={t('action.newReport', 'Générer un nouveau rapport')}
-              icon={<Icon source={OrderIcon} tone="inherit" />}
-              onClick={handleNewReport} 
-            />
-            <BiSimpleBtn
-              title={t('action.scheduleReport', 'Planifier un rapport')}
-              icon={<Icon source={CalendarIcon} tone="inherit" />}
-              onClick={() => navigate("/app/reports/schedule")}
-            />
-            <BiSimpleBtn
-              title={t('action.customReport', 'Rapport personnalisé')}
-              icon={<Icon source={EditIcon} tone="inherit" />}
-              onClick={handleCustomReport}
-            />
-          </div>
-        </Layout.Section>
-
-        {/* Export Statistics Chart + Recent Exports side by side */}
-        <Layout.Section>
-          <div
-            style={{
-              display: 'flex',
-              gap: '16px',
-              flexDirection: isMobile ? 'column' : 'row',
-              width: '100%',
-              alignItems: 'stretch',
-              minHeight: 0,
-            }}
-          >
-            {/* Statistiques des exports */}
-            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-              <Card>
-                <div style={{ marginBottom: 16, padding: 20 }}>
-                  <Text variant="headingMd" as="h1">{t('dashboard.exportStats', 'Statistiques des exports')}</Text>
-          </div>
-                <div style={{ padding: 20, paddingTop: 0 }}>
-          <MonthlyReportsChart data={monthlyData.map((item: { month: string; exports: number }) => ({ month: item.month, reports: item.exports }))} />
-                </div>
-              </Card>
+    <>
+      <style>{`
+        /* Forcer la page dashboard à prendre toute la largeur, y compris les sections et cards */
+        .Polaris-Page--fullWidth,
+        .Polaris-Page__Content,
+        .Polaris-Layout,
+        .Polaris-Layout__Section,
+        .Polaris-Card {
+          max-width: 100% !important;
+          width: 100% !important;
+        }
+        .Polaris-Layout,
+        .Polaris-Layout__Section {
+          padding-left: 0 !important;
+          padding-right: 0 !important;
+          margin-left: 0 !important;
+          margin-right: 0 !important;
+        }
+      `}</style>
+      <Page fullWidth title={t('page.dashboard.title', 'Tableau de bord')}>
+        <div style={{ marginBottom: 24 }}>
+          {subscriptionStatus === 'TRIAL' && daysLeft > 0 && (
+            <Banner tone="info" title={t('subscription.trial.title')}>
+              <p dangerouslySetInnerHTML={{ __html: t('subscription.trial.remaining', { daysLeft }) }} />
+            </Banner>
+          )}
+          {subscriptionStatus === 'ACTIVE' && (
+            <Banner tone="success" title={t('subscription.active.title')}>
+              <p>{t('subscription.active.message')}</p>
+            </Banner>
+          )}
+          {subscriptionStatus === 'TRIAL' && daysLeft === 0 && (
+            <Banner tone="critical" title={t('subscription.expired.trial.title')}>
+              <p>{t('subscription.expired.trial.message')}</p>
+            </Banner>
+          )}
+          {subscriptionStatus === 'EXPIRED' && (
+            <Banner tone="critical" title={t('subscription.expired.title')}>
+              <p>{t('subscription.expired.message')}</p>
+            </Banner>
+          )}
+          {subscriptionStatus === 'CANCELLED' && (
+            <Banner tone="warning" title={t('subscription.cancelled.title')}>
+              <p>{t('subscription.cancelled.message')}</p>
+            </Banner>
+          )}
+        </div>
+        <Layout>
+          {/* Export Statistics */}
+          <Layout.Section>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: isVeryNarrow
+                ? "1fr"
+                : isTwoCol
+                ? "4 1fr"
+                : isNarrow
+                ? "4 1fr"
+                : "repeat(4, 1fr)",
+              gap: 24,
+              marginBottom: 20,
+              width: "100%"
+            }}>
+              <StatCard
+                title={t('stats.totalExports', 'Total des exports')}
+                value={successfulExports}
+                icon={CheckIcon}
+                iconBg="#E6F7F1"
+                color="#009A6B"
+              />
+              <StatCard
+                title={t('stats.failedExports', 'Exports échoués')}
+                value={failedExports}
+                icon={XCircleIcon}
+                iconBg="#FFF4E6"
+                color="#FF8A65"
+              />
+              <StatCard
+                title={t('stats.customers', 'Clients')}
+                value={customersCount}
+                icon={ProfileIcon}
+                iconBg="#E6F0FF"
+                color="#0066FF"
+              />
+              <StatCard
+                title={t('stats.revenue', 'Revenus')}
+                value={`$${totalRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                icon={CashDollarIcon}
+                iconBg="#E6F0FF"
+                color="#0066FF"
+              />
             </div>
-            {/* Exports récemment générés */}
-            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-              <Card>
-                <div style={{ marginBottom: 16, padding: 20 }}>
-                  <Text variant="headingMd" as="h1">{t('dashboard.recentReports', 'Rapports récemment générés')}</Text>
-                </div>
-                <div style={{ padding: 20, paddingTop: 0 }}>
+          </Layout.Section>
+
+          {/* New Report Button */}
+          <Layout.Section>
+            <div
+              style={{
+                marginBottom: '0px',
+                display: 'flex',
+                flexDirection: isVeryNarrow ? 'column' : 'row',
+                gap: isVeryNarrow ? 12 : 32,
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '100%',
+                overflowX: isVeryNarrow ? undefined : 'auto',
+                flexWrap: isVeryNarrow ? 'nowrap' : 'wrap',
+                minWidth: 0
+              }}
+            >
+              <BiSimpleBtn 
+                title={t('action.newReport', 'Générer un nouveau rapport')}
+                icon={<Icon source={OrderIcon} tone="inherit" />}
+                onClick={handleNewReport} 
+              />
+              <BiSimpleBtn
+                title={t('action.scheduleReport', 'Planifier un rapport')}
+                icon={<Icon source={CalendarIcon} tone="inherit" />}
+                onClick={() => navigate("/app/reports/schedule")}
+              />
+              <BiSimpleBtn
+                title={t('action.customReport', 'Rapport personnalisé')}
+                icon={<Icon source={EditIcon} tone="inherit" />}
+                onClick={handleCustomReport}
+              />
+              <BiSimpleBtn
+                title={t('action.invoice', 'Factures et Clients')}
+                icon={<Icon source={BillIcon} tone="inherit" />}
+                onClick={() => navigate("/app/reports/invoice")}
+              />
+            </div>
+          </Layout.Section>
+
+          {/* Export Statistics Chart + Recent Exports side by side */}
+          <Layout.Section>
+            <div
+              style={{
+                display: 'flex',
+                gap: '16px',
+                flexDirection: isMobile ? 'column' : 'row',
+                width: '100%',
+                alignItems: 'stretch',
+                minHeight: 0,
+              }}
+            >
+              {/* Statistiques des exports */}
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+                <Card>
+                  <div style={{ marginBottom: 16, padding: 20 }}>
+                    <Text variant="headingMd" as="h1">{t('dashboard.exportStats', 'Statistiques des exports')}</Text>
+          </div>
+                  <div style={{ padding: 20, paddingTop: 0 }}>
+          <MonthlyReportsChart data={monthlyData.map((item: { month: string; exports: number }) => ({ month: item.month, reports: item.exports }))} />
+                  </div>
+                </Card>
+              </div>
+              {/* Exports récemment générés */}
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+                <Card>
+                  <div style={{ marginBottom: 16, padding: 20 }}>
+                    <Text variant="headingMd" as="h1">{t('dashboard.recentReports', 'Rapports récemment générés')}</Text>
+                  </div>
+                  <div style={{ padding: 20, paddingTop: 0 }}>
           <RecentExportsList
             exports={recentReports.slice(0, 5).map((r: any) => ({
               id: r.id,
@@ -490,181 +514,182 @@ export default function Dashboard() {
                     onSeeAll={() => navigate("/app/reports/history")}
             onView={(id: string) => navigate(`/app/reports/view/${id}`)}
           />
-                </div>
-              </Card>
-            </div>
-          </div>
-        </Layout.Section>
-
-        {/* Bottom Section - Recent Failures and Upcoming Exports side by side */}
-        <Layout.Section>
-          <div style={{ display: 'flex', gap: '16px', flexDirection: isMobile ? 'column' : 'row', width: '100%' }}>
-            {/* Recent Failures */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <Card>
-                <div style={{ padding: '20px' }}>
-                  <div style={{ marginBottom: '16px' }}>
-                    <Text variant="headingMd" as="h1">{t('dashboard.recentFailures', 'Échecs récents')}</Text>
                   </div>
-                  {recentReports && recentReports.filter((report: any) => report.status === ReportStatus.ERROR).length > 0 ? (
-                    <div style={{ 
-                      height: '300px',
-                      overflowY: 'auto',
-                      overflowX: 'auto',
-                      width: '100%'
-                    }}>
-                      <div style={{ minWidth: isMobile ? '400px' : '600px' }}>
-                        <DataTable
-                          columnContentTypes={[
-                            'text',
-                            'text',
-                            'text',
-                            'text',
-                          ]}
-                          headings={[
-                            'Nom du rapport',
-                            'Type de rapport',
-                            'Date d\'échec',
-                            'Actions',
-                          ]}
-                          rows={recentReports
-                            .filter((report: any) => report.status === ReportStatus.ERROR)
-                            .map((report: any) => [
-                              <div style={{ cursor: 'pointer' }} onClick={() => navigate(`/app/reports/view/${report.id}`)}>{report.fileName}</div>,
-                              report.type,
-                              new Date(report.updatedAt).toLocaleDateString(),
-                              <Button onClick={() => handleRetry(report.id)} icon="refresh">{t('action.retry', 'Réessayer')}</Button>
-                            ])}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center', 
-                      height: '300px'
-                    }}>
-                      <EmptyState
-                        heading={t('dashboard.noFailures', 'Aucun échec récent')}
-                        image="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwIDNDMTEuNzE2IDMgNSA5LjcxNiA1IDE4QzUgMjYuMjg0IDExLjcxNiAzMyAyMCAzM0MyOC4yODQgMzMgMzUgMjYuMjg0IDM1IDE4QzM1IDkuNzE2IDI4LjI4NCAzIDIwIDNaTTIyIDI1SDJWMjNIMjJWMjVaTTIyIDIxSDJWMThIMjJWMjFaIiBmaWxsPSIjRjU1NTU1Ii8+Cjwvc3ZnPgo="
-                      >
-                        <p>{t('dashboard.noFailuresDesc', 'Tous vos exports ont réussi.')}</p>
-                      </EmptyState>
-                    </div>
-                  )}
-                </div>
-              </Card>
+                </Card>
+              </div>
             </div>
+          </Layout.Section>
 
-            {/* Upcoming Exports */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <Card>
-                <div style={{ padding: '20px' }}>
-                  <div style={{ marginBottom: '16px' }}>
-                    <Text variant="headingMd" as="h1">{t('dashboard.upcomingExports', 'Les prochains exports')}</Text>
+          {/* Bottom Section - Recent Failures and Upcoming Exports side by side */}
+          <Layout.Section>
+            <div style={{ display: 'flex', gap: '16px', flexDirection: isMobile ? 'column' : 'row', width: '100%' }}>
+              {/* Recent Failures */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Card>
+                  <div style={{ padding: '20px' }}>
+                    <div style={{ marginBottom: '16px' }}>
+                      <Text variant="headingMd" as="h1">{t('dashboard.recentFailures', 'Échecs récents')}</Text>
+                    </div>
+                    {recentReports && recentReports.filter((report: any) => report.status === ReportStatus.ERROR).length > 0 ? (
+                      <div style={{ 
+                        height: '300px',
+                        overflowY: 'auto',
+                        overflowX: 'auto',
+                        width: '100%'
+                      }}>
+                        <div style={{ minWidth: isMobile ? '400px' : '600px' }}>
+                          <DataTable
+                            columnContentTypes={[
+                              'text',
+                              'text',
+                              'text',
+                              'text',
+                            ]}
+                            headings={[
+                              'Nom du rapport',
+                              'Type de rapport',
+                              'Date d\'échec',
+                              'Actions',
+                            ]}
+                            rows={recentReports
+                              .filter((report: any) => report.status === ReportStatus.ERROR)
+                              .map((report: any) => [
+                                <div style={{ cursor: 'pointer' }} onClick={() => navigate(`/app/reports/view/${report.id}`)}>{report.fileName}</div>,
+                                report.type,
+                                new Date(report.updatedAt).toLocaleDateString(),
+                                <Button onClick={() => handleRetry(report.id)} icon="refresh">{t('action.retry', 'Réessayer')}</Button>
+                              ])}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        height: '300px'
+                      }}>
+                        <EmptyState
+                          heading={t('dashboard.noFailures', 'Aucun échec récent')}
+                          image="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwIDNDMTEuNzE2IDMgNSA5LjcxNiA1IDE4QzUgMjYuMjg0IDExLjcxNiAzMyAyMCAzM0MyOC4yODQgMzMgMzUgMjYuMjg0IDM1IDE4QzM1IDkuNzE2IDI4LjI4NCAzIDIwIDNaTTIyIDI1SDJWMjNIMjJWMjVaTTIyIDIxSDJWMThIMjJWMjFaIiBmaWxsPSIjRjU1NTU1Ii8+Cjwvc3ZnPgo="
+                        >
+                          <p>{t('dashboard.noFailuresDesc', 'Tous vos exports ont réussi.')}</p>
+                        </EmptyState>
+                      </div>
+                    )}
                   </div>
-                  {upcomingExports && upcomingExports.length > 0 ? (
-                    <div style={{ 
-                      height: '300px',
-                      overflowY: 'auto',
-                      overflowX: 'auto'
-                    }}>
-                      <div style={{ minWidth: '600px' }}>
-                        <DataTable
-                          columnContentTypes={[
-                            'text',
-                            'text',
-                            'text',
-                            'text',
-                            'text',
-                          ]}
-                          headings={[
-                            'Nom du rapport',
-                            'Date',
-                            'Heure',
-                            'Fréquence',
-                            'Actions',
-                          ]}
-                          rows={upcomingExports.map((task: any) => {
-                            const { date, time } = formatDateTime(task.nextRun);
-                            return [
-                              task.report.fileName,
-                              date,
-                              time,
-                              getFrequencyLabel(task.frequency),
-                              <PolarisButton onClick={() => navigate(`/app/reports/schedule?id=${task.id}`)}>
-                                {t('action.modify', 'Modifier')}
-                              </PolarisButton>
-                            ];
-                          })}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center', 
-                      height: '300px'
-                    }}>
-                      <EmptyState
-                        heading={t('dashboard.noScheduled', 'Aucun export planifié')}
-                        image="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwIDNDMTEuNzE2IDMgNSA5LjcxNiA1IDE4QzUgMjYuMjg0IDExLjcxNiAzMyAyMCAzM0MyOC4yODQgMzMgMzUgMjYuMjg0IDM1IDE4QzM1IDkuNzE2IDI4LjI4NCAzIDIwIDNaTTIyIDI1SDJWMjNIMjJWMjVaTTIyIDIxSDJWMThIMjJWMjFaIiBmaWxsPSIjMDA3YWNlIi8+Cjwvc3ZnPgo="
-                      >
-                        <p>{t('dashboard.noScheduledDesc', 'Les exports planifiés apparaîtront ici.')}</p>
-                        <PolarisButton onClick={() => navigate("/app/reports/schedule")}>
-                          {t('dashboard.scheduleExport', 'Planifier un export')}
-                        </PolarisButton>
-                      </EmptyState>
-                    </div>
-                  )}
-                </div>
-              </Card>
-            </div>
-          </div>
-        </Layout.Section>
+                </Card>
+              </div>
 
-        {/* Popular Reports */}
-        <Layout.Section>
-          <FeedbackSection />
-        </Layout.Section>
-        <Layout.Section>
-          <Footer />
-        </Layout.Section>
-      </Layout>
-      {showCustomReportModal && (
-        <Modal
-          open={showCustomReportModal}
-          onClose={() => setShowCustomReportModal(false)}
-          title={t('customReport.inProgressTitle', 'Fonctionnalité en cours de production')}
-          primaryAction={{ content: t('action.close', 'Fermer'), onAction: () => setShowCustomReportModal(false) }}
-        >
-          <Modal.Section>
-            <BlockStack gap="300">
-              <Text as="p">
-                {t('customReport.inProgress', 'La fonctionnalité Rapport personnalisé est en cours de production et sera bientôt disponible.')}
-              </Text>
-              <Link url="https://help.ledgerxport.com" external>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <Icon source={CollectionFeaturedIcon} tone="base" />
-                    {t('customReport.suggestionsWelcome', 'Nous sommes à l’écoute de vos suggestions pour façonner cette fonctionnalité selon vos besoins professionnels. Partagez-nous vos idées !')}
-                  </span>
-              </Link>
-              <Text as="p" tone="subdued">
-                {t('customReport.inProgressDesc', 'Nous mettons tout en œuvre pour vous proposer prochainement cette fonctionnalité avancée. Merci de votre compréhension !')}
-              </Text>
-            </BlockStack>
-          </Modal.Section>
-        </Modal>
-      )}
-      {toastActive && (
-        <Toast
-          content={toastMessage}
-          onDismiss={() => setToastActive(false)}
-          error={toastError}
-        />
-      )}
-    </Page>
+              {/* Upcoming Exports */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Card>
+                  <div style={{ padding: '20px' }}>
+                    <div style={{ marginBottom: '16px' }}>
+                      <Text variant="headingMd" as="h1">{t('dashboard.upcomingExports', 'Les prochains exports')}</Text>
+                    </div>
+                    {upcomingExports && upcomingExports.length > 0 ? (
+                      <div style={{ 
+                        height: '300px',
+                        overflowY: 'auto',
+                        overflowX: 'auto'
+                      }}>
+                        <div style={{ minWidth: '600px' }}>
+                          <DataTable
+                            columnContentTypes={[
+                              'text',
+                              'text',
+                              'text',
+                              'text',
+                              'text',
+                            ]}
+                            headings={[
+                              'Nom du rapport',
+                              'Date',
+                              'Heure',
+                              'Fréquence',
+                              'Actions',
+                            ]}
+                            rows={upcomingExports.map((task: any) => {
+                              const { date, time } = formatDateTime(task.nextRun);
+                              return [
+                                task.report.fileName,
+                                date,
+                                time,
+                                getFrequencyLabel(task.frequency),
+                                <PolarisButton onClick={() => navigate(`/app/reports/schedule?id=${task.id}`)}>
+                                  {t('action.modify', 'Modifier')}
+                                </PolarisButton>
+                              ];
+                            })}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        height: '300px'
+                      }}>
+                        <EmptyState
+                          heading={t('dashboard.noScheduled', 'Aucun export planifié')}
+                          image="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1zbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwIDNDMTEuNzE2IDMgNSA5LjcxNiA1IDE4QzUgMjYuMjg0IDExLjcxNiAzMyAyMCAzM0MyOC4yODQgMzMgMzUgMjYuMjg0IDM1IDE4QzM1IDkuNzE2IDI4LjI4NCAzIDIwIDNaTTIyIDI1SDJWMjNIMjJWMjVaTTIyIDIxSDJWMThIMjJWMjFaIiBmaWxsPSIjMDA3YWNlIi8+Cjwvc3ZnPgo="
+                        >
+                          <p>{t('dashboard.noScheduledDesc', 'Les exports planifiés apparaîtront ici.')}</p>
+                          <PolarisButton onClick={() => navigate("/app/reports/schedule")}>
+                            {t('dashboard.scheduleExport', 'Planifier un export')}
+                          </PolarisButton>
+                        </EmptyState>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              </div>
+            </div>
+          </Layout.Section>
+
+          {/* Popular Reports */}
+          <Layout.Section>
+            <FeedbackSection />
+          </Layout.Section>
+          <Layout.Section>
+            <Footer />
+          </Layout.Section>
+        </Layout>
+        {showCustomReportModal && (
+          <Modal
+            open={showCustomReportModal}
+            onClose={() => setShowCustomReportModal(false)}
+            title={t('customReport.inProgressTitle', 'Fonctionnalité en cours de production')}
+            primaryAction={{ content: t('action.close', 'Fermer'), onAction: () => setShowCustomReportModal(false) }}
+          >
+            <Modal.Section>
+              <BlockStack gap="300">
+                <Text as="p">
+                  {t('customReport.inProgress', 'La fonctionnalité Rapport personnalisé est en cours de production et sera bientôt disponible.')}
+                </Text>
+                <Link url="https://help.ledgerxport.com" external>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <Icon source={CollectionFeaturedIcon} tone="base" />
+                      {t('customReport.suggestionsWelcome', 'Nous sommes à l’écoute de vos suggestions pour façonner cette fonctionnalité selon vos besoins professionnels. Partagez-nous vos idées !')}
+                    </span>
+                </Link>
+                <Text as="p" tone="subdued">
+                  {t('customReport.inProgressDesc', 'Nous mettons tout en œuvre pour vous proposer prochainement cette fonctionnalité avancée. Merci de votre compréhension !')}
+                </Text>
+              </BlockStack>
+            </Modal.Section>
+          </Modal>
+        )}
+        {toastActive && (
+          <Toast
+            content={toastMessage}
+            onDismiss={() => setToastActive(false)}
+            error={toastError}
+          />
+        )}
+      </Page>
+    </>
   );
-} 
+}

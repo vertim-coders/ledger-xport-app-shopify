@@ -1,4 +1,4 @@
-import { Card, Text, Icon } from "@shopify/polaris";
+import { Card, Icon } from "@shopify/polaris";
 import React from "react";
 
 interface StatCardProps {
@@ -35,7 +35,8 @@ export const StatCard: React.FC<StatCardProps> = ({ title, value, icon, iconBg =
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'stretch',
-      height: isMobile ? 'auto' : isNarrow ? 140 : 160
+      height: isMobile ? 'auto' : isNarrow ? 140 : 160,
+      overflow: 'hidden'
     }}>
       <Card>
         <div style={{
@@ -44,25 +45,42 @@ export const StatCard: React.FC<StatCardProps> = ({ title, value, icon, iconBg =
           height: '100%',
           justifyContent: "space-between",
           padding: isMobile ? 12 : isNarrow ? 16 : 24,
-          minHeight: 0
+          minHeight: 0,
+          overflow: 'hidden'
         }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: 'wrap', gap: 8 }}>
-            <span style={{ wordBreak: 'break-word', flex: 1 }}>
-              <Text as="span" variant="bodyMd" fontWeight="medium" tone="subdued">
-                {title}
-              </Text>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: 'nowrap', gap: 8, minWidth: 0 }}>
+            <span style={{
+              wordBreak: 'break-word',
+              flex: 1,
+              minWidth: 0,
+              fontSize: isMobile ? 15 : isNarrow ? 18 : 22,
+              lineHeight: 1.2,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              fontWeight: 700
+            }}>
+              {title}
             </span>
-            <span style={{ background: iconBg, borderRadius: 8, padding: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ background: iconBg, borderRadius: 8, padding: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <Icon source={icon} />
             </span>
           </div>
-          <div style={{ margin: "12px 0 0 0", color, wordBreak: 'break-word' }}>
-            <Text as="span" variant="heading2xl" fontWeight="bold">
+          <div style={{ margin: "12px 0 0 0", color, wordBreak: 'break-word', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center' }}>
+            <span style={{
+              fontSize: isMobile ? 22 : isNarrow ? 28 : 36,
+              fontWeight: 800,
+              minWidth: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              lineHeight: 1.1
+            }}>
               {value}
-            </Text>
+            </span>
           </div>
         </div>
       </Card>
     </div>
   );
-}; 
+};

@@ -1,23 +1,27 @@
+import type { Report as ReportType } from "@prisma/client";
 import { json, type LoaderFunctionArgs, redirect } from "@remix-run/node";
-import { useLoaderData, useSubmit, useNavigate } from "@remix-run/react";
+import { useLoaderData, useNavigate, useSubmit } from "@remix-run/react";
 import {
-  Page,
-  Layout,
+  Badge,
+  Button,
   Card,
+  DataTable,
+  Icon,
+  Layout,
+  LegacyStack,
+  Page,
   Select,
   TextField,
-  DataTable,
-  Button,
-  LegacyStack,
-  Badge,
-  Icon,
   Toast,
 } from "@shopify/polaris";
-import { useState, useCallback } from "react";
-import { authenticate } from "../shopify.server";
-import { prisma } from "../db.server";
-import type { ReportStatus as ReportStatusType, ExportFormat as ExportFormatType, Report as ReportType } from "@prisma/client";
+import { ArrowDownIcon, EmailIcon, RefreshIcon, SearchIcon } from "@shopify/polaris-icons";
+import { promises as fs } from "fs";
+import { useCallback, useState } from "react";
 import { useTranslation } from 'react-i18next';
+import Footer from "../components/Footer";
+import { prisma } from "../db.server";
+import { authenticate } from "../shopify.server";
+import { downloadFileFromUrl } from "../utils/download";
 import { requireFiscalConfigOrRedirect } from "../utils/requireFiscalConfig.server";
 
 // Import sécurisé de ReportStatus et ExportFormat
@@ -37,10 +41,6 @@ const ExportFormat = {
 };
 
 type Report = ReportType;
-import { ArrowDownIcon, RefreshIcon, EmailIcon, SearchIcon } from "@shopify/polaris-icons";
-import { promises as fs } from "fs";
-import { downloadFileFromUrl } from "../utils/download";
-import Footer from "../components/Footer";
 
 type LoaderData = {
   reports: Array<Omit<Report, "startDate" | "endDate" | "createdAt" | "updatedAt"> & {
@@ -370,95 +370,115 @@ export default function ExportHistory() {
   ];
 
   return (
-    <Page
-      title={t('history.title', 'Historique des exports')}
-      subtitle={t('history.subtitle', "Consultez l'historique de tous vos exports")}
-    >
-      <Layout>
-        <Layout.Section>
-          <Card>
-            <LegacyStack distribution="equalSpacing" alignment="center">
-              <LegacyStack spacing="tight">
-                <Select
-                  label={t('history.period', 'Période')}
-                  options={[
-                    { label: t('history.period.all', 'Toutes'), value: "all" },
-                    { label: t('history.period.today', "Aujourd'hui"), value: "today" },
-                    { label: t('history.period.week', "Cette semaine"), value: "week" },
-                    { label: t('history.period.month', "Ce mois-ci"), value: "month" },
-                  ]}
-                  value={selectedPeriod}
-                  onChange={handlePeriodChange}
-                />
-                <Select
-                  label={t('history.type', 'Type de rapport')}
-                  options={typeOptions}
-                  value={selectedType}
-                  onChange={handleTypeChange}
-                />
-                <Select
-                  label={t('history.status', 'Statut')}
-                  options={[
-                    { label: t('history.status.all', 'Tous'), value: "all" },
-                    { label: t('history.status.success', 'Succès'), value: ReportStatusEnum.COMPLETED },
-                    { label: t('history.status.empty', 'Données vides'), value: ReportStatusEnum.COMPLETED_WITH_EMPTY_DATA },
-                    { label: t('history.status.processing', 'En cours'), value: ReportStatusEnum.PROCESSING },
-                    { label: t('history.status.error', 'Erreur'), value: ReportStatusEnum.ERROR },
-                    { label: t('history.status.pending', 'En attente'), value: ReportStatusEnum.PENDING },
-                  ]}
-                  value={selectedStatus}
-                  onChange={handleStatusChange}
+    <>
+      <style>{`
+        .Polaris-Page--fullWidth,
+        .Polaris-Page__Content,
+        .Polaris-Layout,
+        .Polaris-Layout__Section,
+        .Polaris-Card {
+          max-width: 100% !important;
+          width: 100% !important;
+        }
+        .Polaris-Layout,
+        .Polaris-Layout__Section {
+          padding-left: 0 !important;
+          padding-right: 0 !important;
+          margin-left: 0 !important;
+          margin-right: 0 !important;
+        }
+      `}</style>
+      <Page
+        fullWidth
+        title={t('history.title', 'Historique des exports')}
+        subtitle={t('history.subtitle', "Consultez l'historique de tous vos exports")}
+      >
+        <Layout>
+          <Layout.Section>
+            <Card>
+              <LegacyStack distribution="equalSpacing" alignment="center">
+                <LegacyStack spacing="tight">
+                  <Select
+                    label={t('history.period', 'Période')}
+                    options={[
+                      { label: t('history.period.all', 'Toutes'), value: "all" },
+                      { label: t('history.period.today', "Aujourd'hui"), value: "today" },
+                      { label: t('history.period.week', "Cette semaine"), value: "week" },
+                      { label: t('history.period.month', "Ce mois-ci"), value: "month" },
+                    ]}
+                    value={selectedPeriod}
+                    onChange={handlePeriodChange}
+                  />
+                  <Select
+                    label={t('history.type', 'Type de rapport')}
+                    options={typeOptions}
+                    value={selectedType}
+                    onChange={handleTypeChange}
+                  />
+                  <Select
+                    label={t('history.status', 'Statut')}
+                    options={[
+                      { label: t('history.status.all', 'Tous'), value: "all" },
+                      { label: t('history.status.success', 'Succès'), value: ReportStatusEnum.COMPLETED },
+                      { label: t('history.status.empty', 'Données vides'), value: ReportStatusEnum.COMPLETED_WITH_EMPTY_DATA },
+                      { label: t('history.status.processing', 'En cours'), value: ReportStatusEnum.PROCESSING },
+                      { label: t('history.status.error', 'Erreur'), value: ReportStatusEnum.ERROR },
+                      { label: t('history.status.pending', 'En attente'), value: ReportStatusEnum.PENDING },
+                    ]}
+                    value={selectedStatus}
+                    onChange={handleStatusChange}
+                  />
+                </LegacyStack>
+                <TextField
+                  label={t('history.search', 'Recherche')}
+                  value={searchValue}
+                  onChange={handleSearchChange}
+                  autoComplete="off"
+                  prefix={<Icon source={SearchIcon} />}
                 />
               </LegacyStack>
-              <TextField
-                label={t('history.search', 'Recherche')}
-                value={searchValue}
-                onChange={handleSearchChange}
-                autoComplete="off"
-                prefix={<Icon source={SearchIcon} />}
-              />
-            </LegacyStack>
-          </Card>
-        </Layout.Section>
+            </Card>
+          </Layout.Section>
 
-        <Layout.Section>
-          <Card>
-            <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
-            <DataTable
-              columnContentTypes={[
-                "text",
-                "text",
-                "text",
-                "text",
-                "text",
-                "text",
-                "text",
-              ]}
-              headings={[
-                  t('history.table.exportDate', "Date d'export"),
-                  t('history.table.period', "Période concernée"),
-                  t('history.table.type', 'Type'),
-                  t('history.table.format', 'Format'),
-                  t('history.table.status', 'Statut'),
-                  t('history.table.file', 'Fichier'),
-                  t('history.table.actions', 'Actions'),
-              ]}
-              rows={rows}
-            />
-            </div>
-          </Card>
-        </Layout.Section>
-        <Layout.Section>
-          <Footer />
-        </Layout.Section>
-      </Layout>
-      {toastActive && (
-        <Toast
-          content={toastMessage}
-          onDismiss={() => setToastActive(false)}
-          error={toastError}
-        />
-      )}
-    </Page>
+          <Layout.Section>
+            <Card>
+              <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
+              <DataTable
+                columnContentTypes={[
+                  "text",
+                  "text",
+                  "text",
+                  "text",
+                  "text",
+                  "text",
+                  "text",
+                ]}
+                headings={[
+                    t('history.table.exportDate', "Date d'export"),
+                    t('history.table.period', "Période concernée"),
+                    t('history.table.type', 'Type'),
+                    t('history.table.format', 'Format'),
+                    t('history.table.status', 'Statut'),
+                    t('history.table.file', 'Fichier'),
+                    t('history.table.actions', 'Actions'),
+                ]}
+                rows={rows}
+              />
+              </div>
+            </Card>
+          </Layout.Section>
+          <Layout.Section>
+            <Footer />
+          </Layout.Section>
+        </Layout>
+        {toastActive && (
+          <Toast
+            content={toastMessage}
+            onDismiss={() => setToastActive(false)}
+            error={toastError}
+          />
+        )}
+      </Page>
+    </>
   );
-} 
+}

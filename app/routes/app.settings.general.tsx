@@ -1,25 +1,36 @@
-import { json, type LoaderFunctionArgs, redirect } from "@remix-run/node";
-import { useLoaderData, useSubmit, useNavigate, useNavigation, useActionData } from "@remix-run/react";
-import {
-  Page,
-  Layout,
-  Card,
-  FormLayout,
-  TextField,
-  Select,
-  Button,
-  Text,
-  Toast,
-  Frame,
-  Banner,
-  List,
-  LegacyStack,
-  Checkbox,
-  BlockStack,
-} from "@shopify/polaris";
-import { authenticate } from "../shopify.server";
-import { prisma } from "../db.server";
 import type { ExportFormat as ExportFormatType, Protocol as ProtocolType } from "@prisma/client";
+import { json, type LoaderFunctionArgs, redirect } from "@remix-run/node";
+import { useActionData, useLoaderData, useNavigate, useNavigation, useSubmit } from "@remix-run/react";
+import {
+    Banner,
+    BlockStack,
+    Card,
+    Checkbox,
+    FormLayout,
+    Frame,
+    Layout,
+    LegacyStack,
+    Page,
+    Select,
+    Text,
+    TextField,
+    Toast,
+    InlineStack,
+    Thumbnail
+} from "@shopify/polaris";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { BiBtn } from "../components/Buttons/BiBtn";
+import { BiSaveBtn } from "../components/Buttons/BiSaveBtn";
+import { LanguageSelector } from "../components/LanguageSelector";
+import FileUpload from "../components/FileUpload";
+import currenciesData from "../data/currencies.json";
+import fiscalRegimesData from "../data/fiscal-regimes.json";
+import { prisma } from "../db.server";
+import ftpService from "../services/ftp.service";
+import { authenticate } from "../shopify.server";
+import { decrypt, encrypt } from "../utils/crypto.server";
+import { requireFiscalConfigOrRedirect } from "../utils/requireFiscalConfig.server";
 
 // Import sécurisé d'ExportFormat et Protocol
 const ExportFormat = {
@@ -34,19 +45,6 @@ const Protocol = {
   FTPS: "FTPS",
   SFTP: "SFTP"
 };
-import { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
-import fiscalRegimesData from "../data/fiscal-regimes.json";
-import currenciesData from "../data/currencies.json";
-import { BiSaveBtn } from "../components/Buttons/BiSaveBtn";
-import { BiSimpleBtn } from "../components/Buttons/BiSimpleBtn";
-import { BiBtn } from "../components/Buttons/BiBtn";
-import shopify from "../shopify.server";
-import type { Settings } from "../types/SettingsType";
-import ftpService from "../services/ftp.service";
-import { encrypt, decrypt } from "../utils/crypto.server";
-import { LanguageSelector } from "../components/LanguageSelector";
-import { requireFiscalConfigOrRedirect } from "../utils/requireFiscalConfig.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -260,6 +258,14 @@ export const action = async ({ request }: LoaderFunctionArgs) => {
   // Handle general settings
   const generalSettingsData = {
     salesAccount: formData.get("salesAccount") as string,
+    // Invoice customization fields
+    invoiceLogoUrl: formData.get("invoice_logoUrl") as string || null,
+    invoiceLogoWidth: parseInt(formData.get("invoice_logoWidth") as string) || 150,
+    invoiceLogoHeight: parseInt(formData.get("invoice_logoHeight") as string) || 100,
+    invoiceCompanyName: formData.get("invoice_companyName") as string || null,
+    invoiceAddress: formData.get("invoice_address") as string || null,
+    invoicePhone: formData.get("invoice_phone") as string || null,
+    invoiceEmail: formData.get("invoice_email") as string || null,
   };
 
   // Update general settings
@@ -304,6 +310,15 @@ export default function GeneralSettings() {
     vatRate: settings?.vatRate?.toString() || "",
     defaultExportFormat: settings?.defaultFormat || "CSV",
     salesAccount: generalSettings?.salesAccount || "701",
+  });
+  
+  // Invoice customization states
+  const [invoiceCustomization, setInvoiceCustomization] = useState({
+    logoUrl: generalSettings?.invoiceLogoUrl || "",
+    companyName: generalSettings?.invoiceCompanyName || shopDetails?.name || "",
+    address: generalSettings?.invoiceAddress || "",
+    phone: generalSettings?.invoicePhone || "",
+    email: generalSettings?.invoiceEmail || "",
   });
   const [ftpFormData, setFtpFormData] = useState({
     host: ftpConfig?.host || "",
@@ -374,6 +389,37 @@ export default function GeneralSettings() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleInvoiceCustomizationChange = (field: string, value: string | number) => {
+    setInvoiceCustomization(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleLogoUpload = async (file: File) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/upload-logo', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setInvoiceCustomization(prev => ({ 
+          ...prev, 
+          logoUrl: result.url 
+        }));
+      } else {
+        console.error('Upload failed:', result.error);
+        // Vous pouvez ajouter une notification d'erreur ici
+      }
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      // Vous pouvez ajouter une notification d'erreur ici
+    }
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData();
@@ -381,6 +427,12 @@ export default function GeneralSettings() {
       data.append(key, value);
     });
     data.append("fiscalRegime", selectedRegime);
+    
+    // Add invoice customization data
+    Object.entries(invoiceCustomization).forEach(([key, value]) => {
+      data.append(`invoice_${key}`, String(value));
+    });
+    
     try {
       await submit(data, { method: "post" });
       setToastMessage(t('toast.saveSuccess'));
@@ -417,246 +469,414 @@ export default function GeneralSettings() {
   }, [selectedRegime]);
 
   return (
-    <Frame>
-      <Page
-        title={t('settings.general.title')}
-        subtitle={t('settings.general.subtitle')}
-      >
-        <Layout>
-          <Layout.Section>
-            <Card>
-              <div style={{ padding: 10 }}>
-                <Text variant="bodyMd" as="span" fontWeight="bold">{t('form.language')}</Text>
-                <div style={{ marginTop: 8 }}>
-                  <LanguageSelector label="" helpText={t('settings.general.languageHelp', 'La langue de l\'interface sera appliquée immédiatement.')} />
+    <>
+      <style>{`
+        .Polaris-Page--fullWidth,
+        .Polaris-Page__Content,
+        .Polaris-Layout,
+        .Polaris-Layout__Section,
+        .Polaris-Card {
+          max-width: 100% !important;
+          width: 100% !important;
+        }
+        .Polaris-Layout,
+        .Polaris-Layout__Section {
+          padding-left: 0 !important;
+          padding-right: 0 !important;
+          margin-left: 0 !important;
+          margin-right: 0 !important;
+        }
+      `}</style>
+      <Frame>
+        <Page
+          fullWidth
+          title={t('settings.general.title')}
+          subtitle={t('settings.general.subtitle')}
+        >
+          <Layout>
+            <Layout.Section>
+              <Card>
+                <div style={{ padding: 10 }}>
+                  <Text variant="bodyMd" as="span" fontWeight="bold">{t('form.language')}</Text>
+                  <div style={{ marginTop: 8 }}>
+                    <LanguageSelector label="" helpText={t('settings.general.languageHelp', 'La langue de l\'interface sera appliquée immédiatement.')} />
+                  </div>
                 </div>
-              </div>
-            </Card>
-          </Layout.Section>
-          <Layout.Section>
-            <Card>
-              <form onSubmit={handleSubmit}>
-                <LegacyStack vertical spacing="loose">
-                  <FormLayout>
-                    <div>
-                      <div style={{ marginBottom: 4, display: 'block' }}>
-                        <Text variant="bodyMd" as="span" fontWeight="bold">{t('settings.general.companyName')}</Text>
-                      </div>
-                      <TextField
-                        label=""
-                        name="companyName"
-                        value={formData.companyName}
-                        onChange={value => handleChange("companyName", value)}
-                        autoComplete="off"
-                      />
-                    </div>
-
-                    <div>
-                      <div style={{ marginBottom: 4, display: 'block' }}>
-                        <Text variant="bodyMd" as="span" fontWeight="bold">{t('settings.general.fiscalRegime')}</Text>
-                      </div>
-                      <Select
-                        label=""
-                        options={regimes.map(regime => ({
-                          label: regime.name,
-                          value: regime.code,
-                        }))}
-                        value={selectedRegime}
-                        onChange={setSelectedRegime}
-                      />
-                    </div>
-                    {selectedRegime && (
-                      <div style={{ marginTop: '8px', marginBottom: '16px' }}>
-                        <Text variant="bodyMd" as="p">
-                          {regimes.find(r => r.code === selectedRegime)?.description}
-                        </Text>
-                        <p style={{ color: '#637381', margin: '4px 0' }}>
-                          {t('form.country')}: {regimes.find(r => r.code === selectedRegime)?.countries.join(', ')}
-                        </p>
-                        <p style={{ color: '#637381', margin: '4px 0' }}>
-                          {t('settings.general.fileFormat', 'Format de fichier')}: {regimes.find(r => r.code === selectedRegime)?.fileFormat}
-                        </p>
-                        <p style={{ color: '#637381', margin: '4px 0' }}>
-                          {t('settings.general.compatibleSoftware', 'Logiciels compatibles')}: {regimes.find(r => r.code === selectedRegime)?.compatibleSoftware.join(', ')}
-                        </p>
-                      </div>
-                    )}
-
-                    <LegacyStack distribution="fill">
+              </Card>
+            </Layout.Section>
+            <Layout.Section>
+              <Card>
+                <form onSubmit={handleSubmit}>
+                  <LegacyStack vertical spacing="loose">
+                    <FormLayout>
                       <div>
                         <div style={{ marginBottom: 4, display: 'block' }}>
-                          <Text variant="bodyMd" as="span" fontWeight="bold">{t('form.currency')}</Text>
-                        </div>
-                        <Select
-                          label=""
-                          name="currency"
-                          options={currenciesData.currencies.map(currency => ({
-                            label: `${currency.name} (${currency.code})`,
-                            value: currency.code
-                          }))}
-                          value={formData.currency}
-                          onChange={value => handleChange("currency", value)}
-                          disabled={!selectedRegime}
-                          helpText={selectedRegime ? t('settings.general.currencyHelp', { regime: regimes.find(r => r.code === selectedRegime)?.name, currency: regimes.find(r => r.code === selectedRegime)?.currency }) : ''}
-                        />
-                      </div>
-                      <div>
-                        <div style={{ marginBottom: 4, display: 'block' }}>
-                          <Text variant="bodyMd" as="span" fontWeight="bold">{t('settings.general.vatRate')}</Text>
+                          <Text variant="bodyMd" as="span" fontWeight="bold">{t('settings.general.companyName')}</Text>
                         </div>
                         <TextField
                           label=""
-                          name="vatRate"
-                          type="number"
-                          value={formData.vatRate}
-                          onChange={value => handleChange("vatRate", value)}
+                          name="companyName"
+                          value={formData.companyName}
+                          onChange={value => handleChange("companyName", value)}
                           autoComplete="off"
-                          min={0}
-                          max={100}
-                          step={0.1}
                         />
                       </div>
-                    </LegacyStack>
 
-                    <LegacyStack vertical spacing="loose">
                       <div>
                         <div style={{ marginBottom: 4, display: 'block' }}>
-                          <Text variant="bodyMd" as="span" fontWeight="bold">{t('settings.general.salesAccount')}</Text>
+                          <Text variant="bodyMd" as="span" fontWeight="bold">{t('settings.general.fiscalRegime')}</Text>
                         </div>
-                        <LegacyStack vertical spacing="tight">
+                        <Select
+                          label=""
+                          options={regimes.map(regime => ({
+                            label: regime.name,
+                            value: regime.code,
+                          }))}
+                          value={selectedRegime}
+                          onChange={setSelectedRegime}
+                        />
+                      </div>
+                      {selectedRegime && (
+                        <div style={{ marginTop: '8px', marginBottom: '16px' }}>
+                          <Text variant="bodyMd" as="p">
+                            {regimes.find(r => r.code === selectedRegime)?.description}
+                          </Text>
+                          <p style={{ color: '#637381', margin: '4px 0' }}>
+                            {t('form.country')}: {regimes.find(r => r.code === selectedRegime)?.countries.join(', ')}
+                          </p>
+                          <p style={{ color: '#637381', margin: '4px 0' }}>
+                            {t('settings.general.fileFormat', 'Format de fichier')}: {regimes.find(r => r.code === selectedRegime)?.fileFormat}
+                          </p>
+                          <p style={{ color: '#637381', margin: '4px 0' }}>
+                            {t('settings.general.compatibleSoftware', 'Logiciels compatibles')}: {regimes.find(r => r.code === selectedRegime)?.compatibleSoftware.join(', ')}
+                          </p>
+                        </div>
+                      )}
+
+                      <LegacyStack distribution="fill">
+                        <div>
+                          <div style={{ marginBottom: 4, display: 'block' }}>
+                            <Text variant="bodyMd" as="span" fontWeight="bold">{t('form.currency')}</Text>
+                          </div>
+                          <Select
+                            label=""
+                            name="currency"
+                            options={currenciesData.currencies.map(currency => ({
+                              label: `${currency.name} (${currency.code})`,
+                              value: currency.code
+                            }))}
+                            value={formData.currency}
+                            onChange={value => handleChange("currency", value)}
+                            disabled={!selectedRegime}
+                            helpText={selectedRegime ? t('settings.general.currencyHelp', { regime: regimes.find(r => r.code === selectedRegime)?.name, currency: regimes.find(r => r.code === selectedRegime)?.currency }) : ''}
+                          />
+                        </div>
+                        <div>
+                          <div style={{ marginBottom: 4, display: 'block' }}>
+                            <Text variant="bodyMd" as="span" fontWeight="bold">{t('settings.general.vatRate')}</Text>
+                          </div>
                           <TextField
                             label=""
-                            value={formData.salesAccount}
-                            onChange={(value) => handleChange("salesAccount", value)}
+                            name="vatRate"
+                            type="number"
+                            value={formData.vatRate}
+                            onChange={value => handleChange("vatRate", value)}
                             autoComplete="off"
-                            helpText={t('settings.general.salesAccountHelp')}
+                            min={0}
+                            max={100}
+                            step={0.1}
                           />
-                        </LegacyStack>
-                      </div>
-
-                      <div>
-                        <div style={{ marginBottom: 4, display: 'block' }}>
-                          <Text variant="bodyMd" as="span" fontWeight="bold">{t('settings.general.timezone')}</Text>
                         </div>
-                        <LegacyStack vertical spacing="tight">
-                          <Text variant="bodyMd" as="p">
-                            {t('settings.general.shopTimezone')}: {shopDetails?.timezone || 'UTC'}
-                          </Text>
-                          <Banner
-                            title={t('settings.general.timezoneBannerTitle')}
-                            tone="info"
-                          >
-                            <p>{t('settings.general.timezoneBannerText')}</p>
-                          </Banner>
-                        </LegacyStack>
+                      </LegacyStack>
+
+                      <LegacyStack vertical spacing="loose">
+                        <div>
+                          <div style={{ marginBottom: 4, display: 'block' }}>
+                            <Text variant="bodyMd" as="span" fontWeight="bold">{t('settings.general.salesAccount')}</Text>
+                          </div>
+                          <LegacyStack vertical spacing="tight">
+                            <TextField
+                              label=""
+                              value={formData.salesAccount}
+                              onChange={(value) => handleChange("salesAccount", value)}
+                              autoComplete="off"
+                              helpText={t('settings.general.salesAccountHelp')}
+                            />
+                          </LegacyStack>
+                        </div>
+
+                        <div>
+                          <div style={{ marginBottom: 4, display: 'block' }}>
+                            <Text variant="bodyMd" as="span" fontWeight="bold">{t('settings.general.timezone')}</Text>
+                          </div>
+                          <LegacyStack vertical spacing="tight">
+                            <Text variant="bodyMd" as="p">
+                              {t('settings.general.shopTimezone')}: {shopDetails?.timezone || 'UTC'}
+                            </Text>
+                            <Banner
+                              title={t('settings.general.timezoneBannerTitle')}
+                              tone="info"
+                            >
+                              <p>{t('settings.general.timezoneBannerText')}</p>
+                            </Banner>
+                          </LegacyStack>
+                        </div>
+                      </LegacyStack>
+
+                      <div style={{ marginTop: '32px', textAlign: 'center' }}>
+                        <BiSaveBtn title={t('action.save')} isLoading={isSaving} />
                       </div>
-                    </LegacyStack>
-
-                    <div style={{ marginTop: '32px', textAlign: 'center' }}>
-                      <BiSaveBtn title={t('action.save')} isLoading={isSaving} />
-                    </div>
-                  </FormLayout>
-                </LegacyStack>
-              </form>
-            </Card>
-          </Layout.Section>
-
-          <Layout.Section>
-            <Card>
-              <BlockStack gap="400">
-                <Text variant="headingMd" as="h2">Configuration FTP</Text>
-                <form onSubmit={handleFtpSubmit} id="ftp-settings-form">
-                  <FormLayout>
-                    <TextField
-                      label={t('ftp.host')}
-                      name="host"
-                      value={ftpFormData.host}
-                      onChange={(value) => handleFtpChange("host", value)}
-                      autoComplete="off"
-                    />
-                    <TextField
-                      label={t('ftp.port')}
-                      name="port"
-                      type="number"
-                      value={String(ftpFormData.port)}
-                      onChange={(value) => handleFtpChange("port", value)}
-                      autoComplete="off"
-                    />
-                    <Select
-                      label={t('ftp.protocol')}
-                      name="protocol"
-                      options={[
-                        { label: "SFTP", value: "SFTP" },
-                        { label: "FTP", value: "FTP" },
-                      ]}
-                      value={ftpFormData.protocol}
-                      onChange={(value) => handleFtpChange("protocol", value)}
-                    />
-                    <TextField
-                      label={t('ftp.username')}
-                      name="username"
-                      value={ftpFormData.username}
-                      onChange={(value) => handleFtpChange("username", value)}
-                      autoComplete="off"
-                    />
-                    <TextField
-                      label={t('ftp.password')}
-                      name="password"
-                      type="password"
-                      value={ftpFormData.password}
-                      onChange={(value) => handleFtpChange("password", value)}
-                      helpText={t('ftp.passwordHelp')}
-                      autoComplete="new-password"
-                    />
-                    <TextField
-                      label={t('ftp.directory')}
-                      name="directory"
-                      value={ftpFormData.directory}
-                      onChange={(value) => handleFtpChange("directory", value)}
-                      autoComplete="off"
-                    />
-                    <Checkbox
-                      label={t('ftp.passiveMode')}
-                      name="passiveMode"
-                      checked={ftpFormData.passiveMode}
-                      onChange={(checked) => handleFtpChange("passiveMode", checked)}
-                    />
-                    <TextField
-                      label={t('ftp.retryDelay')}
-                      name="retryDelay"
-                      type="number"
-                      value={String(ftpFormData.retryDelay)}
-                      onChange={(value) => handleFtpChange("retryDelay", value)}
-                      autoComplete="off"
-                    />
-                    <div style={{ display: 'flex', width: '100%' }}>
-                      <BiBtn
-                        title={t('ftp.testConnection')}
-                        onClick={handleFtpTest}
-                        style={{ minWidth: 'unset', maxWidth: 'unset', margin: 0 }}
-                      />
-                      <BiSaveBtn
-                        title={t('ftp.saveConfig')}
-                        isLoading={isSaving}
-                        style={{ minWidth: 'unset', maxWidth: 'unset', margin: 0, marginLeft: 'auto' }}
-                      />
-                    </div>
-                    {testStatus === "success" && (
-                        <Banner title={t('ftp.successBannerTitle')} tone="success" onDismiss={() => setTestStatus('idle')} />
-                    )}
-                    {testStatus === "error" && (
-                        <Banner title={t('ftp.errorBannerTitle')} tone="critical" onDismiss={() => setTestStatus('idle')}>
-                            <Text as="span">{t('ftp.errorBannerText')}</Text>
-                        </Banner>
-                    )}
-                  </FormLayout>
+                    </FormLayout>
+                  </LegacyStack>
                 </form>
-              </BlockStack>
-            </Card>
-          </Layout.Section>
-        </Layout>
-      </Page>
-      {toastMarkup}
-    </Frame>
+              </Card>
+            </Layout.Section>
+
+            {/* Invoice Customization Section */}
+            <Layout.Section>
+              <Card>
+                <div style={{ padding: 20 }}>
+                  <BlockStack gap="400">
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
+                      <Text variant="headingMd" as="h2">
+                        Personnalisation des factures
+                      </Text>
+                    </div>
+                    
+                    <form onSubmit={handleSubmit}>
+                      <FormLayout>
+                        {/* Logo Section */}
+                        <Card>
+                          <div style={{ padding: 16 }}>
+                            <BlockStack gap="400">
+                              <Text variant="headingMd" as="h3">
+                                Logo de l'entreprise
+                              </Text>
+                              
+                              <FileUpload
+                                onFileSelect={handleLogoUpload}
+                                acceptedTypes={['image/*']}
+                                maxSize={5}
+                                label="Télécharger votre logo"
+                                helpText="PNG, JPG, SVG - Max 5MB. Le logo sera affiché avec une taille optimale sur vos factures."
+                              />
+
+                              {/* Logo Preview */}
+                              {invoiceCustomization.logoUrl && (
+                                <div style={{ 
+                                  padding: 16, 
+                                  border: '1px solid #e1e3e5', 
+                                  borderRadius: 8,
+                                  backgroundColor: '#f6f6f7'
+                                }}>
+                                  <div style={{ marginBottom: 8 }}>
+                                    <Text variant="bodyMd" as="p" fontWeight="semibold">
+                                      Aperçu du logo :
+                                    </Text>
+                                  </div>
+                                  <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                    <img
+                                      src={invoiceCustomization.logoUrl}
+                                      alt="Logo preview"
+                                      style={{
+                                        width: '150px',
+                                        height: '100px',
+                                        objectFit: 'contain',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: 4,
+                                        backgroundColor: 'white'
+                                      }}
+                                      onError={(e) => {
+                                        e.currentTarget.style.display = 'none';
+                                        const errorDiv = e.currentTarget.nextElementSibling as HTMLElement;
+                                        if (errorDiv) errorDiv.style.display = 'flex';
+                                      }}
+                                      onLoad={(e) => {
+                                        const errorDiv = e.currentTarget.nextElementSibling as HTMLElement;
+                                        if (errorDiv) errorDiv.style.display = 'none';
+                                      }}
+                                    />
+                                    <div style={{ 
+                                      width: '150px',
+                                      height: '100px',
+                                      border: '1px solid #d1d5db',
+                                      borderRadius: 4,
+                                      backgroundColor: '#f3f4f6',
+                                      display: 'none',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      color: '#6b7280',
+                                      fontSize: '12px'
+                                    }}>
+                                      Erreur de chargement
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </BlockStack>
+                          </div>
+                        </Card>
+
+                        {/* Company Information Section */}
+                        <Card>
+                          <div style={{ padding: 16 }}>
+                            <BlockStack gap="400">
+                              <Text variant="headingMd" as="h3">
+                                Informations de l'entreprise
+                              </Text>
+                              
+                              <TextField
+                                label="Nom de l'entreprise"
+                                value={invoiceCustomization.companyName}
+                                onChange={value => handleInvoiceCustomizationChange("companyName", value)}
+                                placeholder="Nom de votre entreprise"
+                                helpText="Ce nom apparaîtra sur vos factures"
+                                autoComplete="off"
+                              />
+
+                              <TextField
+                                label="Adresse"
+                                value={invoiceCustomization.address}
+                                onChange={value => handleInvoiceCustomizationChange("address", value)}
+                                placeholder="Adresse complète de votre entreprise"
+                                multiline={3}
+                                helpText="Adresse qui apparaîtra sur vos factures"
+                                autoComplete="off"
+                              />
+
+                              <InlineStack gap="400">
+                                <div style={{ flex: 1 }}>
+                                  <TextField
+                                    label="Téléphone"
+                                    value={invoiceCustomization.phone}
+                                    onChange={value => handleInvoiceCustomizationChange("phone", value)}
+                                    placeholder="+33 1 23 45 67 89"
+                                    helpText="Numéro de téléphone de contact"
+                                    autoComplete="off"
+                                  />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                  <TextField
+                                    label="Email"
+                                    value={invoiceCustomization.email}
+                                    onChange={value => handleInvoiceCustomizationChange("email", value)}
+                                    placeholder="contact@votreentreprise.com"
+                                    helpText="Adresse email de contact"
+                                    autoComplete="off"
+                                  />
+                                </div>
+                              </InlineStack>
+                            </BlockStack>
+                          </div>
+                        </Card>
+
+                        <div style={{ marginTop: '16px', textAlign: 'center' }}>
+                          <BiSaveBtn title="Sauvegarder la personnalisation" isLoading={isSaving} />
+                        </div>
+                      </FormLayout>
+                    </form>
+                  </BlockStack>
+                </div>
+              </Card>
+            </Layout.Section>
+
+            <Layout.Section>
+              <Card>
+                <BlockStack gap="400">
+                  <Text variant="headingMd" as="h2">Configuration FTP</Text>
+                  <form onSubmit={handleFtpSubmit} id="ftp-settings-form">
+                    <FormLayout>
+                      <TextField
+                        label={t('ftp.host')}
+                        name="host"
+                        value={ftpFormData.host}
+                        onChange={(value) => handleFtpChange("host", value)}
+                        autoComplete="off"
+                      />
+                      <TextField
+                        label={t('ftp.port')}
+                        name="port"
+                        type="number"
+                        value={String(ftpFormData.port)}
+                        onChange={(value) => handleFtpChange("port", value)}
+                        autoComplete="off"
+                      />
+                      <Select
+                        label={t('ftp.protocol')}
+                        name="protocol"
+                        options={[
+                          { label: "SFTP", value: "SFTP" },
+                          { label: "FTP", value: "FTP" },
+                        ]}
+                        value={ftpFormData.protocol}
+                        onChange={(value) => handleFtpChange("protocol", value)}
+                      />
+                      <TextField
+                        label={t('ftp.username')}
+                        name="username"
+                        value={ftpFormData.username}
+                        onChange={(value) => handleFtpChange("username", value)}
+                        autoComplete="off"
+                      />
+                      <TextField
+                        label={t('ftp.password')}
+                        name="password"
+                        type="password"
+                        value={ftpFormData.password}
+                        onChange={(value) => handleFtpChange("password", value)}
+                        helpText={t('ftp.passwordHelp')}
+                        autoComplete="new-password"
+                      />
+                      <TextField
+                        label={t('ftp.directory')}
+                        name="directory"
+                        value={ftpFormData.directory}
+                        onChange={(value) => handleFtpChange("directory", value)}
+                        autoComplete="off"
+                      />
+                      <Checkbox
+                        label={t('ftp.passiveMode')}
+                        name="passiveMode"
+                        checked={ftpFormData.passiveMode}
+                        onChange={(checked) => handleFtpChange("passiveMode", checked)}
+                      />
+                      <TextField
+                        label={t('ftp.retryDelay')}
+                        name="retryDelay"
+                        type="number"
+                        value={String(ftpFormData.retryDelay)}
+                        onChange={(value) => handleFtpChange("retryDelay", value)}
+                        autoComplete="off"
+                      />
+                      <div style={{ display: 'flex', width: '100%' }}>
+                        <BiBtn
+                          title={t('ftp.testConnection')}
+                          onClick={handleFtpTest}
+                          style={{ minWidth: 'unset', maxWidth: 'unset', margin: 0 }}
+                        />
+                        <BiSaveBtn
+                          title={t('ftp.saveConfig')}
+                          isLoading={isSaving}
+                          style={{ minWidth: 'unset', maxWidth: 'unset', margin: 0, marginLeft: 'auto' }}
+                        />
+                      </div>
+                      {testStatus === "success" && (
+                          <Banner title={t('ftp.successBannerTitle')} tone="success" onDismiss={() => setTestStatus('idle')} />
+                      )}
+                      {testStatus === "error" && (
+                          <Banner title={t('ftp.errorBannerTitle')} tone="critical" onDismiss={() => setTestStatus('idle')}>
+                              <Text as="span">{t('ftp.errorBannerText')}</Text>
+                          </Banner>
+                      )}
+                    </FormLayout>
+                  </form>
+                </BlockStack>
+              </Card>
+            </Layout.Section>
+          </Layout>
+        </Page>
+        {toastMarkup}
+      </Frame>
+    </>
   );
-} 
+}

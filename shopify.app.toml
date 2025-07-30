@@ -3,7 +3,7 @@
 client_id = "5a5e7ed34f729de84f6d992321961c9d"
 name = "ledger-xport-app"
 handle = "ledger-xport-app-1"
-application_url = "https://nervous-training-candidates-ala.trycloudflare.com"
+application_url = "https://trade-trail-snowboard-produced.trycloudflare.com"
 embedded = true
 
 [build]
@@ -29,7 +29,7 @@ api_version = "2025-04"
 scopes = "read_orders,write_orders,read_products,read_customers,read_shopify_payments_payouts,read_shopify_payments_disputes,read_inventory,read_price_rules,read_discounts,read_marketing_events,read_shopify_payments_accounts,read_locales"
 
 [auth]
-redirect_urls = ["https://nervous-training-candidates-ala.trycloudflare.com/auth/callback", "https://nervous-training-candidates-ala.trycloudflare.com/auth/shopify/callback", "https://nervous-training-candidates-ala.trycloudflare.com/api/auth/callback"]
+redirect_urls = ["https://trade-trail-snowboard-produced.trycloudflare.com/auth/callback", "https://trade-trail-snowboard-produced.trycloudflare.com/auth/shopify/callback", "https://trade-trail-snowboard-produced.trycloudflare.com/api/auth/callback"]
 
 [pos]
 embedded = false

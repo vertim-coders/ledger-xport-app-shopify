@@ -146,6 +146,16 @@ model GeneralSettings {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   salesAccount String   @default("701")
+  
+  // Invoice customization fields
+  invoiceLogoUrl     String?
+  invoiceLogoWidth   Int     @default(150)
+  invoiceLogoHeight  Int     @default(100)
+  invoiceCompanyName String?
+  invoiceAddress     String?
+  invoicePhone       String?
+  invoiceEmail       String?
+  
   shop         Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
 
   @@index([shopId])

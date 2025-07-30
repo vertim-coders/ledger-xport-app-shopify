@@ -1,15 +1,14 @@
-import { json, type LoaderFunctionArgs, redirect, type ActionFunctionArgs } from "@remix-run/node";
-import { useLoaderData, useFetcher, useNavigate } from "@remix-run/react";
-import { listScheduledTasks, updateScheduledTaskStatus, deleteScheduledTask } from "../services/scheduledTask.service";
-import { authenticate } from "../shopify.server";
-import { prisma } from "../db.server";
-import { Page, Card, DataTable, Button, Badge, Text, Modal, Box, InlineStack, Icon, Layout } from "@shopify/polaris";
+import { json, redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from "@remix-run/node";
+import { useFetcher, useLoaderData, useNavigate } from "@remix-run/react";
+import { Badge, Button, Card, DataTable, Icon, InlineStack, Layout, Modal, Page, Text } from "@shopify/polaris";
+import { CalendarIcon, DeleteIcon, PauseCircleIcon, PlayIcon } from "@shopify/polaris-icons";
 import { useState } from "react";
-import { PlayIcon, PauseCircleIcon, DeleteIcon } from "@shopify/polaris-icons";
-import { BiSimpleBtn } from "../components/Buttons/BiSimpleBtn";
-import { CalendarIcon } from "@shopify/polaris-icons";
-import Footer from "../components/Footer";
 import { useTranslation } from "react-i18next";
+import { BiSimpleBtn } from "../components/Buttons/BiSimpleBtn";
+import Footer from "../components/Footer";
+import { prisma } from "../db.server";
+import { deleteScheduledTask, listScheduledTasks, updateScheduledTaskStatus } from "../services/scheduledTask.service";
+import { authenticate } from "../shopify.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -98,49 +97,68 @@ export default function ScheduledListPage() {
   ]);
 
   return (
-    <Page title={t('scheduledList.title')}>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-        <BiSimpleBtn
-          title={t('scheduledList.planReport')}
-          icon={<Icon source={CalendarIcon} tone="inherit" />}
-          onClick={() => navigate("/app/reports/schedule")}
-        />
-      </div>
-      <Card>
-        <DataTable
-          columnContentTypes={["text", "text", "text", "text", "numeric", "text"]}
-          headings={[
-            t('scheduledList.type'),
-            t('scheduledList.frequency'),
-            t('scheduledList.time'),
-            t('scheduledList.status'),
-            t('scheduledList.executions'),
-            t('scheduledList.actions'),
-          ]}
-          rows={rows}
-        />
-      </Card>
-      <Modal
-        open={!!deleteId}
-        onClose={() => setDeleteId(null)}
-        title={t('scheduledList.deleteTitle')}
-        primaryAction={{
-          content: t('actions.delete'),
-          destructive: true,
-          onAction: () => {
-            fetcher.submit({ actionType: "delete", id: deleteId }, { method: "post" });
-            setDeleteId(null);
-          },
-        }}
-        secondaryActions={[{ content: t('actions.cancel'), onAction: () => setDeleteId(null) }]}
-      >
-        <Modal.Section>
-          <Text as="span">{t('scheduledList.deleteConfirm')}</Text>
-        </Modal.Section>
-      </Modal>
-      <Layout.Section>
-        <Footer />
-      </Layout.Section>
-    </Page>
+    <>
+      <style>{`
+        .Polaris-Page--fullWidth,
+        .Polaris-Page__Content,
+        .Polaris-Layout,
+        .Polaris-Layout__Section,
+        .Polaris-Card {
+          max-width: 100% !important;
+          width: 100% !important;
+        }
+        .Polaris-Layout,
+        .Polaris-Layout__Section {
+          padding-left: 0 !important;
+          padding-right: 0 !important;
+          margin-left: 0 !important;
+          margin-right: 0 !important;
+        }
+      `}</style>
+      <Page fullWidth title={t('scheduledList.title')}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+          <BiSimpleBtn
+            title={t('scheduledList.planReport')}
+            icon={<Icon source={CalendarIcon} tone="inherit" />}
+            onClick={() => navigate("/app/reports/schedule")}
+          />
+        </div>
+        <Card>
+          <DataTable
+            columnContentTypes={["text", "text", "text", "text", "numeric", "text"]}
+            headings={[
+              t('scheduledList.type'),
+              t('scheduledList.frequency'),
+              t('scheduledList.time'),
+              t('scheduledList.status'),
+              t('scheduledList.executions'),
+              t('scheduledList.actions'),
+            ]}
+            rows={rows}
+          />
+        </Card>
+        <Modal
+          open={!!deleteId}
+          onClose={() => setDeleteId(null)}
+          title={t('scheduledList.deleteTitle')}
+          primaryAction={{
+            content: t('actions.delete'),
+            destructive: true,
+            onAction: () => {
+              fetcher.submit({ actionType: "delete", id: deleteId }, { method: "post" });
+              setDeleteId(null);
+            },
+          }}
+          secondaryActions={[{ content: t('actions.cancel'), onAction: () => setDeleteId(null) }]}
+        >
+          <Modal.Section>
+            <Text as="span">{t('scheduledList.deleteConfirm')}</Text>
+          </Modal.Section>
+        </Modal>
+        <Layout.Section>
+          <Footer />
+        </Layout.Section>
+      </Page>
+    </>
   );
-} 
+}
