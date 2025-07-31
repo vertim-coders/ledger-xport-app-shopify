@@ -1078,15 +1078,18 @@ export default function ScheduleReport() {
         <Page fullWidth title={t('schedule.title', 'Planifier un rapport')} backAction={{ content: t('action.back', 'Retour'), url: "/app/dashboard" }}>
           <Layout>
             <Layout.Section>
-              <Card>
-                <form>
-                  <FormLayout>
-                    {/* On retire la période du rapport */}
-
-                    <Separator title={t('schedule.reportContent', 'Contenu du rapport')} />
-
+              <form>
+                {/* Carte 1: Contenu du rapport */}
+                <Card>
+                  <div style={{ padding: '20px' }}>
+                    <div style={{ marginBottom: '20px' }}>
+                      <Text variant="headingLg" as="h2" fontWeight="bold">
+                        {t('schedule.reportContent', 'Contenu du rapport')}
+                      </Text>
+                    </div>
+                    
                     {/* Data Types */}
-                    <div>
+                    <div style={{ marginBottom: '24px' }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: '8px' }}>
                         <Text variant="headingMd" as="h1">{t('schedule.dataTypes', 'Types de données')}</Text>
                         <HelpIcon description={t('schedule.dataTypesHelp', 'Sélectionnez les types de données à exporter : ventes, clients, remboursements ou taxes. Vous pouvez en choisir plusieurs.')} />
@@ -1122,7 +1125,7 @@ export default function ScheduleReport() {
 
                     {/* File Format */}
                     <Select
-                      label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Text variant="headingMd" as="h1">{t('schedule.fileFormat', 'Format du fichier')}</Text><HelpIcon description={t('schedule.help.fileFormat', "Choisissez le format de fichier pour l'exportation : CSV, Excel, JSON ou XML.")} /></span>}
+                      label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Text variant="headingMd" as="h1">{t('schedule.fileFormat', 'Format du fichier')}</Text><HelpIcon description={t('schedule.help.fileFormat', "Choisissez le format de fichier pour l'exportation : CSV, Excel, JSON ou XML.")} /></span>}
                       options={[
                         { label: 'CSV', value: 'CSV' },
                         { label: 'Excel (XLSX)', value: 'XLSX' },
@@ -1132,12 +1135,22 @@ export default function ScheduleReport() {
                       value={fileFormat}
                       onChange={setFileFormat}
                     />
+                  </div>
+                </Card>
 
-                    <Separator title={t('schedule.scheduling', 'Planification')} />
+                {/* Carte 2: Planification */}
+                <div style={{ marginTop: '20px' }}>
+                  <Card>
+                    <div style={{ padding: '20px' }}>
+                      <div style={{ marginBottom: '20px' }}>
+                        <Text variant="headingLg" as="h2" fontWeight="bold">
+                          {t('schedule.scheduling', 'Planification')}
+                        </Text>
+                      </div>
 
                     {/* Scheduling Type */}
                     <Select
-                      label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Text variant="headingMd" as="h1">{t('schedule.deliveryType', 'Type de réception')}</Text><HelpIcon description={t('schedule.help.deliveryType', "Choisissez comment vous souhaitez recevoir le rapport planifié : par email, FTP, Google Drive ou Google Sheet.")} /></span>}
+                      label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Text variant="headingMd" as="h1">{t('schedule.deliveryType', 'Type de réception')}</Text><HelpIcon description={t('schedule.help.deliveryType', "Choisissez comment vous souhaitez recevoir le rapport planifié : par email, FTP, Google Drive ou Google Sheet.")} /></span>}
                       options={[
                         { label: t('schedule.deliveryType.email', 'Email'), value: 'email' },
                         { label: t('schedule.deliveryType.ftp', 'FTP'), value: 'ftp' },
@@ -1179,7 +1192,7 @@ export default function ScheduleReport() {
 
                     {/* Email Configuration */}
                     {schedulingType === "email" && (
-                      <div>
+                      <div style={{ marginTop: '20px' }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: '8px' }}>
                           <Text variant="headingMd" as="h1">{t('schedule.emailConfig', 'Configuration Email')}</Text>
                           <HelpIcon description={t('schedule.help.emailConfig', "Configurez les destinataires et options d'envoi pour recevoir automatiquement les rapports par email.")} />
@@ -1286,10 +1299,21 @@ export default function ScheduleReport() {
                         </LegacyStack>
                       </div>
                     )}
+                  </div>
+                </Card>
+                </div>
 
-                    {schedulingType === 'email' && <Separator title={t('schedule.frequency', 'Fréquence')} />}
+                {/* Carte 3: Fréquence */}
+                <div style={{ marginTop: '20px' }}>
+                  <Card>
+                    <div style={{ padding: '20px' }}>
+                      <div style={{ marginBottom: '20px' }}>
+                        <Text variant="headingLg" as="h2" fontWeight="bold">
+                          {t('schedule.frequency', 'Fréquence')}
+                        </Text>
+                      </div>
 
-                    {/* Right Column - Frequency Settings */}
+                    {/* Frequency Settings */}
                     <div>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         <Text variant="headingMd" as="h2">{t('schedule.frequency', 'Fréquence')}</Text>
@@ -1337,39 +1361,40 @@ export default function ScheduleReport() {
                           </p>
                         </Banner>
                       )}
-
-                    {/* Bottom Buttons */}
-                    <div style={{ marginTop: '32px' }}>
-                      <LegacyStack distribution="equalSpacing">
-                          <BiBtn
-                            title={t('action.cancel', 'Annuler')}
-                            onClick={() => navigate('/app/dashboard')}
-                          />
-                        <LegacyStack spacing="tight">
-                          <div style={{ minWidth: 160 }}>
-                            {/* Le bouton de génération redirige vers la page de génération */}
-                            <BiSimpleBtn
-                              title={t('action.generateReport', 'Générer un rapport')}
-                              icon={<Icon source={OrderIcon} tone="inherit" />}
-                              onClick={() => navigate('/app/reports/manual-export')}
-                            />
-                          </div>
-                          <div style={{ minWidth: 160 }}>
-                            <BiSimpleBtn
-                              title={t('action.scheduleAutomatically', 'Planifier automatiquement')}
-                              icon={<Icon source={CalendarIcon} tone="inherit" />}
-                              onClick={() => {
-                                setActionType('schedule');
-                                handleSchedule(new Event('submit') as any);
-                              }}
-                            />
-                          </div>
-                        </LegacyStack>
-                      </LegacyStack>
                     </div>
-                  </FormLayout>
-                </form>
-              </Card>
+                  </Card>
+                </div>
+
+                {/* Bottom Buttons */}
+                <div style={{ marginTop: '32px' }}>
+                  <LegacyStack distribution="equalSpacing">
+                      <BiBtn
+                        title={t('action.cancel', 'Annuler')}
+                        onClick={() => navigate('/app/dashboard')}
+                      />
+                    <LegacyStack spacing="tight">
+                      <div style={{ minWidth: 160 }}>
+                        {/* Le bouton de génération redirige vers la page de génération */}
+                        <BiSimpleBtn
+                          title={t('action.generateReport', 'Générer un rapport')}
+                          icon={<Icon source={OrderIcon} tone="inherit" />}
+                          onClick={() => navigate('/app/reports/manual-export')}
+                        />
+                      </div>
+                      <div style={{ minWidth: 160 }}>
+                        <BiSimpleBtn
+                          title={t('action.scheduleAutomatically', 'Planifier automatiquement')}
+                          icon={<Icon source={CalendarIcon} tone="inherit" />}
+                          onClick={() => {
+                            setActionType('schedule');
+                            handleSchedule(new Event('submit') as any);
+                          }}
+                        />
+                      </div>
+                    </LegacyStack>
+                  </LegacyStack>
+                </div>
+              </form>
             </Layout.Section>
             <Layout.Section>
               <Footer />

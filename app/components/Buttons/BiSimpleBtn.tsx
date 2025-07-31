@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { PlusIcon } from "@shopify/polaris-icons";
 
 export const BiSimpleBtn = ({ 
@@ -19,14 +19,28 @@ export const BiSimpleBtn = ({
   [key: string]: any;
 }) => {
     const [hover, setHover] = useState(false);
+    const [isSmallScreen, setIsSmallScreen] = useState(false);
+    const [isVerySmallScreen, setIsVerySmallScreen] = useState(false);
+
+    useEffect(() => {
+        const checkScreenSize = () => {
+            setIsSmallScreen(window.innerWidth <= 768);
+            setIsVerySmallScreen(window.innerWidth <= 480);
+        };
+        
+        checkScreenSize();
+        window.addEventListener('resize', checkScreenSize);
+        return () => window.removeEventListener('resize', checkScreenSize);
+    }, []);
+
     return (
         <div
             style={{
                 position: 'relative',
                 display: 'inline-block',
-                minWidth: 200,
-                maxWidth: 320,
-                margin: '0 8px',
+                minWidth: isVerySmallScreen ? 140 : isSmallScreen ? 160 : 200,
+                maxWidth: isVerySmallScreen ? 200 : isSmallScreen ? 280 : 320,
+                margin: isVerySmallScreen ? '0 4px' : isSmallScreen ? '0 6px' : '0 8px',
                 ...style,
             }}
         >
@@ -36,7 +50,7 @@ export const BiSimpleBtn = ({
                 disabled={disabled}
                 {...props}
                 style={{
-                    fontSize: 17,
+                    fontSize: isVerySmallScreen ? 14 : isSmallScreen ? 15 : 17,
                     borderRadius: 12,
                     background: disabled ? '#cccccc' : '#0066FF',
                     color: 'rgb(218, 218, 218)',
@@ -46,8 +60,8 @@ export const BiSimpleBtn = ({
                     cursor: disabled ? 'not-allowed' : 'pointer',
                     position: 'relative',
                     overflow: 'hidden',
-                    minHeight: 40,
-                    minWidth: 80,
+                    minHeight: isVerySmallScreen ? 36 : 40,
+                    minWidth: isVerySmallScreen ? 60 : 80,
                     display: 'inline-flex',
                     transition: 'background 0.18s cubic-bezier(.4,0,.2,1)',
                     opacity: disabled ? 0.6 : 1,
@@ -68,13 +82,13 @@ export const BiSimpleBtn = ({
                 <span
                     style={{
                         borderRadius: 10,
-                        paddingInline: '1.3em',
-                        paddingBlock: '0.8em',
+                        paddingInline: isVerySmallScreen ? '1em' : isSmallScreen ? '1.2em' : '1.3em',
+                        paddingBlock: isVerySmallScreen ? '0.6em' : isSmallScreen ? '0.7em' : '0.8em',
                         textShadow: '0px 0px 20px #4b4b4b',
                         width: '100%',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 12,
+                        gap: isVerySmallScreen ? 8 : isSmallScreen ? 10 : 12,
                         color: '#fff',
                         transition: 'all 0.3s',
                         backgroundColor: disabled ? '#cccccc' : (hover ? '#0052cc' : '#0066FF'),
@@ -84,7 +98,7 @@ export const BiSimpleBtn = ({
                     }}
                 >
                     {icon}
-                {title}
+                    {title}
                 </span>
             </button>
         </div>

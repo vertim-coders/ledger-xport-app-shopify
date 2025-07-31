@@ -1,9 +1,29 @@
 import { useState, useMemo, useCallback } from 'react';
-import { Card, DataTable, Badge, Button, TextField, Select, Checkbox, Text, InlineStack, Icon, BlockStack, Modal, Popover, Page, Toast } from '@shopify/polaris';
+import { Card, DataTable, Badge, Button, TextField, Select, Text, InlineStack, Icon, BlockStack, Modal, Popover, Page, Toast } from '@shopify/polaris';
 import { BiSimpleBtn } from '../components/Buttons/BiSimpleBtn';
-import { CalendarIcon } from '@shopify/polaris-icons';
+import { BluePolarisCheckbox } from '../components/Buttons/BluePolarisCheckbox';
+import { CalendarIcon, ChevronDownIcon, ChevronUpIcon } from '@shopify/polaris-icons';
 import { useTranslation } from 'react-i18next';
 import Footer from '../components/Footer';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import {
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 // HelpIcon Component
 const HelpIcon = ({ description }: { description: string }) => {
@@ -47,6 +67,62 @@ const HelpIcon = ({ description }: { description: string }) => {
   );
 };
 
+// SortableItem Component for drag and drop
+const SortableItem = ({ id, index, children }: { id: string; index: number; children: React.ReactNode }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        ...style,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        padding: '12px',
+        marginBottom: '8px',
+        backgroundColor: '#fff',
+        border: '1px solid #d1d5db',
+        borderRadius: '8px',
+        cursor: 'grab',
+        userSelect: 'none',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+        transition: 'all 0.2s',
+        position: 'relative',
+      }}
+      {...attributes}
+      {...listeners}
+    >
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '4px',
+        color: '#6b7280',
+        fontSize: '12px',
+        fontWeight: 'bold',
+        minWidth: '20px'
+      }}>
+        {index + 1}
+      </div>
+      <Icon source="drag-handle" tone="subdued" />
+      {children}
+    </div>
+  );
+};
+
 export default function InvoiceTestPage() {
   const { t } = useTranslation();
   const [selectedTemplate, setSelectedTemplate] = useState<number>(1);
@@ -68,11 +144,20 @@ export default function InvoiceTestPage() {
   const [columnOrder, setColumnOrder] = useState<string[]>([]);
   const [customerExportFormat, setCustomerExportFormat] = useState<'CSV' | 'XLSX' | 'JSON'>('CSV');
   const [isCustomerExporting, setIsCustomerExporting] = useState(false);
+  const [showColumnOrder, setShowColumnOrder] = useState(false);
 
   // Toast States
   const [toastActive, setToastActive] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [toastError, setToastError] = useState(false);
+
+  // DnD Kit sensors - must be called unconditionally
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Templates data
   const templates = Array.from({ length: 9 }, (_, i) => ({
@@ -180,9 +265,17 @@ export default function InvoiceTestPage() {
   // Customer Export Functions
   const handleCustomerExport = async () => {
     try {
+      // Validation de la période de sélection
+      if (!customerDateFrom && !customerDateTo) {
+        setToastMessage(t('customer.export.error.selectPeriod'));
+        setToastError(true);
+        setToastActive(true);
+        return;
+      }
+
       // Validation des colonnes sélectionnées
       if (selectedColumns.length === 0) {
-        setToastMessage(t('invoice.export.error.selectColumns'));
+        setToastMessage(t('customer.export.error.selectColumns'));
         setToastError(true);
         setToastActive(true);
         return;
@@ -274,12 +367,15 @@ export default function InvoiceTestPage() {
   // Fonction pour gérer la sélection/désélection des colonnes
   const handleColumnToggle = useCallback((columnValue: string, checked: boolean) => {
     if (checked) {
+      // Ajouter la colonne
       setSelectedColumns(prev => {
+        if (prev.includes(columnValue)) return prev; // Éviter les doublons
         const newColumns = [...prev, columnValue];
         setColumnOrder(prevOrder => [...prevOrder, columnValue]);
         return newColumns;
       });
     } else {
+      // Retirer la colonne
       setSelectedColumns(prev => {
         const newColumns = prev.filter(col => col !== columnValue);
         setColumnOrder(prevOrder => prevOrder.filter(col => col !== columnValue));
@@ -292,6 +388,20 @@ export default function InvoiceTestPage() {
   const handleColumnReorder = useCallback((newOrder: string[]) => {
     setColumnOrder(newOrder);
   }, []);
+
+  // Fonction pour gérer le drag and drop
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id) {
+      const currentOrder = columnOrder.length > 0 ? columnOrder : selectedColumns;
+      const oldIndex = currentOrder.indexOf(active.id as string);
+      const newIndex = currentOrder.indexOf(over?.id as string);
+
+      const newOrder = arrayMove(currentOrder, oldIndex, newIndex);
+      setColumnOrder(newOrder);
+    }
+  }, [columnOrder, selectedColumns]);
 
   // Données d'exemple pour le tableau de prévisualisation
   const sampleCustomers = useMemo(() => [
@@ -862,7 +972,6 @@ export default function InvoiceTestPage() {
           {exportType === 'customer' && (
             <>
               {/* Filters */}
-              <div style={{ maxWidth: 1000, margin: '0 auto' }}>
               <Card>
                 <div style={{ padding: '20px', alignItems: 'center' }}>
                   <BlockStack gap="400">
@@ -1073,9 +1182,9 @@ export default function InvoiceTestPage() {
                   </BlockStack>
                 </div>
               </Card>
-              </div>
 
               {/* Columns Selection */}
+              <div style={{ marginBottom: '20px' }}>
               <Card>
                 <div style={{ padding: '20px' }}>
                   <BlockStack gap="400">
@@ -1102,6 +1211,7 @@ export default function InvoiceTestPage() {
                       </InlineStack>
                     </InlineStack>
                     
+                    {/* Available columns grid */}
                     <div style={{
                       display: 'grid',
                       gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
@@ -1129,183 +1239,122 @@ export default function InvoiceTestPage() {
                           }}
                           onClick={() => handleColumnToggle(column.value, !selectedColumns.includes(column.value))}
                         >
-                          <Checkbox
-                            label=""
+                          <BluePolarisCheckbox
+                            label={column.label}
                             checked={selectedColumns.includes(column.value)}
-                            onChange={(checked) => handleColumnToggle(column.value, checked)}
+                            onChange={(checked: boolean) => handleColumnToggle(column.value, checked)}
                           />
-                          <Text variant="bodyMd" as="span">
-                            {column.label}
-                          </Text>
                         </div>
                       ))}
                     </div>
-                  </BlockStack>
-                </div>
-              </Card>
 
-              {/* Column Order */}
-              {selectedColumns.length > 0 && (
-                <div style={{ padding: '20px' }}>
-                  <BlockStack gap="400">
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', alignItems: 'center' }}>
-                        <Text variant="headingMd" as="h2">
-                          {t('customer.export.columnOrder')}
-                        </Text>
-                        <HelpIcon description={t('customer.export.columnOrderHelp')} />
-                      </div>
-                      <Text variant="bodySm" as="span" tone="subdued">
-                        {selectedColumns.length} {t('customer.export.selectedColumns')}
-                      </Text>
-                    </div>
-                    
-                    <div 
-                      style={{
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: '8px',
-                        padding: '16px',
-                        border: '2px dashed #d1d5db',
-                        borderRadius: '8px',
-                        background: '#f9fafb',
-                        minHeight: '80px',
-                        transition: 'all 0.2s'
-                      }}
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        e.currentTarget.style.borderColor = '#2563eb';
-                        e.currentTarget.style.background = '#eff6ff';
-                      }}
-                      onDragLeave={(e) => {
-                        e.currentTarget.style.borderColor = '#d1d5db';
-                        e.currentTarget.style.background = '#f9fafb';
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        e.currentTarget.style.borderColor = '#d1d5db';
-                        e.currentTarget.style.background = '#f9fafb';
-                      }}
-                    >
-                      {(columnOrder.length > 0 ? columnOrder : selectedColumns).map((columnValue, index) => {
-                        const column = availableColumns.find(col => col.value === columnValue);
-                        return (
-                          <div
-                            key={columnValue}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                              padding: '10px 14px',
-                              backgroundColor: '#fff',
-                              border: '1px solid #d1d5db',
-                              borderRadius: '8px',
-                              cursor: 'grab',
-                              userSelect: 'none',
-                              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                              transition: 'all 0.2s',
-                              position: 'relative'
-                            }}
-                            draggable
-                            onDragStart={(e) => {
-                              e.dataTransfer.setData('text/plain', columnValue);
-                              e.dataTransfer.setData('text/html', index.toString());
-                              e.currentTarget.style.opacity = '0.5';
-                              e.currentTarget.style.transform = 'rotate(5deg)';
-                            }}
-                            onDragEnd={(e) => {
-                              e.currentTarget.style.opacity = '1';
-                              e.currentTarget.style.transform = 'rotate(0deg)';
-                            }}
-                            onDragOver={(e) => {
-                              e.preventDefault();
-                              e.currentTarget.style.borderColor = '#2563eb';
-                              e.currentTarget.style.boxShadow = '0 4px 8px rgba(37, 99, 235, 0.2)';
-                            }}
-                            onDragLeave={(e) => {
-                              e.currentTarget.style.borderColor = '#d1d5db';
-                              e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-                            }}
-                            onDrop={(e) => {
-                              e.preventDefault();
-                              e.currentTarget.style.borderColor = '#d1d5db';
-                              e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-                              
-                              const draggedColumn = e.dataTransfer.getData('text/plain');
-                              const draggedIndex = parseInt(e.dataTransfer.getData('text/html'));
-                              const currentIndex = (columnOrder.length > 0 ? columnOrder : selectedColumns).indexOf(columnValue);
-                              
-                              if (draggedIndex !== currentIndex) {
-                                const currentOrder = columnOrder.length > 0 ? [...columnOrder] : [...selectedColumns];
-                                const [removed] = currentOrder.splice(draggedIndex, 1);
-                                currentOrder.splice(currentIndex, 0, removed);
-                                setColumnOrder(currentOrder);
-                              }
-                            }}
-                          >
-                            <div style={{ 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              gap: '4px',
-                              color: '#6b7280',
-                              fontSize: '12px'
-                            }}>
-                              <span style={{ fontWeight: 'bold' }}>{index + 1}</span>
-                              <Icon source="drag-handle" tone="subdued" />
-                            </div>
-                            <Text variant="bodyMd" as="span" fontWeight="medium">
-                              {column?.label || columnValue}
+                    {/* Selected columns with drag and drop */}
+                    {selectedColumns.length > 0 && (
+                      <div style={{ marginTop: '20px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <Text variant="headingSm" as="h3">
+                              {t('customer.export.columnOrder')}
                             </Text>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleColumnToggle(columnValue, false);
-                              }}
-                              style={{
-                                background: 'none',
-                                border: 'none',
-                                cursor: 'pointer',
-                                padding: '4px',
-                                borderRadius: '50%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: '#ef4444',
-                                fontSize: '14px',
-                                width: '20px',
-                                height: '20px',
-                                transition: 'all 0.2s'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.background = '#fef2f2';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'transparent';
-                              }}
-                              title={t('customer.export.removeColumn')}
-                            >
-                              ×
-                            </button>
+                            <HelpIcon description={t('customer.export.columnOrderHelp')} />
+                            <span style={{ marginLeft: '8px' }}>
+                              <Text variant="bodySm" as="span" tone="subdued">
+                                ({selectedColumns.length} {t('customer.export.selectedColumns')})
+                              </Text>
+                            </span>
                           </div>
-                        );
-                      })}
-                    </div>
-                    
-                    {selectedColumns.length === 0 && (
-                      <div style={{
-                        textAlign: 'center',
-                        padding: '20px',
-                        color: '#6b7280',
-                        fontStyle: 'italic'
-                      }}>
-                        {t('customer.export.selectColumnsToReorder')}
+                          <Button
+                            size="slim"
+                            onClick={() => setShowColumnOrder(!showColumnOrder)}
+                            icon={showColumnOrder ? ChevronUpIcon : ChevronDownIcon}
+                          >
+                            {showColumnOrder ? t('customer.export.collapseColumns') : t('customer.export.toggleColumns')}
+                          </Button>
+                        </div>
+                        
+                        {showColumnOrder && (
+                          <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={handleDragEnd}
+                          >
+                          <SortableContext
+                            items={columnOrder.length > 0 ? columnOrder : selectedColumns}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            <div style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '8px',
+                              padding: '16px',
+                              border: '2px dashed #d1d5db',
+                              borderRadius: '8px',
+                              background: '#f9fafb',
+                              minHeight: '80px'
+                            }}>
+                              {(columnOrder.length > 0 ? columnOrder : selectedColumns).map((columnValue, index) => {
+                                const column = availableColumns.find(col => col.value === columnValue);
+                                return (
+                                  <SortableItem
+                                    key={columnValue}
+                                    id={columnValue}
+                                    index={index}
+                                  >
+                                    <div style={{ 
+                                      display: 'flex', 
+                                      alignItems: 'center', 
+                                      gap: '8px',
+                                      flex: 1
+                                    }}>
+                                      <Text variant="bodyMd" as="span" fontWeight="medium">
+                                        {column?.label || columnValue}
+                                      </Text>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleColumnToggle(columnValue, false);
+                                        }}
+                                        style={{
+                                          background: 'none',
+                                          border: 'none',
+                                          cursor: 'pointer',
+                                          padding: '4px',
+                                          borderRadius: '50%',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          color: '#ef4444',
+                                          fontSize: '14px',
+                                          width: '20px',
+                                          height: '20px',
+                                          transition: 'all 0.2s',
+                                          marginLeft: 'auto'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                          e.currentTarget.style.background = '#fef2f2';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          e.currentTarget.style.background = 'transparent';
+                                        }}
+                                        title={t('customer.export.removeColumn')}
+                                      >
+                                        ×
+                                      </button>
+                                    </div>
+                                  </SortableItem>
+                                );
+                              })}
+                            </div>
+                          </SortableContext>
+                        </DndContext>
+                        )}
                       </div>
                     )}
                   </BlockStack>
                 </div>
-              )}
-
-                             {/* Table Preview */}
+              </Card>
+              </div>
+               {/* Table Preview */}
                {selectedColumns.length > 0 && (
                  <div style={{ marginTop: '-25px' }}>
                    <Card>
@@ -1339,7 +1388,7 @@ export default function InvoiceTestPage() {
                             )}
                             sortable={tableHeaders.map(() => false)}
                           />
-                                                 </div>
+                        </div>
                        )}
                      </BlockStack>
                    </div>

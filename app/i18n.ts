@@ -34,7 +34,7 @@ const resources = {
       'actions.pause': 'Pause',
       'actions.delete': 'Supprimer',
       'actions.cancel': 'Annuler',
-      'action.newReport': 'Générer un nouveau rapport',
+      'action.newReport': 'Générer un rapport',
       'action.scheduleReport': 'Planifier un rapport',
       'action.customReport': 'Rapport personnalisé',
       'action.invoice': 'Factures et Clients',
@@ -482,13 +482,15 @@ const resources = {
       'customer.export.columnsToExportHelp': 'Sélectionnez les colonnes que vous souhaitez inclure dans votre export. Vous pouvez tout sélectionner ou choisir uniquement les colonnes nécessaires.',
       'customer.export.selectAll': 'Tout sélectionner',
       'customer.export.reset': 'Réinitialiser',
-      'customer.export.columnOrder': 'Ordre des colonnes',
+      'customer.export.columnOrder': 'Trier les colonne',
       'customer.export.columnOrderHelp': 'Glissez-déposez les colonnes pour les réorganiser selon vos besoins. L\'ordre défini ici sera respecté dans l\'export.',
       'customer.export.selectedColumns': 'colonne(s) sélectionnée(s)',
       'customer.export.removeColumn': 'Retirer cette colonne',
       'customer.export.selectColumnsToReorder': 'Sélectionnez des colonnes ci-dessus pour les réorganiser ici',
       'customer.export.dataPreview': 'Aperçu des données',
       'customer.export.dataPreviewHelp': 'Aperçu des données qui seront exportées selon l\'ordre des colonnes défini ci-dessus.',
+      'customer.export.toggleColumns': 'Déplier pour ordonner les colonnes',
+      'customer.export.collapseColumns': 'Replier la liste des colonnes',
       'customer.export.exampleRows': 'ligne(s) d\'exemple',
       'customer.export.exporting': 'Export en cours...',
       'customer.export.exportNow': 'Exporter maintenant',
@@ -498,6 +500,7 @@ const resources = {
       'customer.export.search': 'Recherche',
       'customer.export.format': 'Format',
       'customer.export.error.selectColumns': '❌ Veuillez sélectionner au moins une colonne à exporter',
+      'customer.export.error.selectPeriod': '❌ Veuillez sélectionner une période (date de début et/ou date de fin)',
 
       // Customer Columns
       'customer.columns.firstName': 'Prénom',
@@ -529,7 +532,30 @@ const resources = {
       // Common
       'common.help': 'Aide',
       'common.yes': 'Oui',
-      'common.no': 'Non'
+      'common.no': 'Non',
+
+      // Invoice Customization
+      'invoice.customization.title': 'Personnalisation des factures',
+      'invoice.customization.companyLogo': 'Logo de l\'entreprise',
+      'invoice.customization.uploadLogo': 'Télécharger votre logo',
+      'invoice.customization.uploadLogoHelp': 'PNG, JPG, SVG - Max 5MB. Le logo sera affiché avec une taille optimale sur vos factures.',
+      'invoice.customization.uploading': 'Téléchargement en cours...',
+      'invoice.customization.logoPreview': 'Aperçu du logo :',
+      'invoice.customization.loadingError': 'Erreur de chargement',
+      'invoice.customization.companyInfo': 'Informations de l\'entreprise',
+      'invoice.customization.companyName': 'Nom de l\'entreprise',
+      'invoice.customization.companyNamePlaceholder': 'Nom de votre entreprise',
+      'invoice.customization.companyNameHelp': 'Ce nom apparaîtra sur vos factures',
+      'invoice.customization.address': 'Adresse',
+      'invoice.customization.addressPlaceholder': 'Adresse complète de votre entreprise',
+      'invoice.customization.addressHelp': 'Adresse qui apparaîtra sur vos factures',
+      'invoice.customization.phone': 'Téléphone',
+      'invoice.customization.phonePlaceholder': '+33 1 23 45 67 89',
+      'invoice.customization.phoneHelp': 'Numéro de téléphone de contact',
+      'invoice.customization.email': 'Email',
+      'invoice.customization.emailPlaceholder': 'contact@votreentreprise.com',
+      'invoice.customization.emailHelp': 'Adresse email de contact',
+      'invoice.customization.saveCustomization': 'Sauvegarder la personnalisation'
     }
   },
   en: {
@@ -563,7 +589,7 @@ const resources = {
       'actions.pause': 'Pause',
       'actions.delete': 'Delete',
       'actions.cancel': 'Cancel',
-      'action.newReport': 'Generate new report',
+      'action.newReport': 'Generate report',
       'action.scheduleReport': 'Schedule a report',
       'action.customReport': 'Custom report',
       'action.invoice': 'Invoices & Customers',
@@ -1009,13 +1035,15 @@ const resources = {
       'customer.export.columnsToExportHelp': 'Select the columns you want to include in your export. You can select all or choose only the necessary columns.',
       'customer.export.selectAll': 'Select all',
       'customer.export.reset': 'Reset',
-      'customer.export.columnOrder': 'Column order',
+      'customer.export.columnOrder': 'Sort columns',
       'customer.export.columnOrderHelp': 'Drag and drop columns to reorganize them according to your needs. The order defined here will be respected in the export.',
       'customer.export.selectedColumns': 'selected column(s)',
       'customer.export.removeColumn': 'Remove this column',
       'customer.export.selectColumnsToReorder': 'Select columns above to reorganize them here',
       'customer.export.dataPreview': 'Data preview',
       'customer.export.dataPreviewHelp': 'Preview of the data that will be exported according to the column order defined above.',
+      'customer.export.toggleColumns': 'Expand to reorder columns',
+      'customer.export.collapseColumns': 'Collapse column list',
       'customer.export.exampleRows': 'example row(s)',
       'customer.export.exporting': 'Exporting...',
       'customer.export.exportNow': 'Export now',
@@ -1025,6 +1053,7 @@ const resources = {
       'customer.export.search': 'Search',
       'customer.export.format': 'Format',
       'customer.export.error.selectColumns': '❌ Please select at least one column to export',
+      'customer.export.error.selectPeriod': '❌ Please select a period (start date and/or end date)',
 
       // Customer Columns
       'customer.columns.firstName': 'First name',
@@ -1056,7 +1085,30 @@ const resources = {
       // Common
       'common.help': 'Help',
       'common.yes': 'Yes',
-      'common.no': 'No'
+      'common.no': 'No',
+
+      // Invoice Customization
+      'invoice.customization.title': 'Invoice Customization',
+      'invoice.customization.companyLogo': 'Company Logo',
+      'invoice.customization.uploadLogo': 'Upload your logo',
+      'invoice.customization.uploadLogoHelp': 'PNG, JPG, SVG - Max 5MB. The logo will be displayed with optimal size on your invoices.',
+      'invoice.customization.uploading': 'Uploading...',
+      'invoice.customization.logoPreview': 'Logo preview:',
+      'invoice.customization.loadingError': 'Loading error',
+      'invoice.customization.companyInfo': 'Company Information',
+      'invoice.customization.companyName': 'Company Name',
+      'invoice.customization.companyNamePlaceholder': 'Your company name',
+      'invoice.customization.companyNameHelp': 'This name will appear on your invoices',
+      'invoice.customization.address': 'Address',
+      'invoice.customization.addressPlaceholder': 'Complete address of your company',
+      'invoice.customization.addressHelp': 'Address that will appear on your invoices',
+      'invoice.customization.phone': 'Phone',
+      'invoice.customization.phonePlaceholder': '+1 555 123 4567',
+      'invoice.customization.phoneHelp': 'Contact phone number',
+      'invoice.customization.email': 'Email',
+      'invoice.customization.emailPlaceholder': 'contact@yourcompany.com',
+      'invoice.customization.emailHelp': 'Contact email address',
+      'invoice.customization.saveCustomization': 'Save customization'
     }
   },
   es: {
@@ -1128,7 +1180,7 @@ const resources = {
       'actions.pause': 'Pausar',
       'actions.delete': 'Eliminar',
       'actions.cancel': 'Cancelar',
-      'action.newReport': 'Generar nuevo informe',
+      'action.newReport': 'Generar un informe',
       'action.scheduleReport': 'Programar un informe',
       'action.customReport': 'Informe personalizado',
       'action.invoice': 'Facturas y Clientes',
@@ -1533,13 +1585,15 @@ const resources = {
       'customer.export.columnsToExportHelp': 'Selecciona las columnas que quieres incluir en tu exportación. Puedes seleccionar todo o elegir solo las columnas necesarias.',
       'customer.export.selectAll': 'Seleccionar todo',
       'customer.export.reset': 'Restablecer',
-      'customer.export.columnOrder': 'Orden de las columnas',
+      'customer.export.columnOrder': 'Ordenar columnas',
       'customer.export.columnOrderHelp': 'Arrastra y suelta las columnas para reorganizarlas según tus necesidades. El orden definido aquí se respetará en la exportación.',
       'customer.export.selectedColumns': 'columna(s) seleccionada(s)',
       'customer.export.removeColumn': 'Quitar esta columna',
       'customer.export.selectColumnsToReorder': 'Selecciona columnas arriba para reorganizarlas aquí',
       'customer.export.dataPreview': 'Vista previa de datos',
       'customer.export.dataPreviewHelp': 'Vista previa de los datos que se exportarán según el orden de columnas definido arriba.',
+      'customer.export.toggleColumns': 'Expandir para reordenar columnas',
+      'customer.export.collapseColumns': 'Contraer lista de columnas',
       'customer.export.exampleRows': 'fila(s) de ejemplo',
       'customer.export.exporting': 'Exportando...',
       'customer.export.exportNow': 'Exportar ahora',
@@ -1549,6 +1603,7 @@ const resources = {
       'customer.export.search': 'Buscar',
       'customer.export.format': 'Formato',
       'customer.export.error.selectColumns': '❌ Por favor, selecciona al menos una columna para exportar',
+      'customer.export.error.selectPeriod': '❌ Por favor, selecciona un período (fecha de inicio y/o fecha de fin)',
 
       // Customer Columns
       'customer.columns.firstName': 'Nombre',
@@ -1580,7 +1635,30 @@ const resources = {
       // Common
       'common.help': 'Ayuda',
       'common.yes': 'Sí',
-      'common.no': 'No'
+      'common.no': 'No',
+
+      // Invoice Customization
+      'invoice.customization.title': 'Personalización de Facturas',
+      'invoice.customization.companyLogo': 'Logo de la Empresa',
+      'invoice.customization.uploadLogo': 'Subir tu logo',
+      'invoice.customization.uploadLogoHelp': 'PNG, JPG, SVG - Máx 5MB. El logo se mostrará con tamaño óptimo en tus facturas.',
+      'invoice.customization.uploading': 'Subiendo...',
+      'invoice.customization.logoPreview': 'Vista previa del logo:',
+      'invoice.customization.loadingError': 'Error de carga',
+      'invoice.customization.companyInfo': 'Información de la Empresa',
+      'invoice.customization.companyName': 'Nombre de la Empresa',
+      'invoice.customization.companyNamePlaceholder': 'Nombre de tu empresa',
+      'invoice.customization.companyNameHelp': 'Este nombre aparecerá en tus facturas',
+      'invoice.customization.address': 'Dirección',
+      'invoice.customization.addressPlaceholder': 'Dirección completa de tu empresa',
+      'invoice.customization.addressHelp': 'Dirección que aparecerá en tus facturas',
+      'invoice.customization.phone': 'Teléfono',
+      'invoice.customization.phonePlaceholder': '+34 91 123 45 67',
+      'invoice.customization.phoneHelp': 'Número de teléfono de contacto',
+      'invoice.customization.email': 'Email',
+      'invoice.customization.emailPlaceholder': 'contacto@tuempresa.com',
+      'invoice.customization.emailHelp': 'Dirección de email de contacto',
+      'invoice.customization.saveCustomization': 'Guardar personalización'
     }
   }
 };

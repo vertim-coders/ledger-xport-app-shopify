@@ -85,7 +85,7 @@ const settingsItem = {
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  // Gestion de l’overlay mobile
+  // Gestion de l'overlay mobile
   const showSidebar = !isMobile || open;
 
   return (
@@ -146,117 +146,137 @@ const settingsItem = {
           </span>
         </div>
         <Divider borderColor="border" />
-        <div style={{ padding: isVeryShort ? '4px 16px 0 16px' : isShort ? '8px 20px 0 20px' : '12px 32px 0 32px', textAlign: 'center' }}>
-          <span style={{ fontSize: 12, letterSpacing: 0.5 }}>
-            <Text as="span" variant="bodySm" tone="subdued">{t('sidebar.mainMenu', 'Menu principal')}</Text>
-          </span>
-        </div>
-        {/* Menu vertical */}
-        <ul style={{
-          flex: 1,
+        
+        {/* Section Menu principal avec scroll */}
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          flex: 1, 
           minHeight: 0,
-          margin: 0,
-          marginTop: 25,
-          padding: isVeryShort ? "12px 0 0 0" : isShort ? "18px 0 0 0" : "32px 0 0 0",
-          listStyle: "none",
-          display: "flex",
-          flexDirection: "column",
-          gap: isVeryShort ? 4 : isShort ? 8 : 12,
-          overflow: 'hidden',
+          overflow: 'hidden'
         }}>
-          {navigationItems.map((item) => (
-            <li key={item.label} style={{ width: "100%" }}>
-              <button
-                style={{
-                  width: "100%",
-                  background: isActive(item.url) ? "#fff" : "none",
-                  border: "none",
-                  color: isActive(item.url) ? "#0066FF" : "#000000",
-                  display: "flex",
-                  alignItems: "center",
-                  marginBottom: 5,
-                  gap: isVeryShort ? 6 : isShort ? 10 : 16,
-                  padding: isVeryShort ? "8px 16px" : isShort ? "12px 20px" : "18px 32px",
-                  borderRadius: "10px 0px 0px 10px",
-                  cursor: "pointer",
-                  fontSize: isVeryShort ? 12 : isShort ? 14 : 15,
-                  fontWeight: 500,
-                  transition: "background 0.2s, color 0.2s",
-                }}
-                onClick={() => {
-                  navigate(item.url);
-                  if (isMobile && onClose) onClose();
-                }}
-                onMouseOver={e => {
-                  if (!isActive(item.url)) e.currentTarget.style.background = "rgba(0,0,0,0.06)";
-                }}
-                onMouseOut={e => {
-                  if (!isActive(item.url)) e.currentTarget.style.background = "none";
-                }}
-              >
-                <Icon source={item.icon} tone={isActive(item.url) ? "base" : "subdued"} />
-                <span style={{
-                  flex: 1,
-                  textAlign: "left",
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  display: "block",
-                  maxWidth: "100%"
-                }}>{item.label}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-        {/* Séparateur et bouton Paramètres généraux */}
-        <Divider borderColor="border" />
-        <div style={{ padding: isVeryShort ? '4px 16px 0 16px' : isShort ? '8px 20px 0 20px' : '12px 32px 0 32px', textAlign: 'center' }}>
-          <span style={{ fontSize: 12, letterSpacing: 0.5 }}>
-            <Text as="span" variant="bodySm" tone="subdued">{t('sidebar.support', 'Aide et support')}</Text>
-          </span>
-        </div>
-        <div style={{ marginTop: 30 }}>
-          <button
-            style={{
-              width: "100%",
-              marginBottom: 80,
-              background: isActive(settingsItem.url) ? "#fff" : "none",
-              border: "none",
-              color: isActive(settingsItem.url) ? "#0066FF" : "#000000",
+          <div style={{ padding: isVeryShort ? '4px 16px 0 16px' : isShort ? '8px 20px 0 20px' : '12px 32px 0 32px', textAlign: 'center', flexShrink: 0 }}>
+            <span style={{ fontSize: 12, letterSpacing: 0.5 }}>
+              <Text as="span" variant="bodySm" tone="subdued">{t('sidebar.mainMenu', 'Menu principal')}</Text>
+            </span>
+          </div>
+          
+          {/* Menu vertical avec scroll */}
+          <div style={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            padding: isVeryShort ? "12px 0 0 0" : isShort ? "18px 0 0 0" : "32px 0 0 0",
+          }}>
+            <ul style={{
+              margin: 0,
+              marginTop: 25,
+              padding: 0,
+              listStyle: "none",
               display: "flex",
-              alignItems: "center",
-              gap: isVeryShort ? 6 : isShort ? 10 : 16,
-              padding: isVeryShort ? "8px 16px" : isShort ? "12px 20px" : "18px 32px",
-              borderRadius: "10px 0px 0px 10px",
-              cursor: "pointer",
-              fontSize: isVeryShort ? 12 : isShort ? 14 : 15,
-              fontWeight: 500,
-              transition: "background 0.2s, color 0.2s",
-            }}
-            onClick={() => {
-              navigate(settingsItem.url);
-              if (isMobile && onClose) onClose();
-            }}
-            onMouseOver={e => {
-              if (!isActive(settingsItem.url)) e.currentTarget.style.background = "rgba(0,0,0,0.06)";
-            }}
-            onMouseOut={e => {
-              if (!isActive(settingsItem.url)) e.currentTarget.style.background = "none";
-            }}
-          >
-            <Icon source={settingsItem.icon} tone={isActive(settingsItem.url) ? "base" : "subdued"} />
-            <span style={{
-              flex: 1,
-              textAlign: "left",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              display: "block",
-              maxWidth: "100%"
-            }}>{settingsItem.label}</span>
-          </button>
+              flexDirection: "column",
+              gap: isVeryShort ? 4 : isShort ? 8 : 12,
+            }}>
+              {navigationItems.map((item) => (
+                <li key={item.label} style={{ width: "100%" }}>
+                  <button
+                    style={{
+                      width: "100%",
+                      background: isActive(item.url) ? "#fff" : "none",
+                      border: "none",
+                      color: isActive(item.url) ? "#0066FF" : "#000000",
+                      display: "flex",
+                      alignItems: "center",
+                      marginBottom: 5,
+                      gap: isVeryShort ? 6 : isShort ? 10 : 16,
+                      padding: isVeryShort ? "8px 16px" : isShort ? "12px 20px" : "18px 32px",
+                      borderRadius: "10px 0px 0px 10px",
+                      cursor: "pointer",
+                      fontSize: isVeryShort ? 12 : isShort ? 14 : 15,
+                      fontWeight: 500,
+                      transition: "background 0.2s, color 0.2s",
+                    }}
+                    onClick={() => {
+                      navigate(item.url);
+                      if (isMobile && onClose) onClose();
+                    }}
+                    onMouseOver={e => {
+                      if (!isActive(item.url)) e.currentTarget.style.background = "rgba(0,0,0,0.06)";
+                    }}
+                    onMouseOut={e => {
+                      if (!isActive(item.url)) e.currentTarget.style.background = "none";
+                    }}
+                  >
+                    <Icon source={item.icon} tone={isActive(item.url) ? "base" : "subdued"} />
+                    <span style={{
+                      flex: 1,
+                      textAlign: "left",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      display: "block",
+                      maxWidth: "100%"
+                    }}>{item.label}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
-        {/* Bas supprimé : Paramètres généraux intégré au menu principal */}
+
+        {/* Section Aide et support (fixe en bas) */}
+        <div style={{ flexShrink: 0 }}>
+          <Divider borderColor="border" />
+          <div style={{ padding: isVeryShort ? '4px 16px 0 16px' : isShort ? '8px 20px 0 20px' : '12px 32px 0 32px', textAlign: 'center' }}>
+            <span style={{ fontSize: 12, letterSpacing: 0.5 }}>
+              <Text as="span" variant="bodySm" tone="subdued">{t('sidebar.support', 'Aide et support')}</Text>
+            </span>
+          </div>
+          <div style={{ 
+            padding: isVeryShort ? '8px 0 16px 0' : isShort ? '12px 0 20px 0' : '16px 0 24px 0',
+            marginBottom: isVeryShort ? 8 : isShort ? 12 : 16
+          }}>
+            <button
+              style={{
+                width: "100%",
+                background: isActive(settingsItem.url) ? "#fff" : "none",
+                border: "none",
+                color: isActive(settingsItem.url) ? "#0066FF" : "#000000",
+                display: "flex",
+                alignItems: "center",
+                gap: isVeryShort ? 6 : isShort ? 10 : 16,
+                padding: isVeryShort ? "8px 16px" : isShort ? "12px 20px" : "18px 32px",
+                borderRadius: "10px 0px 0px 10px",
+                cursor: "pointer",
+                fontSize: isVeryShort ? 12 : isShort ? 14 : 15,
+                fontWeight: 500,
+                transition: "background 0.2s, color 0.2s",
+              }}
+              onClick={() => {
+                navigate(settingsItem.url);
+                if (isMobile && onClose) onClose();
+              }}
+              onMouseOver={e => {
+                if (!isActive(settingsItem.url)) e.currentTarget.style.background = "rgba(0,0,0,0.06)";
+              }}
+              onMouseOut={e => {
+                if (!isActive(settingsItem.url)) e.currentTarget.style.background = "none";
+              }}
+            >
+              <Icon source={settingsItem.icon} tone={isActive(settingsItem.url) ? "base" : "subdued"} />
+              <span style={{
+                flex: 1,
+                textAlign: "left",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                display: "block",
+                maxWidth: "100%"
+              }}>{settingsItem.label}</span>
+            </button>
+          </div>
+        </div>
       </div>
     </>
   );

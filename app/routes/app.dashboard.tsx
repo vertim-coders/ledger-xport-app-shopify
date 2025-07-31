@@ -231,9 +231,9 @@ export default function Dashboard() {
   useEffect(() => {
     const check = () => {
       setIsMobile(window.innerWidth <= 900);
-      setIsNarrow(window.innerWidth <= 1366);
-      setIsVeryNarrow(window.innerWidth <= 600);
-      setIsTwoCol(window.innerWidth <= 1140 && window.innerWidth > 600);
+      setIsNarrow(window.innerWidth <= 1380); // Changé de 1366 à 1380
+      setIsVeryNarrow(window.innerWidth <= 480); // Changé de 600 à 480 pour les vrais mobiles
+      setIsTwoCol(window.innerWidth <= 1140 && window.innerWidth > 480);
     };
     check();
     window.addEventListener("resize", check);
@@ -392,9 +392,9 @@ export default function Dashboard() {
               gridTemplateColumns: isVeryNarrow
                 ? "1fr"
                 : isTwoCol
-                ? "4 1fr"
+                ? "repeat(2, 1fr)"
                 : isNarrow
-                ? "4 1fr"
+                ? "repeat(2, 1fr)"
                 : "repeat(4, 1fr)",
               gap: 24,
               marginBottom: 20,
@@ -438,17 +438,18 @@ export default function Dashboard() {
                 marginBottom: '0px',
                 display: 'flex',
                 flexDirection: isVeryNarrow ? 'column' : 'row',
-                gap: isVeryNarrow ? 12 : 32,
+                gap: isVeryNarrow ? 12 : 16,
                 alignItems: 'center',
                 justifyContent: 'center',
                 width: '100%',
-                overflowX: isVeryNarrow ? undefined : 'auto',
-                flexWrap: isVeryNarrow ? 'nowrap' : 'wrap',
-                minWidth: 0
+                overflowX: 'auto',
+                flexWrap: isNarrow ? 'wrap' : 'nowrap', // Pas de wrap pour les écrans > 1380px
+                minWidth: 0,
+                padding: '0 16px'
               }}
             >
               <BiSimpleBtn 
-                title={t('action.newReport', 'Générer un nouveau rapport')}
+                title={t('action.newReport', 'Générer un rapport')}
                 icon={<Icon source={OrderIcon} tone="inherit" />}
                 onClick={handleNewReport} 
               />

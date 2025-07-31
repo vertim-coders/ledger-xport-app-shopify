@@ -335,6 +335,7 @@ export default function GeneralSettings() {
   const [toastMessage, setToastMessage] = useState("");
   const [toastError, setToastError] = useState(false);
   const [testStatus, setTestStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
+  const [isLogoUploading, setIsLogoUploading] = useState(false);
 
   const actionData = useActionData<typeof action>();
 
@@ -394,6 +395,7 @@ export default function GeneralSettings() {
   };
 
   const handleLogoUpload = async (file: File) => {
+    setIsLogoUploading(true);
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -410,13 +412,22 @@ export default function GeneralSettings() {
           ...prev, 
           logoUrl: result.url 
         }));
+        setToastMessage(t('toast.logoUploadSuccess', 'Logo téléchargé avec succès'));
+        setToastError(false);
+        setToastActive(true);
       } else {
         console.error('Upload failed:', result.error);
-        // Vous pouvez ajouter une notification d'erreur ici
+        setToastMessage(t('toast.logoUploadError', 'Erreur lors du téléchargement du logo'));
+        setToastError(true);
+        setToastActive(true);
       }
     } catch (error) {
       console.error('Error uploading logo:', error);
-      // Vous pouvez ajouter une notification d'erreur ici
+      setToastMessage(t('toast.logoUploadError', 'Erreur lors du téléchargement du logo'));
+      setToastError(true);
+      setToastActive(true);
+    } finally {
+      setIsLogoUploading(false);
     }
   };
 
@@ -485,6 +496,10 @@ export default function GeneralSettings() {
           padding-right: 0 !important;
           margin-left: 0 !important;
           margin-right: 0 !important;
+        }
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
         }
       `}</style>
       <Frame>
@@ -637,11 +652,11 @@ export default function GeneralSettings() {
               <Card>
                 <div style={{ padding: 20 }}>
                   <BlockStack gap="400">
-                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
-                      <Text variant="headingMd" as="h2">
-                        Personnalisation des factures
-                      </Text>
-                    </div>
+                                         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
+                       <Text variant="headingMd" as="h2">
+                         {t('invoice.customization.title')}
+                       </Text>
+                     </div>
                     
                     <form onSubmit={handleSubmit}>
                       <FormLayout>
@@ -649,17 +664,54 @@ export default function GeneralSettings() {
                         <Card>
                           <div style={{ padding: 16 }}>
                             <BlockStack gap="400">
-                              <Text variant="headingMd" as="h3">
-                                Logo de l'entreprise
-                              </Text>
+                                                             <Text variant="headingMd" as="h3">
+                                 {t('invoice.customization.companyLogo')}
+                               </Text>
                               
-                              <FileUpload
-                                onFileSelect={handleLogoUpload}
-                                acceptedTypes={['image/*']}
-                                maxSize={5}
-                                label="Télécharger votre logo"
-                                helpText="PNG, JPG, SVG - Max 5MB. Le logo sera affiché avec une taille optimale sur vos factures."
-                              />
+                              <div style={{ position: 'relative' }}>
+                                                                 <FileUpload
+                                   onFileSelect={handleLogoUpload}
+                                   acceptedTypes={['image/*']}
+                                   maxSize={5}
+                                   label={t('invoice.customization.uploadLogo')}
+                                   helpText={t('invoice.customization.uploadLogoHelp')}
+                                   disabled={isLogoUploading}
+                                 />
+                                {isLogoUploading && (
+                                  <div style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    bottom: 0,
+                                    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    borderRadius: '8px',
+                                    zIndex: 10
+                                  }}>
+                                    <div style={{
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      alignItems: 'center',
+                                      gap: '8px'
+                                    }}>
+                                      <div style={{
+                                        width: '24px',
+                                        height: '24px',
+                                        border: '2px solid #e5e7eb',
+                                        borderTop: '2px solid #007ace',
+                                        borderRadius: '50%',
+                                        animation: 'spin 1s linear infinite'
+                                      }} />
+                                                                             <Text variant="bodySm" as="span" tone="subdued">
+                                         {t('invoice.customization.uploading')}
+                                       </Text>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
 
                               {/* Logo Preview */}
                               {invoiceCustomization.logoUrl && (
@@ -669,11 +721,11 @@ export default function GeneralSettings() {
                                   borderRadius: 8,
                                   backgroundColor: '#f6f6f7'
                                 }}>
-                                  <div style={{ marginBottom: 8 }}>
-                                    <Text variant="bodyMd" as="p" fontWeight="semibold">
-                                      Aperçu du logo :
-                                    </Text>
-                                  </div>
+                                                                     <div style={{ marginBottom: 8 }}>
+                                     <Text variant="bodyMd" as="p" fontWeight="semibold">
+                                       {t('invoice.customization.logoPreview')}
+                                     </Text>
+                                   </div>
                                   <div style={{ display: 'flex', justifyContent: 'center' }}>
                                     <img
                                       src={invoiceCustomization.logoUrl}
@@ -708,7 +760,7 @@ export default function GeneralSettings() {
                                       color: '#6b7280',
                                       fontSize: '12px'
                                     }}>
-                                      Erreur de chargement
+                                                                             {t('invoice.customization.loadingError')}
                                     </div>
                                   </div>
                                 </div>
@@ -721,58 +773,58 @@ export default function GeneralSettings() {
                         <Card>
                           <div style={{ padding: 16 }}>
                             <BlockStack gap="400">
-                              <Text variant="headingMd" as="h3">
-                                Informations de l'entreprise
-                              </Text>
+                                                             <Text variant="headingMd" as="h3">
+                                 {t('invoice.customization.companyInfo')}
+                               </Text>
                               
-                              <TextField
-                                label="Nom de l'entreprise"
-                                value={invoiceCustomization.companyName}
-                                onChange={value => handleInvoiceCustomizationChange("companyName", value)}
-                                placeholder="Nom de votre entreprise"
-                                helpText="Ce nom apparaîtra sur vos factures"
-                                autoComplete="off"
-                              />
+                                                             <TextField
+                                 label={t('invoice.customization.companyName')}
+                                 value={invoiceCustomization.companyName}
+                                 onChange={value => handleInvoiceCustomizationChange("companyName", value)}
+                                 placeholder={t('invoice.customization.companyNamePlaceholder')}
+                                 helpText={t('invoice.customization.companyNameHelp')}
+                                 autoComplete="off"
+                               />
 
-                              <TextField
-                                label="Adresse"
-                                value={invoiceCustomization.address}
-                                onChange={value => handleInvoiceCustomizationChange("address", value)}
-                                placeholder="Adresse complète de votre entreprise"
-                                multiline={3}
-                                helpText="Adresse qui apparaîtra sur vos factures"
-                                autoComplete="off"
-                              />
+                                                             <TextField
+                                 label={t('invoice.customization.address')}
+                                 value={invoiceCustomization.address}
+                                 onChange={value => handleInvoiceCustomizationChange("address", value)}
+                                 placeholder={t('invoice.customization.addressPlaceholder')}
+                                 multiline={3}
+                                 helpText={t('invoice.customization.addressHelp')}
+                                 autoComplete="off"
+                               />
 
                               <InlineStack gap="400">
-                                <div style={{ flex: 1 }}>
-                                  <TextField
-                                    label="Téléphone"
-                                    value={invoiceCustomization.phone}
-                                    onChange={value => handleInvoiceCustomizationChange("phone", value)}
-                                    placeholder="+33 1 23 45 67 89"
-                                    helpText="Numéro de téléphone de contact"
-                                    autoComplete="off"
-                                  />
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                  <TextField
-                                    label="Email"
-                                    value={invoiceCustomization.email}
-                                    onChange={value => handleInvoiceCustomizationChange("email", value)}
-                                    placeholder="contact@votreentreprise.com"
-                                    helpText="Adresse email de contact"
-                                    autoComplete="off"
-                                  />
-                                </div>
+                                                                 <div style={{ flex: 1 }}>
+                                   <TextField
+                                     label={t('invoice.customization.phone')}
+                                     value={invoiceCustomization.phone}
+                                     onChange={value => handleInvoiceCustomizationChange("phone", value)}
+                                     placeholder={t('invoice.customization.phonePlaceholder')}
+                                     helpText={t('invoice.customization.phoneHelp')}
+                                     autoComplete="off"
+                                   />
+                                 </div>
+                                 <div style={{ flex: 1 }}>
+                                   <TextField
+                                     label={t('invoice.customization.email')}
+                                     value={invoiceCustomization.email}
+                                     onChange={value => handleInvoiceCustomizationChange("email", value)}
+                                     placeholder={t('invoice.customization.emailPlaceholder')}
+                                     helpText={t('invoice.customization.emailHelp')}
+                                     autoComplete="off"
+                                   />
+                                 </div>
                               </InlineStack>
                             </BlockStack>
                           </div>
                         </Card>
 
-                        <div style={{ marginTop: '16px', textAlign: 'center' }}>
-                          <BiSaveBtn title="Sauvegarder la personnalisation" isLoading={isSaving} />
-                        </div>
+                                                 <div style={{ marginTop: '16px', textAlign: 'center' }}>
+                           <BiSaveBtn title={t('invoice.customization.saveCustomization')} isLoading={isSaving} />
+                         </div>
                       </FormLayout>
                     </form>
                   </BlockStack>
